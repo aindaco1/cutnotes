@@ -28,7 +28,7 @@ Running `cutnotes` starts a guided session:
 4. Records one continuous voice-note session.
 5. Transcribes locally with MacWhisper.
 6. Uses Codex to organize and summarize the notes.
-7. Creates a Notion-ready Markdown file.
+7. Creates a Notion-ready Markdown file inside a Desktop project folder.
 
 Use headphones while watching the cut. Begin each thought with the cut timecode:
 
@@ -36,12 +36,21 @@ Use headphones while watching the cut. Begin each thought with the cut timecode:
 
 Press `q` when the session is finished. Transcription and formatting begin automatically.
 
-Sessions default to `~/Documents/CutNotes/<title>-<date>/`. Each session preserves:
+Files are saved directly in a directory named after the project:
+
+```text
+~/Desktop/<Project Name>/
+```
+
+The first session creates:
 
 - `voice-notes.wav`
 - `transcript.txt`
 - the final `.md` file
 - `session.json`
+
+If that project folder already contains a session, new filenames receive a
+timestamp so earlier recordings and notes are never overwritten.
 
 ## Advanced commands
 
@@ -101,7 +110,7 @@ The following environment variables override discovery and defaults:
 
 | Variable | Purpose |
 |---|---|
-| `CUTNOTES_ROOT` | Default session directory |
+| `CUTNOTES_ROOT` | Parent directory for project folders; defaults to `~/Desktop` |
 | `CUTNOTES_FFMPEG` | FFmpeg executable |
 | `CUTNOTES_MACWHISPER` | MacWhisper `mw` executable |
 | `CUTNOTES_CODEX` | Codex executable |

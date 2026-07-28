@@ -30,6 +30,47 @@ class CutNotesUnitTests(unittest.TestCase):
             "first-time-sexpot-rough-cut-v2",
         )
 
+    def test_project_folder_name_is_readable_and_safe(self) -> None:
+        self.assertEqual(
+            cutnotes.project_folder_name("First Time Sexpot: Rough/Cut"),
+            "First Time Sexpot - Rough - Cut",
+        )
+
+    def test_project_directory_and_session_files_live_on_desktop_root(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            root = Path(temporary_directory)
+            project = cutnotes.project_directory(root, "Demo Project")
+            paths = cutnotes.allocate_session_paths(
+                project,
+                "Demo Project",
+                ".wav",
+                include_markdown=True,
+            )
+
+            self.assertEqual(project, root.resolve() / "Demo Project")
+            self.assertEqual(paths["audio"], project / "voice-notes.wav")
+            self.assertEqual(paths["transcript"], project / "transcript.txt")
+            self.assertEqual(paths["markdown"], project / "demo-project.md")
+            self.assertEqual(paths["metadata"], project / "session.json")
+
+    def test_later_project_sessions_do_not_overwrite_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            project = cutnotes.project_directory(
+                Path(temporary_directory),
+                "Demo Project",
+            )
+            (project / "transcript.txt").write_text("existing", encoding="utf-8")
+            paths = cutnotes.allocate_session_paths(
+                project,
+                "Demo Project",
+                ".wav",
+                include_markdown=True,
+            )
+
+            self.assertNotEqual(paths["transcript"], project / "transcript.txt")
+            self.assertRegex(paths["transcript"].name, r"^transcript-\d{8}-\d{6}\.txt$")
+            self.assertTrue(all(path.parent == project for path in paths.values() if path))
+
     def test_parse_avfoundation_microphones(self) -> None:
         output = """
         [AVFoundation indev] AVFoundation video devices:

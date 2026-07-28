@@ -17,8 +17,8 @@ import textwrap
 import unicodedata
 
 
-VERSION = "0.2.0"
-DEFAULT_ROOT = Path.home() / "Documents" / "CutNotes"
+VERSION = "0.3.0"
+DEFAULT_ROOT = Path.home() / "Desktop"
 DEFAULT_MIC_NAME = "MacBook Pro Microphone"
 MACWHISPER_CANDIDATES = (
     Path("/Applications/MacWhisper.app/Contents/MacOS/mw"),
@@ -53,6 +53,12 @@ def slugify(value: str) -> str:
     ascii_value = normalized.encode("ascii", "ignore").decode("ascii")
     slug = re.sub(r"[^a-zA-Z0-9]+", "-", ascii_value).strip("-").lower()
     return slug or "cut-notes"
+
+
+def project_folder_name(value: str) -> str:
+    safe_name = re.sub(r"[/:\x00-\x1f]+", " - ", value.strip())
+    safe_name = re.sub(r"\s+", " ", safe_name).strip(" .-")
+    return safe_name or "Cut Notes"
 
 
 def find_tool(env_name: str, command: str, candidates: tuple[Path, ...] = ()) -> str | None:
@@ -179,16 +185,44 @@ def choose_microphone(
     return microphones[0]
 
 
-def unique_session_dir(root: Path, title: str) -> Path:
-    root = root.expanduser().resolve()
+def project_directory(root: Path, title: str) -> Path:
+    directory = root.expanduser().resolve() / project_folder_name(title)
+    directory.mkdir(parents=True, exist_ok=True)
+    return directory
+
+
+def allocate_session_paths(
+    directory: Path,
+    title: str,
+    audio_suffix: str,
+    include_markdown: bool,
+) -> dict[str, Path | None]:
+    normalized_audio_suffix = audio_suffix if audio_suffix.startswith(".") else f".{audio_suffix}"
+    document_slug = slugify(title)
+
+    def paths_for(suffix: str) -> dict[str, Path | None]:
+        return {
+            "audio": directory / f"voice-notes{suffix}{normalized_audio_suffix}",
+            "transcript": directory / f"transcript{suffix}.txt",
+            "markdown": (
+                directory / f"{document_slug}{suffix}.md"
+                if include_markdown
+                else None
+            ),
+            "metadata": directory / f"session{suffix}.json",
+        }
+
+    primary = paths_for("")
+    primary_files = [path for path in primary.values() if path is not None]
+    if not any(path.exists() for path in primary_files):
+        return primary
+
     stamp = dt.datetime.now().strftime("%Y%m%d-%H%M%S")
-    base = root / f"{slugify(title)}-{stamp}"
-    candidate = base
-    suffix = 2
-    while candidate.exists():
-        candidate = Path(f"{base}-{suffix}")
-        suffix += 1
-    candidate.mkdir(parents=True)
+    candidate = paths_for(f"-{stamp}")
+    counter = 2
+    while any(path.exists() for path in candidate.values() if path is not None):
+        candidate = paths_for(f"-{stamp}-{counter}")
+        counter += 1
     return candidate
 
 
@@ -550,6 +584,8 @@ def print_result(payload: dict, as_json: bool, quiet: bool) -> None:
 
     print()
     print("Done.")
+    if payload.get("session_dir"):
+        print(f"Project folder: {payload['session_dir']}")
     if payload.get("markdown"):
         print(f"Markdown:   {payload['markdown']}")
     print(f"Transcript: {payload['transcript']}")
@@ -566,10 +602,20 @@ def run_record(args: argparse.Namespace) -> int:
         else require_tool("CUTNOTES_CODEX", "codex", CODEX_CANDIDATES)
     )
 
-    session_dir = unique_session_dir(Path(args.root), args.title)
-    audio_path = session_dir / "voice-notes.wav"
-    transcript_path = session_dir / "transcript.txt"
-    markdown_path = None if args.transcript_only else session_dir / f"{slugify(args.title)}.md"
+    session_dir = project_directory(Path(args.root), args.title)
+    session_paths = allocate_session_paths(
+        session_dir,
+        args.title,
+        ".wav",
+        include_markdown=not args.transcript_only,
+    )
+    audio_path = session_paths["audio"]
+    transcript_path = session_paths["transcript"]
+    markdown_path = session_paths["markdown"]
+    metadata_path = session_paths["metadata"]
+    assert audio_path is not None
+    assert transcript_path is not None
+    assert metadata_path is not None
 
     microphones = list_microphones(ffmpeg)
     microphone_index, microphone_name = choose_microphone(
@@ -586,7 +632,7 @@ def run_record(args: argparse.Namespace) -> int:
         "codex_model": args.codex_model or "Codex CLI default",
         "status": "recording",
     }
-    write_json(session_dir / "session.json", metadata)
+    write_json(metadata_path, metadata)
     stage_quiet = args.quiet or args.json
 
     record_audio(
@@ -597,7 +643,7 @@ def run_record(args: argparse.Namespace) -> int:
         stage_quiet,
     )
     metadata["status"] = "transcribing"
-    write_json(session_dir / "session.json", metadata)
+    write_json(metadata_path, metadata)
 
     transcribe_audio(
         macwhisper,
@@ -610,7 +656,7 @@ def run_record(args: argparse.Namespace) -> int:
 
     if markdown_path and codex:
         metadata["status"] = "formatting"
-        write_json(session_dir / "session.json", metadata)
+        write_json(metadata_path, metadata)
         format_with_codex(
             codex,
             transcript_path,
@@ -623,7 +669,7 @@ def run_record(args: argparse.Namespace) -> int:
 
     metadata["status"] = "complete"
     metadata["completed_at"] = dt.datetime.now().astimezone().isoformat()
-    write_json(session_dir / "session.json", metadata)
+    write_json(metadata_path, metadata)
     payload = result_payload(session_dir, audio_path, transcript_path, markdown_path)
     print_result(payload, args.json, args.quiet)
     return 0
@@ -640,10 +686,20 @@ def run_import(args: argparse.Namespace) -> int:
         if args.transcript_only
         else require_tool("CUTNOTES_CODEX", "codex", CODEX_CANDIDATES)
     )
-    session_dir = unique_session_dir(Path(args.root), args.title)
-    audio_path = session_dir / f"voice-notes{source_audio.suffix.lower() or '.audio'}"
-    transcript_path = session_dir / "transcript.txt"
-    markdown_path = None if args.transcript_only else session_dir / f"{slugify(args.title)}.md"
+    session_dir = project_directory(Path(args.root), args.title)
+    session_paths = allocate_session_paths(
+        session_dir,
+        args.title,
+        source_audio.suffix.lower() or ".audio",
+        include_markdown=not args.transcript_only,
+    )
+    audio_path = session_paths["audio"]
+    transcript_path = session_paths["transcript"]
+    markdown_path = session_paths["markdown"]
+    metadata_path = session_paths["metadata"]
+    assert audio_path is not None
+    assert transcript_path is not None
+    assert metadata_path is not None
     shutil.copy2(source_audio, audio_path)
 
     metadata = {
@@ -655,7 +711,7 @@ def run_import(args: argparse.Namespace) -> int:
         "codex_model": args.codex_model or "Codex CLI default",
         "status": "transcribing",
     }
-    write_json(session_dir / "session.json", metadata)
+    write_json(metadata_path, metadata)
     stage_quiet = args.quiet or args.json
 
     transcribe_audio(
@@ -669,7 +725,7 @@ def run_import(args: argparse.Namespace) -> int:
 
     if markdown_path and codex:
         metadata["status"] = "formatting"
-        write_json(session_dir / "session.json", metadata)
+        write_json(metadata_path, metadata)
         format_with_codex(
             codex,
             transcript_path,
@@ -682,7 +738,7 @@ def run_import(args: argparse.Namespace) -> int:
 
     metadata["status"] = "complete"
     metadata["completed_at"] = dt.datetime.now().astimezone().isoformat()
-    write_json(session_dir / "session.json", metadata)
+    write_json(metadata_path, metadata)
     payload = result_payload(session_dir, audio_path, transcript_path, markdown_path)
     print_result(payload, args.json, args.quiet)
     return 0
@@ -905,7 +961,7 @@ def add_pipeline_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--root",
         default=os.environ.get("CUTNOTES_ROOT", str(DEFAULT_ROOT)),
-        help="Session root (default: ~/Documents/CutNotes or CUTNOTES_ROOT).",
+        help="Project-folder parent (default: ~/Desktop or CUTNOTES_ROOT).",
     )
     parser.add_argument(
         "--language",
