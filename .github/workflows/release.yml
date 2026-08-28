@@ -1,0 +1,69 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+concurrency:
+  group: cutnotes-release
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: macos-26
+    env:
+      CUTNOTES_SIGNING_IDENTITY: ${{ secrets.CUTNOTES_SIGNING_IDENTITY }}
+      CUTNOTES_SPARKLE_PRIVATE_KEY: ${{ secrets.CUTNOTES_SPARKLE_PRIVATE_KEY }}
+      CUTNOTES_NOTARY_KEY_ID: ${{ secrets.CUTNOTES_NOTARY_KEY_ID }}
+      CUTNOTES_NOTARY_ISSUER: ${{ secrets.CUTNOTES_NOTARY_ISSUER }}
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Verify tag and host
+        run: |
+          test "$(uname -m)" = arm64
+          ./scripts/check-version.sh "${GITHUB_REF_NAME#v}"
+      - name: Install pinned build dependencies
+        run: |
+          brew install python@3.14
+          test "$(/opt/homebrew/opt/python@3.14/bin/python3.14 -c 'import platform; print(platform.python_version())')" = 3.14.6
+      - name: Import Developer ID certificate
+        env:
+          CERTIFICATE_BASE64: ${{ secrets.CUTNOTES_CERTIFICATE_BASE64 }}
+          CERTIFICATE_PASSWORD: ${{ secrets.CUTNOTES_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.CUTNOTES_KEYCHAIN_PASSWORD }}
+        run: |
+          certificate_path="$RUNNER_TEMP/cutnotes.p12"
+          keychain_path="$RUNNER_TEMP/cutnotes-signing.keychain-db"
+          printf '%s' "$CERTIFICATE_BASE64" | base64 --decode > "$certificate_path"
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security set-keychain-settings -lut 21600 "$keychain_path"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security import "$certificate_path" -P "$CERTIFICATE_PASSWORD" -A -t cert -f pkcs12 -k "$keychain_path"
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" "$keychain_path"
+          security list-keychain -d user -s "$keychain_path" login.keychain-db
+      - name: Prepare notarization key
+        env:
+          NOTARY_KEY_BASE64: ${{ secrets.CUTNOTES_NOTARY_KEY_BASE64 }}
+        run: |
+          key_path="$RUNNER_TEMP/AuthKey_${CUTNOTES_NOTARY_KEY_ID}.p8"
+          printf '%s' "$NOTARY_KEY_BASE64" | base64 --decode > "$key_path"
+          chmod 600 "$key_path"
+          echo "CUTNOTES_NOTARY_KEY=$key_path" >> "$GITHUB_ENV"
+      - name: Build, sign, notarize, and create appcast
+        run: ./scripts/release/release.sh "${GITHUB_REF_NAME#v}"
+      - name: Publish GitHub release
+        run: |
+          version="${GITHUB_REF_NAME#v}"
+          gh release create "$GITHUB_REF_NAME" \
+            "dist/CutNotes-$version-arm64.dmg" \
+            dist/appcast.xml \
+            dist/SHA256SUMS \
+            --verify-tag \
+            --title "CutNotes $version" \
+            --notes-file CHANGELOG.md

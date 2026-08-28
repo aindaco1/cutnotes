@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "https://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>CFBundleDevelopmentRegion</key>
+  <string>en</string>
+  <key>CFBundleDisplayName</key>
+  <string>CutNotes</string>
+  <key>CFBundleExecutable</key>
+  <string>CutNotes</string>
+  <key>CFBundleIconFile</key>
+  <string>AppIcon</string>
+  <key>CFBundleIdentifier</key>
+  <string>com.dustwave.cutnotes</string>
+  <key>CFBundleInfoDictionaryVersion</key>
+  <string>6.0</string>
+  <key>CFBundleName</key>
+  <string>CutNotes</string>
+  <key>CFBundlePackageType</key>
+  <string>APPL</string>
+  <key>CFBundleShortVersionString</key>
+  <string>1.0.0</string>
+  <key>CFBundleVersion</key>
+  <string>1</string>
+  <key>LSArchitecturePriority</key>
+  <array><string>arm64</string></array>
+  <key>LSMinimumSystemVersion</key>
+  <string>15.0</string>
+  <key>NSHighResolutionCapable</key>
+  <true/>
+  <key>NSMicrophoneUsageDescription</key>
+  <string>CutNotes records your spoken rough-cut notes when you start a recording.</string>
+  <key>NSPrincipalClass</key>
+  <string>NSApplication</string>
+  <key>SUEnableAutomaticChecks</key>
+  <true/>
+  <key>SUAutomaticallyUpdate</key>
+  <false/>
+  <key>SUSendsSystemProfile</key>
+  <false/>
+  <key>SUFeedURL</key>
+  <string>https://github.com/aindaco1/cutnotes/releases/latest/download/appcast.xml</string>
+  <key>SUPublicEDKey</key>
+  <string>cqJAkM1p6nY6dL8XNO9bpOdFWKQkcrCapeUMwHaXt78=</string>
+</dict>
+</plist>

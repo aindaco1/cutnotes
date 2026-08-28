@@ -1,0 +1,21 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify Apple Silicon host
+        run: test "$(uname -m)" = arm64
+      - name: Test Python CLI
+        run: python3 -m unittest discover -s tests -v
+      - name: Test Swift contracts and app build
+        run: |
+          swift test --package-path macos
+          swift build --package-path macos -c release --arch arm64 --product CutNotes
+          swift build --package-path macos -c release --arch arm64 --product CutNotesLocal

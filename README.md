@@ -1,127 +1,110 @@
-# cutnotes
+# CutNotes
 
-`cutnotes` records rough-cut feedback, transcribes it locally with MacWhisper, and asks Codex to turn the transcript into a polished Markdown document ready to import or paste into Notion.
+CutNotes turns spoken rough-cut feedback into a local transcript and, when requested, structured Markdown notes. It ships as both a native Apple Silicon Mac app and the original command-line tool. The Python CLI remains the single workflow authority; the SwiftUI app is a small, typed client of that same CLI.
 
-## Install
+CutNotes is free, open-source software under the MIT License.
 
-On this Mac, the launcher is installed at `/opt/homebrew/bin/cutnotes`, which is
-already on the terminal `PATH`.
+## What 1.0 does
 
-For another Mac, open the extracted `cutnotes` folder and run:
+- **Record** a voice-note session from a selected microphone.
+- **Import** any audio or video file that the bundled FFmpeg can read.
+- **Format** an existing UTF-8 plain-text transcript.
+- Transcribe locally with the pinned Parakeet TDT 0.6B v3 Core ML model.
+- Format locally with Apple Intelligence when the system model is available.
+- Optionally use an installed MacWhisper CLI for transcription or Codex CLI for formatting.
+- Preserve audio and transcripts when a later stage fails.
+- Save every session without overwriting an earlier one.
+
+The maximum recording or imported-media duration is four hours. Recording warns at 3 hours 45 minutes and stops at 4 hours; imports longer than four hours are rejected before transcription.
+
+## Import format, in plain language
+
+There are two kinds of import:
+
+1. `cutnotes import` accepts an existing **audio or video** file. CutNotes checks its duration, converts it into 15-minute mono audio chunks, transcribes each chunk, joins the transcript, and optionally formats the result. The original file is never modified. A project title is required.
+2. `cutnotes format` accepts an existing **UTF-8 `.txt` transcript**. It does no transcription; it only creates the structured Markdown notes. A title is required.
+
+Examples:
 
 ```bash
-chmod +x cutnotes
-ln -s "$(pwd)/cutnotes" /opt/homebrew/bin/cutnotes
+cutnotes import ~/Desktop/review.m4a --title "Episode 4 Rough Cut"
+cutnotes import ~/Desktop/review.mov --title "Episode 4" --transcript-only
+cutnotes format ~/Desktop/transcript.txt --title "Episode 4 Rough Cut"
 ```
 
-## Quick start
+The app exposes the same distinction as the **Import** and **Format** buttons.
 
-```bash
-cutnotes
-```
+## Mac app
 
-Running `cutnotes` starts a guided session:
+CutNotes 1.0 requires Apple Silicon and macOS 15 or later. Apple on-device formatting additionally requires macOS 26, Apple Intelligence enabled, and an available system language model. On other supported systems, transcript-only and Codex formatting remain available.
 
-1. Checks FFmpeg, MacWhisper, Codex, the active model, and the microphone.
-2. Prompts for the project or cut name.
-3. Waits until you are ready to begin recording.
-4. Records one continuous voice-note session.
-5. Transcribes locally with MacWhisper.
-6. Uses Codex to organize and summarize the notes.
-7. Creates a Notion-ready Markdown file inside a Desktop project folder.
-
-Use headphones while watching the cut. Begin each thought with the cut timecode:
-
-> “Timestamp 12 minutes 34 seconds. The reaction shot runs too long.”
-
-Press `q` when the session is finished. Transcription and formatting begin automatically.
-
-Files are saved directly in a directory named after the project:
+The app bundles its pinned Python, FFmpeg, FFprobe, native helper, and CLI. It does not bundle the roughly 483 MB Parakeet weights. The first-run setup downloads those exact weights only after license acceptance, verifies every file with SHA-256, then stores them in:
 
 ```text
-~/Desktop/<Project Name>/
+~/Library/Application Support/CutNotes/Models/parakeet-tdt-0.6b-v3/
 ```
 
-The first session creates:
+Use **CutNotes > Install cutnotes Command…** after moving the app to `/Applications`. The administrator prompt creates only this stable link:
 
-- `voice-notes.wav`
-- `transcript.txt`
-- the final `.md` file
-- `session.json`
-
-If that project folder already contains a session, new filenames receive a
-timestamp so earlier recordings and notes are never overwritten.
-
-## Advanced commands
-
-### Record, transcribe, and format
-
-```bash
-cutnotes record "Project — Rough Cut Feedback"
+```text
+/usr/local/bin/cutnotes -> /Applications/CutNotes.app/Contents/Resources/CLI/bin/cutnotes
 ```
 
-Useful options:
-
-```bash
-cutnotes record "Project — Rough Cut Feedback" \
-  --context "Correct names: Kaidin, Mia, Jordan" \
-  --mic "MacBook Pro Microphone" \
-  --language en
-```
-
-### Process an existing recording
-
-```bash
-cutnotes import ~/Desktop/voice-notes.m4a \
-  --title "Project — Rough Cut Feedback"
-```
-
-### Reformat an existing transcript
-
-```bash
-cutnotes format transcript.txt \
-  --title "Project — Rough Cut Feedback" \
-  --output feedback.md
-```
-
-### Transcribe locally without Codex
-
-```bash
-cutnotes record "Project — Rough Cut Feedback" --transcript-only
-```
-
-### Check the setup
+## CLI quick start
 
 ```bash
 cutnotes doctor
+cutnotes model download
+cutnotes record "Project — Rough Cut"
 ```
 
-`doctor` reports the installed versions, MacWhisper models, and available microphones.
+Running `cutnotes` without a subcommand starts guided terminal mode. During terminal recording, press `q` to finish. In the app, use **Finish Recording** or **Cancel**.
+
+Default output:
+
+```text
+~/Desktop/<Project Name>/
+├── voice-notes.wav
+├── transcript.txt
+├── <project-name>.md
+└── session.json
+```
+
+New sessions receive timestamped names rather than replacing existing files.
+
+Useful explicit provider choices:
+
+```bash
+# Fully local transcript only
+cutnotes import review.mov --title "Rough Cut" --transcript-only
+
+# Optional MacWhisper transcription
+cutnotes import review.m4a --title "Rough Cut" --transcriber macwhisper
+
+# Optional Codex CLI formatting; no automatic fallback
+cutnotes format transcript.txt --title "Rough Cut" --formatter codex
+```
+
+English is fully supported in CutNotes 1.0. Other Parakeet languages are exposed as experimental. Run `cutnotes <command> --help` for all advanced options.
 
 ## Privacy
 
-- Recording and transcription run locally through FFmpeg and MacWhisper.
-- The formatting step sends the transcript to Codex using the account and provider configured in the local Codex CLI.
-- Use `--transcript-only` if the transcript should remain entirely local.
+Parakeet transcription and Apple formatting run on the Mac. CutNotes has no telemetry, analytics, accounts, or first-party upload service. Selecting Codex CLI or MacWhisper delegates only that stage to the separately installed tool and its own configuration. No provider fallback happens silently. See [docs/PRIVACY.md](docs/PRIVACY.md).
 
-## Configuration
+## Build and test
 
-The following environment variables override discovery and defaults:
+Requirements: Apple Silicon, Xcode 26, Swift 6, Homebrew Python 3.14.6, and standard macOS build tools.
 
-| Variable | Purpose |
-|---|---|
-| `CUTNOTES_ROOT` | Parent directory for project folders; defaults to `~/Desktop` |
-| `CUTNOTES_FFMPEG` | FFmpeg executable |
-| `CUTNOTES_MACWHISPER` | MacWhisper `mw` executable |
-| `CUTNOTES_CODEX` | Codex executable |
-
-The default MacWhisper path is:
-
-```text
-/Applications/MacWhisper.app/Contents/MacOS/mw
+```bash
+python3 -m unittest discover -s tests -v
+swift test --package-path macos
+./script/build_and_run.sh --verify
 ```
 
-When available, `cutnotes` prefers the newer Codex executable bundled with the
-ChatGPT/Codex desktop app over an older executable found on `PATH`.
+The canonical desktop Run action is `./script/build_and_run.sh`. Release details are in [docs/RELEASE.md](docs/RELEASE.md); the architecture and machine contracts are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/CLI_PROTOCOL.md](docs/CLI_PROTOCOL.md).
 
-Run `cutnotes --help` or `cutnotes <command> --help` for the full command reference.
+## Contributing
+
+Keep workflow behavior in `cutnotes_core`. Swift may build typed argument arrays and render versioned JSON contracts, but it must not duplicate pipeline policy or parse terminal prose. Add or update both Python and Swift contract tests when a machine field changes.
+
+Third-party licensing and model attribution are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).

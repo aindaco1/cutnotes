@@ -25,6 +25,7 @@ venv/
 env/
 build/
 dist/
+.build/
 *.egg-info/
 
 # Local configuration and secrets
@@ -55,3 +56,10 @@ session.json
 # Packaged releases
 *.tar.gz
 *.zip
+*.dmg
+appcast.xml
+SHA256SUMS
+*.p8
+*.p12
+*.cer
+sparkle-private-key*

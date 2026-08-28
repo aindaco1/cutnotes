@@ -1,0 +1,18 @@
+#!/bin/sh
+set -eu
+
+launcher_dir=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
+resources_dir=$(CDPATH= cd -- "$launcher_dir/../.." && pwd)
+python_bin="$resources_dir/Runtime/Python.framework/Versions/3.14/bin/python3"
+
+if [ ! -x "$python_bin" ]; then
+  echo "cutnotes: the bundled Python runtime is missing; reinstall CutNotes.app" >&2
+  exit 3
+fi
+
+export CUTNOTES_FFMPEG="$resources_dir/Runtime/bin/ffmpeg"
+export CUTNOTES_FFPROBE="$resources_dir/Runtime/bin/ffprobe"
+export CUTNOTES_LOCAL_ENGINE="$resources_dir/Helpers/CutNotesLocal"
+export PYTHONDONTWRITEBYTECODE=1
+
+exec "$python_bin" "$resources_dir/CLI/cutnotes" "$@"

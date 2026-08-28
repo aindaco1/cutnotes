@@ -12,6 +12,10 @@ import tempfile
 import unittest
 from unittest import mock
 
+import cutnotes_core.cli as cli_module
+from cutnotes_core.contracts import CutNotesError, ProgressReporter
+from cutnotes_core.pipeline import enforce_duration_limit
+
 
 PROJECT_DIR = Path(__file__).resolve().parents[1]
 SCRIPT = PROJECT_DIR / "cutnotes"
@@ -84,6 +88,22 @@ class CutNotesUnitTests(unittest.TestCase):
             [(0, "Icarus Microphone"), (1, "MacBook Pro Microphone")],
         )
 
+    def test_microphone_defaults_to_system_setting(self) -> None:
+        microphones = [(0, "Icarus Microphone"), (1, "MacBook Pro Microphone")]
+
+        self.assertEqual(
+            cutnotes.choose_microphone(microphones, None, None),
+            (None, "System Default"),
+        )
+        self.assertEqual(
+            cutnotes.choose_microphone(microphones, "default", None),
+            (None, "System Default"),
+        )
+        self.assertEqual(
+            cutnotes.choose_microphone(microphones, None, 1),
+            (1, "MacBook Pro Microphone"),
+        )
+
     def test_parse_codex_markdown(self) -> None:
         raw = json.dumps(
             {
@@ -110,13 +130,129 @@ class CutNotesUnitTests(unittest.TestCase):
         self.assertIn("<transcript>", prompt)
         self.assertIn("Timestamp zero five", prompt)
 
+    def test_numeric_spoken_timecode_is_canonicalized_and_grounded(self) -> None:
+        transcript = "Timestamp 12 minutes 34 seconds. Trim the reaction."
+        self.assertEqual(cutnotes.source_timecodes(transcript), ["12:34"])
+        self.assertIn("[12:34]", cutnotes.canonicalize_timecodes(transcript))
+        self.assertEqual(
+            cutnotes.validate_timecodes("### [12:34] — Reaction", transcript),
+            ([], []),
+        )
+        self.assertEqual(
+            cutnotes.validate_timecodes("### [00:41] — Reaction", transcript),
+            (["00:41"], ["12:34"]),
+        )
+
+    def test_apple_plan_renderer_can_classify_but_cannot_author_notes(self) -> None:
+        units = cutnotes.source_units(
+            "Timestamp 12 minutes 34 seconds. The reaction shot is too long. "
+            "General note. The music is working well."
+        )
+        markdown = cutnotes.render_editorial_plan(
+            title="Demo",
+            review_date="August 28, 2026",
+            units=units,
+            plan={
+                "highest_priority_changes": ["N0001", "MADE_UP"],
+                "sound_and_foley_direction": ["N0001", "N0002"],
+                "positive_notes": ["N0002"],
+                "recurring_themes": [],
+                "open_questions": [],
+            },
+        )
+        self.assertEqual(cutnotes.validate_markdown(markdown), [])
+        self.assertNotIn("MADE_UP", markdown)
+        sound_section = markdown.split("## Sound and Foley Direction", 1)[1].split(
+            "## Timestamped Notes", 1
+        )[0]
+        self.assertNotIn("reaction shot", sound_section)
+        self.assertIn("music is working well", sound_section)
+        self.assertEqual(cutnotes.validate_timecodes(markdown, "Timestamp 12 minutes 34 seconds."), ([], []))
+
+    def test_markdown_validator_requires_exact_ordered_headings(self) -> None:
+        malformed = (
+            "## Demo\n\n## Overall\n\n## Highest-Priority Changes\n\n"
+            "## Timestamped Notes\n\n## Recurring Themes\n\n## Open Questions\n\n## Positive Notes\n"
+        )
+        self.assertIn("# ", cutnotes.validate_markdown(malformed))
+
     def test_parser_allows_zero_argument_interactive_mode(self) -> None:
         args = cutnotes.build_parser().parse_args([])
         self.assertIsNone(args.command)
 
+    def test_pipeline_defaults_are_local_and_have_no_fallback(self) -> None:
+        args = cutnotes.build_parser().parse_args(
+            ["import", "/tmp/review.mov", "--title", "Demo"]
+        )
+        self.assertEqual(args.transcriber, "parakeet")
+        self.assertEqual(args.formatter, "apple")
+        self.assertFalse(args.transcript_only)
+
+    def test_four_hour_import_limit_is_exact(self) -> None:
+        enforce_duration_limit(4 * 60 * 60)
+        with self.assertRaises(CutNotesError) as raised:
+            enforce_duration_limit(4 * 60 * 60 + 1)
+        self.assertEqual(raised.exception.code, "media_too_long")
+
+    def test_progress_contract_is_bounded_and_monotonic(self) -> None:
+        read_fd, write_fd = os.pipe()
+        try:
+            reporter = ProgressReporter(write_fd)
+            reporter.stage("recording", "  Recording   voice notes  ")
+            reporter.progress("recording", 5, "x" * 300)
+            os.close(write_fd)
+            write_fd = -1
+            events = [json.loads(line) for line in os.read(read_fd, 16_384).splitlines()]
+        finally:
+            os.close(read_fd)
+            if write_fd >= 0:
+                os.close(write_fd)
+        self.assertEqual([event["sequence"] for event in events], [0, 1])
+        self.assertEqual(events[0]["message"], "Recording voice notes")
+        self.assertEqual(events[1]["fraction"], 1.0)
+        self.assertEqual(len(events[1]["message"]), 240)
+
+    def test_noninteractive_recording_requires_control_channel(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            with (
+                mock.patch.object(sys.stdin, "isatty", return_value=False),
+                self.assertRaises(CutNotesError) as raised,
+            ):
+                cutnotes.record_audio(
+                    "/fake/ffmpeg",
+                    Path(temporary_directory) / "audio.wav",
+                    0,
+                    "Test microphone",
+                    True,
+                )
+        self.assertEqual(raised.exception.code, "recording_control_missing")
+
+    def test_recording_uses_avfoundation_system_default(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            output = Path(temporary_directory) / "audio.wav"
+            output.write_bytes(b"x" * 256)
+            process = mock.Mock()
+            process.poll.return_value = 0
+            process.wait.return_value = 0
+            with (
+                mock.patch.object(sys.stdin, "isatty", return_value=True),
+                mock.patch.object(cutnotes.subprocess, "Popen", return_value=process) as popen,
+            ):
+                cutnotes.record_audio(
+                    "/fake/ffmpeg",
+                    output,
+                    None,
+                    "System Default",
+                    True,
+                )
+
+        command = popen.call_args.args[0]
+        self.assertEqual(command[command.index("-i") + 1], ":default")
+
     def test_interactive_mode_prompts_then_starts_recording(self) -> None:
         doctor = {
             "healthy": True,
+            "default_workflow_ready": True,
             "cutnotes": cutnotes.VERSION,
             "ffmpeg": {"path": "/fake/ffmpeg", "version": "ffmpeg test"},
             "macwhisper": {
@@ -125,18 +261,26 @@ class CutNotesUnitTests(unittest.TestCase):
                 "models": ["▸ parakeet-pro:test Active"],
             },
             "codex": {"path": "/fake/codex", "version": "codex test"},
+            "local_engine": {
+                "path": "/fake/CutNotesLocal",
+                "version": "1.0.0",
+                "apple": {"state": "ready"},
+            },
+            "parakeet": {"state": "ready"},
+            "apple_formatter": {"state": "ready"},
+            "ffprobe": {"path": "/fake/ffprobe", "version": "ffprobe test"},
             "microphones": [{"index": 1, "name": "MacBook Pro Microphone"}],
         }
         with (
             mock.patch.object(sys.stdin, "isatty", return_value=True),
-            mock.patch.object(cutnotes, "doctor_payload", return_value=(doctor, True)),
+            mock.patch.object(cli_module, "doctor_payload", return_value=(doctor, True)),
             mock.patch.object(
-                cutnotes,
+                cli_module,
                 "choose_microphone",
                 return_value=(1, "MacBook Pro Microphone"),
             ),
             mock.patch("builtins.input", side_effect=["Demo Rough Cut", ""]),
-            mock.patch.object(cutnotes, "run_record", return_value=0) as run_record,
+            mock.patch.object(cli_module, "run_record_command", return_value=0) as run_record,
         ):
             result = cutnotes.run_interactive(cutnotes.argparse.Namespace())
 
@@ -144,6 +288,8 @@ class CutNotesUnitTests(unittest.TestCase):
         interactive_args = run_record.call_args.args[0]
         self.assertEqual(interactive_args.title, "Demo Rough Cut")
         self.assertFalse(interactive_args.transcript_only)
+        self.assertEqual(interactive_args.transcriber, "parakeet")
+        self.assertEqual(interactive_args.formatter, "apple")
 
 
 class CutNotesIntegrationTests(unittest.TestCase):
@@ -173,30 +319,14 @@ import sys
 
 args = sys.argv[1:]
 output = pathlib.Path(args[args.index("--output-last-message") + 1])
-markdown = \"\"\"# Demo
-
-**Review date:** July 28, 2026
-
-## Overall
-Tighten the cut.
-
-## Highest-Priority Changes
-1. Shorten the shot.
-
-## Timestamped Notes
-### `[00:05]` — Shorten Shot
-- Trim it.
-
-## Recurring Themes
-- Pacing.
-
-## Open Questions
-- None.
-
-## Positive Notes
-- None noted.
-\"\"\"
-output.write_text(json.dumps({"markdown": markdown}), encoding="utf-8")
+plan = {
+    "highest_priority_changes": ["N0001"],
+    "sound_and_foley_direction": [],
+    "recurring_themes": [],
+    "open_questions": [],
+    "positive_notes": [],
+}
+output.write_text(json.dumps(plan), encoding="utf-8")
 """,
             )
             environment = os.environ.copy()
@@ -212,6 +342,8 @@ output.write_text(json.dumps({"markdown": markdown}), encoding="utf-8")
                     "Demo",
                     "--output",
                     str(output),
+                    "--formatter",
+                    "codex",
                     "--json",
                 ],
                 check=False,
@@ -224,6 +356,32 @@ output.write_text(json.dumps({"markdown": markdown}), encoding="utf-8")
             payload = json.loads(result.stdout)
             self.assertEqual(Path(payload["markdown"]), output.resolve())
             self.assertIn("### `[00:05]`", output.read_text(encoding="utf-8"))
+            self.assertIn("Shorten the shot.", output.read_text(encoding="utf-8"))
+
+    def test_format_rejects_non_utf8_transcript_with_machine_error(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            transcript = Path(temporary_directory) / "transcript.txt"
+            transcript.write_bytes(b"\xff\xfe\x00")
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "format",
+                    str(transcript),
+                    "--title",
+                    "Demo",
+                    "--formatter",
+                    "codex",
+                    "--json",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+        self.assertEqual(result.returncode, 7)
+        payload = json.loads(result.stderr)
+        self.assertEqual(payload["schema_version"], "cutnotes.error.v1")
+        self.assertEqual(payload["code"], "transcript_encoding")
 
 
 if __name__ == "__main__":
