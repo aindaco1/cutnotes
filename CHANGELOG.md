@@ -1,6 +1,6 @@
 # Changelog
 
-## 1.0.0 — Unreleased
+## 1.0.0 — 2026-08-28
 
 - Adds the native Apple Silicon SwiftUI app for record, import, and format workflows.
 - Adds a native-name dropdown for all 25 Parakeet v3 languages and rounded monochrome panels.
