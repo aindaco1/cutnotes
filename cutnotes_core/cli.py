@@ -329,8 +329,9 @@ def add_pipeline_options(parser: argparse.ArgumentParser, *, recording: bool = F
     )
     parser.add_argument(
         "--language",
+        choices=SUPPORTED_LANGUAGE_CODES,
         default="en",
-        help="Source language (English is fully supported; other Parakeet languages are experimental).",
+        help="Source language (one of Parakeet v3's 25 supported languages).",
     )
     parser.add_argument(
         "--transcriber",

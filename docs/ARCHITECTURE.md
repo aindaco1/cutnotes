@@ -24,6 +24,8 @@ The app does not ship model weights. The CLI installs a single pinned Parakeet v
 
 Media is normalized by bundled FFmpeg into mono 16 kHz WAV chunks no longer than 15 minutes. `CutNotesLocal` uses Record/FluidAudio offline APIs and Core ML. Chunk transcripts are joined in order.
 
+The Python `doctor` contract exposes the model's supported language codes and native display names. Swift renders that capability list rather than maintaining a second language table.
+
 ## Formatting
 
 Both Apple and Codex receive bounded groups of source observations identified as `N0001`, `N0002`, and so on. A formatter may return only those IDs for classification and priority. Python dereferences them and renders the same required Markdown headings from source-owned note text deterministically. Provider output cannot directly enter the document. Invalid IDs are discarded, every source observation remains in Overall, obvious sound/praise categories are checked locally, and invented or omitted CUT times reject the document before atomic replacement. This keeps the no-invention/no-loss guarantee provider-independent while still using a selected model to organize the handoff.

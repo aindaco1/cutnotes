@@ -85,7 +85,7 @@ cutnotes import review.m4a --title "Rough Cut" --transcriber macwhisper
 cutnotes format transcript.txt --title "Rough Cut" --formatter codex
 ```
 
-English is fully supported in CutNotes 1.0. Other Parakeet languages are exposed as experimental. Run `cutnotes <command> --help` for all advanced options.
+CutNotes exposes all 25 languages listed by the official Parakeet v3 model, using their native names in the app. English is fully supported in CutNotes 1.0; the other 24 languages remain experimental at the CutNotes product layer. Run `cutnotes <command> --help` for all advanced options.
 
 ## Privacy
 

@@ -28,6 +28,7 @@ struct ContentView: View {
         .background(CutNotesBrand.ink)
         .foregroundStyle(CutNotesBrand.paper)
         .tint(CutNotesBrand.paper)
+        .groupBoxStyle(CutNotesGroupBoxStyle())
         .preferredColorScheme(.dark)
         .task { await store.refreshDoctor() }
         .onChange(of: store.workflow) { _, workflow in
@@ -110,7 +111,14 @@ struct ContentView: View {
                         Text("Parakeet v3 — local (recommended)").tag(CutNotesTranscriber.parakeet)
                         Text("MacWhisper — optional").tag(CutNotesTranscriber.macwhisper)
                     }
-                    TextField("Language", text: $store.language)
+                    Picker("Language", selection: $store.language) {
+                        ForEach(
+                            store.doctor?.parakeet.languages
+                                ?? [DoctorPayload.Language(code: "en", name: "English")]
+                        ) { language in
+                            Text(language.name).tag(language.code)
+                        }
+                    }
                     if store.transcriber == .macwhisper {
                         TextField("MacWhisper model override", text: $store.whisperModel)
                     }

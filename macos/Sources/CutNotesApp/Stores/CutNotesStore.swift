@@ -82,6 +82,12 @@ final class CutNotesStore {
             let execution = try await client.run(try builder().doctor())
             guard !execution.standardOutput.isEmpty else { return }
             doctor = try ContractDecoder.decode(DoctorPayload.self, from: execution.standardOutput)
+            if let languages = doctor?.parakeet.languages,
+               !languages.isEmpty,
+               !languages.contains(where: { $0.code == language }) {
+                language = languages.first(where: { $0.code == "en" })?.code
+                    ?? languages[0].code
+            }
             if let microphoneIndex,
                doctor?.microphones.contains(where: { $0.index == microphoneIndex }) != true {
                 self.microphoneIndex = nil

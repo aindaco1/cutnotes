@@ -146,6 +146,27 @@ public struct CLIResultPayload: Codable, Equatable, Sendable {
 }
 
 public struct DoctorPayload: Codable, Equatable, Sendable {
+    public struct Language: Codable, Equatable, Identifiable, Sendable {
+        public let code: String
+        public let name: String
+        public var id: String { code }
+
+        public init(code: String, name: String) {
+            self.code = code
+            self.name = name
+        }
+
+        public init(from decoder: Decoder) throws {
+            let container = try decoder.container(keyedBy: CodingKeys.self)
+            code = try container.decode(String.self, forKey: .code)
+            name = try container.decode(String.self, forKey: .name)
+            guard code.count == 2,
+                  code.allSatisfy({ $0.isASCII && $0.isLowercase }),
+                  !name.isEmpty, name.count <= 64
+            else { throw ContractError.invalidValue("language") }
+        }
+    }
+
     public struct Tool: Codable, Equatable, Sendable {
         public let path: String?
         public let version: String?
@@ -172,9 +193,10 @@ public struct DoctorPayload: Codable, Equatable, Sendable {
         public let revision: String
         public let license: String
         public let licenseURL: String
+        public let languages: [Language]?
 
         enum CodingKeys: String, CodingKey {
-            case id, state, detail, path, bytes, source, revision, license
+            case id, state, detail, path, bytes, source, revision, license, languages
             case licenseURL = "license_url"
         }
     }

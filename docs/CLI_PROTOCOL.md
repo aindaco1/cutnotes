@@ -18,6 +18,10 @@ Descriptor 3 is newline-delimited `cutnotes.progress.v1` JSON. Sequence numbers 
 
 Descriptor 4 accepts only newline-terminated `finish` and `cancel` commands. `finish` asks FFmpeg to close the recording normally. `cancel` interrupts capture and returns an error describing any preserved audio. Noninteractive recording without this descriptor is rejected.
 
+## Diagnostics and capabilities
+
+`doctor --json` returns one `cutnotes.doctor.v1` object. The ordered `parakeet.languages` array contains `{ "code", "name" }` entries for every language exposed by the selected Parakeet model. `cutnotes_core` owns this capability list; the app renders the supplied native names and passes only the selected code back to the CLI.
+
 ## Compatibility rule
 
 Additive fields may be introduced within v1. Removing a field, changing its type, or changing descriptor semantics requires a new schema version plus Python producer and Swift consumer tests.

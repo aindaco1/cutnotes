@@ -21,6 +21,34 @@ MODEL_REVISION = "aed02740059203c4a87495924f685de3722ae9ce"
 MODEL_LICENSE = "CC-BY-4.0"
 MODEL_LICENSE_URL = "https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3"
 MODEL_NOTICE_NAME = "CUTNOTES_MODEL_LICENSE.txt"
+PARAKEET_LANGUAGES = (
+    {"code": "bg", "name": "Български"},
+    {"code": "hr", "name": "Hrvatski"},
+    {"code": "cs", "name": "Čeština"},
+    {"code": "da", "name": "Dansk"},
+    {"code": "nl", "name": "Nederlands"},
+    {"code": "en", "name": "English"},
+    {"code": "et", "name": "Eesti"},
+    {"code": "fi", "name": "Suomi"},
+    {"code": "fr", "name": "Français"},
+    {"code": "de", "name": "Deutsch"},
+    {"code": "el", "name": "Ελληνικά"},
+    {"code": "hu", "name": "Magyar"},
+    {"code": "it", "name": "Italiano"},
+    {"code": "lv", "name": "Latviešu"},
+    {"code": "lt", "name": "Lietuvių"},
+    {"code": "mt", "name": "Malti"},
+    {"code": "pl", "name": "Polski"},
+    {"code": "pt", "name": "Português"},
+    {"code": "ro", "name": "Română"},
+    {"code": "sk", "name": "Slovenčina"},
+    {"code": "sl", "name": "Slovenščina"},
+    {"code": "es", "name": "Español"},
+    {"code": "sv", "name": "Svenska"},
+    {"code": "ru", "name": "Русский"},
+    {"code": "uk", "name": "Українська"},
+)
+SUPPORTED_LANGUAGE_CODES = tuple(language["code"] for language in PARAKEET_LANGUAGES)
 
 
 @dataclass(frozen=True)
@@ -156,6 +184,7 @@ def model_status(root: Path | None = None) -> dict:
         "revision": MODEL_REVISION,
         "license": MODEL_LICENSE,
         "license_url": MODEL_LICENSE_URL,
+        "languages": list(PARAKEET_LANGUAGES),
     }
 
 

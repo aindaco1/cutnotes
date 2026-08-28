@@ -104,6 +104,23 @@ class CutNotesUnitTests(unittest.TestCase):
             (1, "MacBook Pro Microphone"),
         )
 
+    def test_parakeet_languages_are_core_owned_and_native_named(self) -> None:
+        languages = cutnotes.model_status(Path("/definitely/missing"))["languages"]
+        self.assertEqual(len(languages), 25)
+        self.assertEqual(languages[0], {"code": "bg", "name": "Български"})
+        self.assertIn({"code": "fr", "name": "Français"}, languages)
+        self.assertIn({"code": "uk", "name": "Українська"}, languages)
+        self.assertEqual(
+            {item["code"] for item in languages},
+            set(cutnotes.SUPPORTED_LANGUAGE_CODES),
+        )
+
+    def test_language_option_rejects_unsupported_codes(self) -> None:
+        with self.assertRaises(SystemExit):
+            cutnotes.build_parser().parse_args(
+                ["import", "/tmp/review.mov", "--title", "Demo", "--language", "xx"]
+            )
+
     def test_parse_codex_markdown(self) -> None:
         raw = json.dumps(
             {
