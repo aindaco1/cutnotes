@@ -24,7 +24,9 @@ helpers_dir="$resources_dir/Helpers"
 cli_dir="$resources_dir/CLI"
 
 if [[ -z "${CUTNOTES_FFMPEG_SOURCE:-}" || -z "${CUTNOTES_FFPROBE_SOURCE:-}" ]]; then
-  ffmpeg_prefix="$("$root_dir/scripts/macos/build-ffmpeg-runtime.sh")"
+  ffmpeg_prefix="$(
+    "$root_dir/scripts/macos/build-ffmpeg-runtime.sh" | /usr/bin/tail -n 1
+  )"
   export CUTNOTES_FFMPEG_SOURCE="$ffmpeg_prefix/bin/ffmpeg"
   export CUTNOTES_FFPROBE_SOURCE="$ffmpeg_prefix/bin/ffprobe"
   export CUTNOTES_FFMPEG_PREFIX="$ffmpeg_prefix"

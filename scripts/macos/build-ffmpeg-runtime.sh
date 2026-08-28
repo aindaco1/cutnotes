@@ -32,7 +32,7 @@ if [[ ! -f "$archive" ]] || ! echo "$archive_sha256  $archive" | /usr/bin/shasum
   /usr/bin/curl --fail --location --silent --show-error \
     "https://ffmpeg.org/releases/ffmpeg-$version.tar.xz" \
     --output "$temporary_archive"
-  echo "$archive_sha256  $temporary_archive" | /usr/bin/shasum -a 256 -c -
+  echo "$archive_sha256  $temporary_archive" | /usr/bin/shasum -a 256 -c - >&2
   /bin/mv "$temporary_archive" "$archive"
   trap - EXIT
 fi
@@ -59,10 +59,10 @@ cd "$build_dir"
   --enable-audiotoolbox \
   --enable-videotoolbox \
   --enable-neon \
-  --enable-pic
-/usr/bin/make -j"$(sysctl -n hw.logicalcpu)"
+  --enable-pic >&2
+/usr/bin/make -j"$(sysctl -n hw.logicalcpu)" >&2
 rm -rf "$prefix"
-/usr/bin/make install
+/usr/bin/make install >&2
 /bin/cp "$source_dir/LICENSE.md" "$prefix/LICENSE.md"
 /bin/cp "$source_dir/COPYING.LGPLv2.1" "$prefix/COPYING.LGPLv2.1"
 
