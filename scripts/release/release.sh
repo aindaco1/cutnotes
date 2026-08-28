@@ -8,9 +8,13 @@ dist_dir="$root_dir/dist"
 cd "$root_dir"
 python3 -m unittest discover -s tests -v
 swift test --package-path macos
-dmg="$("$root_dir/scripts/release/package-dmg.sh" "$version")"
+dmg="$(
+  "$root_dir/scripts/release/package-dmg.sh" "$version" | /usr/bin/tail -n 1
+)"
 "$root_dir/scripts/release/verify-release.sh" "$dmg"
-appcast="$("$root_dir/scripts/release/generate-appcast.sh" "$version")"
+appcast="$(
+  "$root_dir/scripts/release/generate-appcast.sh" "$version" | /usr/bin/tail -n 1
+)"
 (
   cd "$dist_dir"
   /usr/bin/shasum -a 256 "$(basename "$dmg")" "$(basename "$appcast")" > SHA256SUMS
