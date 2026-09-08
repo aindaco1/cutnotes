@@ -18,6 +18,7 @@ mkdir -p "$mount_point"
 /usr/bin/hdiutil attach -readonly -nobrowse -mountpoint "$mount_point" "$dmg" >/dev/null
 app="$mount_point/CutNotes.app"
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$app"
+/usr/bin/xcrun stapler validate "$app"
 /usr/sbin/spctl --assess --type execute --verbose=2 "$app"
 [[ "$(/usr/bin/file -b "$app/Contents/MacOS/CutNotes")" == *arm64* ]]
 [[ ! -d "$app/Contents/Resources/Models" ]]

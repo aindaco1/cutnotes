@@ -17,7 +17,7 @@ Release acceptance is deliberately split into separate claims:
 5. Apple formatting succeeds when the system model reports ready.
 6. Optional MacWhisper and Codex selections either work or return provider-specific errors without fallback.
 7. Developer ID signatures verify under strict/deep validation.
-8. Apple notarization accepts the DMG and the ticket staples.
+8. Apple separately accepts the app and DMG notarization submissions, and both tickets staple and validate.
 9. A clean mounted DMG can be copied to `/Applications`, launched, and used to install the terminal command.
 10. The appcast signature verifies and a previously released app can discover, download, and install the new release.
 

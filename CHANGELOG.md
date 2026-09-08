@@ -6,6 +6,7 @@
 - Moves the signed GitHub Releases update check from the app menu to a top-right toolbar icon.
 - Adds an explicit review-before-send support flow for a bounded current-state report and privacy-safe summaries of recent CutNotes crashes. Matching reports are aggregated in public GitHub issues; project names, editorial context, media, transcripts, paths, device names, raw logs, and crash stacks are excluded.
 - Keeps polling an accepted notarization upload through transient status-service failures instead of abandoning the candidate.
+- Notarizes and staples the signed app before placing it in the separately signed, notarized, and stapled DMG, matching the proven offline Gatekeeper release sequence used by the sibling macOS apps.
 
 ## 1.0.1 — 2026-09-07
 
