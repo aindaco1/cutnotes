@@ -17,14 +17,17 @@ class ReleaseScriptTests(unittest.TestCase):
         app_staple = script.index('stapler staple "$app_bundle"')
         app_ticket_validation = script.index('stapler validate "$app_bundle"')
         dmg_creation = script.index("hdiutil create")
-        dmg_integrity = script.index('hdiutil verify "$pending_dmg"')
-        dmg_submit = script.index('notarize_and_wait "$pending_dmg" "DMG"')
+        dmg_integrity = script.index('hdiutil verify "$candidate_dmg"')
+        dmg_submit = script.index('notarize_and_wait "$candidate_dmg" "DMG"')
 
         self.assertLess(app_submit, app_staple)
         self.assertLess(app_staple, app_ticket_validation)
         self.assertLess(app_ticket_validation, dmg_creation)
         self.assertLess(dmg_creation, dmg_integrity)
         self.assertLess(dmg_integrity, dmg_submit)
+        self.assertIn(
+            'candidate_dmg="$work_root/CutNotes-$version-arm64.dmg"', script
+        )
 
     def test_release_verification_requires_both_stapled_tickets(self) -> None:
         script = (PROJECT_DIR / "scripts/release/verify-release.sh").read_text(

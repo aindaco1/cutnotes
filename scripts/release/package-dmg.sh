@@ -5,7 +5,6 @@ root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 version="$("$root_dir/scripts/check-version.sh" "${1:-}")"
 identity="${CUTNOTES_SIGNING_IDENTITY:-}"
 dist_dir="$root_dir/dist"
-pending_dmg="$dist_dir/CutNotes-$version-arm64.pending-notarization.dmg"
 final_dmg="$dist_dir/CutNotes-$version-arm64.dmg"
 
 if [[ -z "$identity" || "$identity" == "-" ]]; then
@@ -106,26 +105,26 @@ notarize_and_wait "$app_submission" "App"
 /usr/sbin/spctl --assess --type execute --verbose=2 "$app_bundle"
 
 dmg_source="$work_root/dmg-source"
+candidate_dmg="$work_root/CutNotes-$version-arm64.dmg"
 /bin/mkdir -p "$dmg_source" "$dist_dir"
 /usr/bin/ditto --norsrc --noextattr "$app_bundle" "$dmg_source/CutNotes.app"
 /bin/ln -s /Applications "$dmg_source/Applications"
-/bin/rm -f "$pending_dmg"
 /usr/bin/hdiutil create \
   -fs HFS+ \
   -format UDZO \
   -imagekey zlib-level=9 \
   -srcfolder "$dmg_source" \
   -volname CutNotes \
-  "$pending_dmg"
-/usr/bin/hdiutil verify "$pending_dmg"
-/usr/bin/codesign --force --sign "$identity" --timestamp "$pending_dmg"
-/usr/bin/codesign --verify --verbose=2 "$pending_dmg"
+  "$candidate_dmg"
+/usr/bin/hdiutil verify "$candidate_dmg"
+/usr/bin/codesign --force --sign "$identity" --timestamp "$candidate_dmg"
+/usr/bin/codesign --verify --verbose=2 "$candidate_dmg"
 
-notarize_and_wait "$pending_dmg" "DMG"
-/usr/bin/xcrun stapler staple "$pending_dmg"
-/usr/bin/xcrun stapler validate "$pending_dmg"
+notarize_and_wait "$candidate_dmg" "DMG"
+/usr/bin/xcrun stapler staple "$candidate_dmg"
+/usr/bin/xcrun stapler validate "$candidate_dmg"
 /usr/sbin/spctl --assess --type open --context context:primary-signature \
-  --verbose=2 "$pending_dmg"
+  --verbose=2 "$candidate_dmg"
 /bin/rm -f "$final_dmg"
-/bin/mv "$pending_dmg" "$final_dmg"
+/bin/mv "$candidate_dmg" "$final_dmg"
 echo "$final_dmg"
