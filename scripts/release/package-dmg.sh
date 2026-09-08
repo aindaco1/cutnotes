@@ -117,6 +117,7 @@ dmg_source="$work_root/dmg-source"
   -srcfolder "$dmg_source" \
   -volname CutNotes \
   "$pending_dmg"
+/usr/bin/hdiutil verify "$pending_dmg"
 /usr/bin/codesign --force --sign "$identity" --timestamp "$pending_dmg"
 /usr/bin/codesign --verify --verbose=2 "$pending_dmg"
 
