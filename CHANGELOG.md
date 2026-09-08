@@ -5,6 +5,7 @@
 - Fixes the installed `/usr/local/bin/cutnotes` command so the bundled launcher resolves its application symlink before locating the self-contained Python and media runtimes.
 - Moves the signed GitHub Releases update check from the app menu to a top-right toolbar icon.
 - Adds an explicit review-before-send support flow for a bounded current-state report and privacy-safe summaries of recent CutNotes crashes. Matching reports are aggregated in public GitHub issues; project names, editorial context, media, transcripts, paths, device names, raw logs, and crash stacks are excluded.
+- Keeps polling an accepted notarization upload through transient status-service failures instead of abandoning the candidate.
 
 ## 1.0.1 — 2026-09-07
 

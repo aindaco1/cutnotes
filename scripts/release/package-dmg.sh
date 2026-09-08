@@ -78,10 +78,14 @@ fi
 
 notary_status=""
 for ((attempt = 1; attempt <= 180; attempt++)); do
-  status_output="$(
+  if ! status_output="$(
     cd "$stage_dir"
     /usr/bin/xcrun notarytool info "$submission_id" "${credential_arguments[@]}"
-  )"
+  )"; then
+    echo "Notarization status check failed transiently; retrying." >&2
+    /bin/sleep 10
+    continue
+  fi
   notary_status="$(
     printf '%s\n' "$status_output" \
       | /usr/bin/sed -n 's/^[[:space:]]*status: \(.*\)$/\1/p'
