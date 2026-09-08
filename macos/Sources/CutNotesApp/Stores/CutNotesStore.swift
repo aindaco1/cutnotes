@@ -16,6 +16,7 @@ final class CutNotesStore {
     var failure: PresentedFailure?
     var isRunning = false
     var isRecording = false
+    var isRecordingPaused = false
     var notice: String?
 
     var outputRootPath: String { didSet { defaults.set(outputRootPath, forKey: Keys.outputRoot) } }
@@ -105,6 +106,7 @@ final class CutNotesStore {
         notice = nil
         isRunning = true
         isRecording = workflow == .record
+        isRecordingPaused = false
         do {
             let command: CLICommand
             switch workflow {
@@ -124,7 +126,19 @@ final class CutNotesStore {
                 )
             }
             let execution = try await client.run(command) { [weak self] event in
-                await MainActor.run { self?.progress = event }
+                await MainActor.run {
+                    self?.progress = event
+                    if event.stage == "recording-paused" {
+                        self?.isRecording = true
+                        self?.isRecordingPaused = true
+                    } else if event.stage == "recording" {
+                        self?.isRecording = true
+                        self?.isRecordingPaused = false
+                    } else {
+                        self?.isRecording = false
+                        self?.isRecordingPaused = false
+                    }
+                }
             }
             if execution.exitCode != 0 {
                 throw decodeCLIError(execution.standardError, exitCode: execution.exitCode)
@@ -136,6 +150,7 @@ final class CutNotesStore {
         } catch {
             failure = presented(error)
         }
+        isRecordingPaused = false
         isRecording = false
         isRunning = false
         await refreshDoctor()
@@ -145,6 +160,20 @@ final class CutNotesStore {
         Task {
             do { try await client.finishRecording() }
             catch { await MainActor.run { failure = presented(error) } }
+        }
+    }
+
+    func toggleRecordingPause() {
+        Task {
+            do {
+                if isRecordingPaused {
+                    try await client.resumeRecording()
+                } else {
+                    try await client.pauseRecording()
+                }
+            } catch {
+                await MainActor.run { failure = presented(error) }
+            }
         }
     }
 

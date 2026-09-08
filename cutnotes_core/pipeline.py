@@ -11,7 +11,9 @@ import shutil
 import signal
 import subprocess
 import sys
+import tempfile
 import time
+import wave
 
 from .contracts import (
     CutNotesError,
@@ -174,6 +176,79 @@ def enforce_duration_limit(duration: float) -> None:
         )
 
 
+def _recording_command(
+    ffmpeg: str,
+    output_path: Path,
+    microphone_index: int | None,
+    maximum_duration: float,
+) -> list[str]:
+    return [
+        ffmpeg,
+        "-hide_banner",
+        "-loglevel",
+        "warning",
+        "-f",
+        "avfoundation",
+        "-i",
+        ":default" if microphone_index is None else f":{microphone_index}",
+        "-t",
+        f"{max(0.1, maximum_duration):.3f}",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-c:a",
+        "pcm_s16le",
+        str(output_path),
+    ]
+
+
+def _wave_duration_seconds(path: Path) -> float:
+    try:
+        with wave.open(str(path), "rb") as recording:
+            rate = recording.getframerate()
+            return recording.getnframes() / rate if rate > 0 else 0.0
+    except (OSError, EOFError, wave.Error):
+        return 0.0
+
+
+def _assemble_recording_segments(segments: list[Path], output_path: Path) -> None:
+    temporary = output_path.with_name(f".{output_path.name}.tmp")
+    temporary.unlink(missing_ok=True)
+    try:
+        with wave.open(str(segments[0]), "rb") as first:
+            channels = first.getnchannels()
+            sample_width = first.getsampwidth()
+            frame_rate = first.getframerate()
+            compression = first.getcomptype()
+        if channels != 1 or sample_width != 2 or frame_rate != 16_000 or compression != "NONE":
+            raise wave.Error("unexpected recording format")
+        with wave.open(str(temporary), "wb") as destination:
+            destination.setnchannels(channels)
+            destination.setsampwidth(sample_width)
+            destination.setframerate(frame_rate)
+            for segment in segments:
+                with wave.open(str(segment), "rb") as source:
+                    if (
+                        source.getnchannels() != channels
+                        or source.getsampwidth() != sample_width
+                        or source.getframerate() != frame_rate
+                        or source.getcomptype() != compression
+                    ):
+                        raise wave.Error("recording segment formats do not match")
+                    while frames := source.readframes(64 * 1_024):
+                        destination.writeframesraw(frames)
+        temporary.replace(output_path)
+    except (OSError, EOFError, wave.Error) as error:
+        temporary.unlink(missing_ok=True)
+        raise CutNotesError(
+            "CutNotes could not finalize the captured audio.",
+            EXIT_CAPTURE,
+            code="recording_finalize_failed",
+            recovery="Check available disk space, then retry the recording.",
+        ) from error
+
+
 def record_audio(
     ffmpeg: str,
     output_path: Path,
@@ -203,34 +278,9 @@ def record_audio(
             file=sys.stderr,
         )
         print(file=sys.stderr)
-    command = [
-        ffmpeg,
-        "-hide_banner",
-        "-loglevel",
-        "warning",
-        "-f",
-        "avfoundation",
-        "-i",
-        ":default" if microphone_index is None else f":{microphone_index}",
-        "-t",
-        str(MAXIMUM_DURATION_SECONDS),
-        "-ac",
-        "1",
-        "-ar",
-        "16000",
-        "-c:a",
-        "pcm_s16le",
-        str(output_path),
-    ]
-    process = subprocess.Popen(
-        command,
-        stdin=subprocess.PIPE if control_fd is not None else None,
-        start_new_session=True,
-    )
-    progress.stage("recording", "Recording voice notes")
-    start = time.monotonic()
     warned = False
     cancelled = False
+    finished = False
     selector: selectors.BaseSelector | None = None
     buffer = b""
     if control_fd is not None:
@@ -239,55 +289,138 @@ def record_audio(
             os.set_blocking(control_fd, False)
             selector.register(control_fd, selectors.EVENT_READ)
         except OSError:
-            process.send_signal(signal.SIGINT)
-            process.wait()
             raise CutNotesError(
                 "The recording control channel could not be opened.",
                 EXIT_CAPTURE,
                 code="recording_control_invalid",
                 recovery="Restart the CutNotes app and try again.",
             )
-    try:
-        while process.poll() is None:
-            elapsed = time.monotonic() - start
-            progress.progress("recording", elapsed / MAXIMUM_DURATION_SECONDS)
-            if elapsed >= WARNING_DURATION_SECONDS and not warned:
-                warned = True
-                progress.warning("recording", "15 minutes remain before the four-hour automatic stop")
-                if not quiet:
-                    print("Warning: recording will stop automatically in 15 minutes.", file=sys.stderr)
-            if selector is not None:
-                for key, _ in selector.select(timeout=0.25):
+    segment_process: subprocess.Popen[bytes] | None = None
+    segment_path: Path | None = None
+    segment_started = 0.0
+    recorded_seconds = 0.0
+    return_codes: list[int] = []
+
+    with tempfile.TemporaryDirectory(
+        prefix=f".{output_path.stem}-recording-",
+        dir=output_path.parent,
+    ) as segment_directory_name:
+        segment_directory = Path(segment_directory_name)
+        segments: list[Path] = []
+
+        def begin_segment() -> None:
+            nonlocal segment_process, segment_path, segment_started
+            segment_path = segment_directory / f"segment-{len(segments) + 1:04d}.wav"
+            segment_process = subprocess.Popen(
+                _recording_command(
+                    ffmpeg,
+                    segment_path,
+                    microphone_index,
+                    MAXIMUM_DURATION_SECONDS - recorded_seconds,
+                ),
+                stdin=subprocess.PIPE if control_fd is not None else None,
+                start_new_session=True,
+            )
+            segment_started = time.monotonic()
+            progress.stage("recording", "Recording voice notes")
+
+        def close_segment(*, interrupt: bool = False) -> None:
+            nonlocal segment_process, segment_path, recorded_seconds
+            process = segment_process
+            path = segment_path
+            if process is None or path is None:
+                return
+            if process.poll() is None:
+                if interrupt:
+                    process.send_signal(signal.SIGINT)
+                elif process.stdin:
                     try:
-                        incoming = os.read(key.fd, 4096)
-                    except BlockingIOError:
-                        continue
-                    if not incoming:
-                        selector.unregister(key.fd)
-                        selector.close()
-                        selector = None
+                        process.stdin.write(b"q\n")
+                        process.stdin.flush()
+                    except (BrokenPipeError, OSError):
+                        process.send_signal(signal.SIGINT)
+            return_codes.append(process.wait())
+            if path.is_file() and path.stat().st_size > 128:
+                segments.append(path)
+                recorded_seconds += _wave_duration_seconds(path)
+            segment_process = None
+            segment_path = None
+
+        begin_segment()
+        try:
+            while not finished and not cancelled:
+                if segment_process is not None and segment_process.poll() is not None:
+                    close_segment()
+                    finished = True
+                    break
+
+                active_seconds = (
+                    max(0.0, time.monotonic() - segment_started)
+                    if segment_process is not None
+                    else 0.0
+                )
+                elapsed = min(MAXIMUM_DURATION_SECONDS, recorded_seconds + active_seconds)
+                stage = "recording" if segment_process is not None else "recording-paused"
+                message = None if segment_process is not None else "Recording paused"
+                progress.progress(stage, elapsed / MAXIMUM_DURATION_SECONDS, message)
+                if elapsed >= WARNING_DURATION_SECONDS and not warned:
+                    warned = True
+                    progress.warning("recording", "15 minutes remain before the four-hour automatic stop")
+                    if not quiet:
+                        print("Warning: recording will stop automatically in 15 minutes.", file=sys.stderr)
+
+                commands: list[str] = []
+                control_closed = False
+                if selector is not None:
+                    for key, _ in selector.select(timeout=0.25):
+                        try:
+                            incoming = os.read(key.fd, 4096)
+                        except BlockingIOError:
+                            continue
+                        if not incoming:
+                            selector.unregister(key.fd)
+                            selector.close()
+                            selector = None
+                            control_closed = True
+                            break
+                        buffer += incoming
+                        while b"\n" in buffer:
+                            raw, buffer = buffer.split(b"\n", 1)
+                            commands.append(
+                                raw.decode("utf-8", errors="ignore").strip().casefold()
+                            )
+                else:
+                    time.sleep(0.25)
+
+                if control_closed:
+                    commands.append("finish")
+                for command_name in commands:
+                    if command_name == "pause" and segment_process is not None:
+                        close_segment()
+                        progress.stage("recording-paused", "Recording paused")
+                    elif command_name == "resume" and segment_process is None:
+                        if recorded_seconds >= MAXIMUM_DURATION_SECONDS - 0.01:
+                            finished = True
+                            break
+                        begin_segment()
+                    elif command_name == "finish":
+                        close_segment()
+                        finished = True
                         break
-                    buffer += incoming
-                    while b"\n" in buffer:
-                        raw, buffer = buffer.split(b"\n", 1)
-                        command_name = raw.decode("utf-8", errors="ignore").strip().casefold()
-                        if command_name == "finish" and process.stdin:
-                            process.stdin.write(b"q\n")
-                            process.stdin.flush()
-                        elif command_name == "cancel":
-                            cancelled = True
-                            process.send_signal(signal.SIGINT)
-            else:
-                time.sleep(0.25)
-        return_code = process.wait()
-    except KeyboardInterrupt:
-        process.send_signal(signal.SIGINT)
-        return_code = process.wait()
-        if not quiet:
-            print(file=sys.stderr)
-    finally:
-        if selector is not None:
-            selector.close()
+                    elif command_name == "cancel":
+                        close_segment(interrupt=True)
+                        cancelled = True
+                        break
+        except KeyboardInterrupt:
+            close_segment(interrupt=True)
+            if not quiet:
+                print(file=sys.stderr)
+        finally:
+            if selector is not None:
+                selector.close()
+
+        if segments:
+            _assemble_recording_segments(segments, output_path)
     has_audio = output_path.is_file() and output_path.stat().st_size > 128
     if cancelled:
         raise CutNotesError(
@@ -304,11 +437,12 @@ def record_audio(
             code="audio_not_captured",
             recovery="Check microphone access with `cutnotes doctor` and try again.",
         )
-    if time.monotonic() - start >= MAXIMUM_DURATION_SECONDS - 1:
+    if recorded_seconds >= MAXIMUM_DURATION_SECONDS - 1:
         progress.warning("recording", "Recording stopped at the four-hour maximum")
-    if return_code not in (0, 130, 255) and not quiet:
+    unexpected_codes = [code for code in return_codes if code not in (0, 130, 255)]
+    if unexpected_codes and not quiet:
         print(
-            f"Warning: FFmpeg exited with status {return_code}, but captured audio was preserved.",
+            f"Warning: FFmpeg exited with status {unexpected_codes[-1]}, but captured audio was preserved.",
             file=sys.stderr,
         )
 

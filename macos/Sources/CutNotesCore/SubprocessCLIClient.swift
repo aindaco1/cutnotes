@@ -156,6 +156,14 @@ public actor SubprocessCLIClient {
         try writeControl("finish\n")
     }
 
+    public func pauseRecording() throws {
+        try writeControl("pause\n")
+    }
+
+    public func resumeRecording() throws {
+        try writeControl("resume\n")
+    }
+
     public func cancelCurrentCommand() throws {
         guard let pid = currentPID else { return }
         try writeControl("cancel\n")

@@ -17,16 +17,16 @@ The public Sparkle key is committed in `config/sparkle-public-key.txt`. Never ex
 ```bash
 export CUTNOTES_SIGNING_IDENTITY='Developer ID Application: Example (TEAMID)'
 export CUTNOTES_NOTARY_PROFILE='cutnotes-notary'
-./scripts/release/release.sh 1.0.0
+./scripts/release/release.sh 1.0.1
 ```
 
 The script verifies version agreement, runs both test suites, builds the pinned LGPL FFmpeg runtime and app, signs every nested executable, creates and signs the DMG, submits it to Apple, staples it, validates Gatekeeper, signs the update archive with Sparkle, and writes checksums.
 
 ## GitHub release
 
-Push an annotated `v1.0.0` tag only after local acceptance. `.github/workflows/release.yml` repeats the release pipeline using repository secrets and uploads:
+Push an annotated `v1.0.1` tag only after local acceptance. `.github/workflows/release.yml` repeats the release pipeline using repository secrets and uploads:
 
-- `CutNotes-1.0.0-arm64.dmg`
+- `CutNotes-1.0.1-arm64.dmg`
 - `appcast.xml`
 - `SHA256SUMS`
 

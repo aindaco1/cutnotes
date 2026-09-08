@@ -3,7 +3,7 @@ import FoundationModels
 import RecordCore
 import RecordSpeech
 
-private let version = "1.0.0"
+private let version = "1.0.1"
 
 private enum LocalEngineError: Error, CustomStringConvertible {
     case invalidArguments(String)
@@ -97,6 +97,52 @@ private struct EditorialPlanEnvelope: Encodable {
     enum CodingKeys: String, CodingKey {
         case schemaVersion = "schema_version"
         case plan
+    }
+}
+
+@available(macOS 26.0, *)
+@Generable(description: "A concise editorial note grounded in source observation IDs")
+private struct EditorialDraftNote {
+    @Guide(description: "A short, specific editorial title with no timecode")
+    var title: String
+
+    @Guide(description: "One to three concise editor-facing sentences grounded only in the cited sources")
+    var body: String
+
+    @Guide(description: "Every source observation ID supporting this note")
+    var sourceIDs: [String]
+}
+
+@available(macOS 26.0, *)
+@Generable(description: "A compact set of grounded rough-cut notes")
+private struct EditorialDraft {
+    @Guide(description: "Consolidated editorial notes; omit filler and unrelated speech")
+    var notes: [EditorialDraftNote]
+}
+
+private struct EditorialDraftNotePayload: Encodable {
+    let title: String
+    let body: String
+    let sourceIDs: [String]
+
+    enum CodingKeys: String, CodingKey {
+        case title
+        case body
+        case sourceIDs = "source_ids"
+    }
+}
+
+private struct EditorialDraftPayload: Encodable {
+    let notes: [EditorialDraftNotePayload]
+}
+
+private struct EditorialDraftEnvelope: Encodable {
+    let schemaVersion = "cutnotes.local.draft.v1"
+    let draft: EditorialDraftPayload
+
+    enum CodingKeys: String, CodingKey {
+        case schemaVersion = "schema_version"
+        case draft
     }
 }
 
@@ -226,6 +272,25 @@ private func generatePlan(prompt: String) async throws -> EditorialPlanPayload {
     )
 }
 
+@available(macOS 26.0, *)
+private func generateDraft(prompt: String) async throws -> EditorialDraftPayload {
+    let session = try languageModelSession()
+    let response = try await session.respond(
+        to: prompt,
+        generating: EditorialDraft.self,
+        options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 2_048)
+    )
+    return EditorialDraftPayload(
+        notes: response.content.notes.map {
+            EditorialDraftNotePayload(
+                title: $0.title,
+                body: $0.body,
+                sourceIDs: $0.sourceIDs
+            )
+        }
+    )
+}
+
 @main
 private enum CutNotesLocal {
     static func main() async {
@@ -278,6 +343,11 @@ private enum CutNotesLocal {
                 if mode == "plan" {
                     try writeJSON(
                         EditorialPlanEnvelope(plan: try await generatePlan(prompt: prompt)),
+                        to: output
+                    )
+                } else if mode == "draft" {
+                    try writeJSON(
+                        EditorialDraftEnvelope(draft: try await generateDraft(prompt: prompt)),
                         to: output
                     )
                 } else {

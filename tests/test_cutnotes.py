@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import importlib.machinery
 import importlib.util
+import io
 import json
 import os
 from pathlib import Path
@@ -10,9 +11,11 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import wave
 from unittest import mock
 
 import cutnotes_core.cli as cli_module
+import cutnotes_core.providers as providers_module
 from cutnotes_core.contracts import CutNotesError, ProgressReporter
 from cutnotes_core.pipeline import enforce_duration_limit
 
@@ -145,7 +148,7 @@ class CutNotesUnitTests(unittest.TestCase):
         )
         self.assertIn("CUT time", prompt)
         self.assertIn("<transcript>", prompt)
-        self.assertIn("Timestamp zero five", prompt)
+        self.assertIn("[00:05]", prompt)
 
     def test_numeric_spoken_timecode_is_canonicalized_and_grounded(self) -> None:
         transcript = "Timestamp 12 minutes 34 seconds. Trim the reaction."
@@ -158,6 +161,34 @@ class CutNotesUnitTests(unittest.TestCase):
         self.assertEqual(
             cutnotes.validate_timecodes("### [00:41] — Reaction", transcript),
             (["00:41"], ["12:34"]),
+        )
+
+    def test_editorial_timecode_variants_are_normalized_without_model_guessing(self) -> None:
+        transcript = (
+            "At zero minutes 37 seconds, adjust the frame. "
+            "At three minutes 54 seconds, trim the beat. "
+            "At three 24, use the reaction. At 126, shorten it. "
+            "At four oh nine, hide the insert. Okay, 0031."
+        )
+        self.assertEqual(
+            cutnotes.source_timecodes(transcript),
+            ["00:37", "03:54", "03:24", "01:26", "04:09", "00:31"],
+        )
+        normalized = cutnotes.canonicalize_timecodes(transcript)
+        for timecode in cutnotes.source_timecodes(transcript):
+            self.assertIn(f"[{timecode}]", normalized)
+
+    def test_real_transcript_style_timecodes_are_detected(self) -> None:
+        transcript = (
+            "At the zero zero thirty one seconds. 0041 seconds roughly. "
+            "It is at fifty two seconds. Oh minute twenty-four, minute twenty-three. "
+            "At two at two fourteen."
+        )
+        expected = ["00:31", "00:41", "00:52", "01:24", "01:23", "02:14"]
+        self.assertEqual(cutnotes.source_timecodes(transcript), expected)
+        self.assertEqual(
+            cutnotes.source_timecodes(cutnotes.canonicalize_timecodes(transcript)),
+            expected,
         )
 
     def test_apple_plan_renderer_can_classify_but_cannot_author_notes(self) -> None:
@@ -185,6 +216,108 @@ class CutNotesUnitTests(unittest.TestCase):
         self.assertNotIn("reaction shot", sound_section)
         self.assertIn("music is working well", sound_section)
         self.assertEqual(cutnotes.validate_timecodes(markdown, "Timestamp 12 minutes 34 seconds."), ([], []))
+
+    def test_editorial_draft_renders_concise_chronological_handoff(self) -> None:
+        units = cutnotes.source_units(
+            "General note. The opening is too short. At 00:40, smooth the music edit. "
+            "At 00:37, center the falling clothes."
+        )
+        markdown = cutnotes.render_editorial_draft(
+            title="Demo",
+            review_date="September 7, 2026",
+            general_notes=[
+                cutnotes.DraftNote(
+                    "Let the opening breathe",
+                    "The opening feels too short; retain more of its strongest material.",
+                    ("N0001",),
+                )
+            ],
+            timestamped_notes=[
+                cutnotes.DraftNote(
+                    "Smooth the music edit",
+                    "Make the song transition feel seamless and rhythmically motivated.",
+                    ("N0002",),
+                ),
+                cutnotes.DraftNote(
+                    "Improve the framing",
+                    "Center the falling clothing more clearly in the frame.",
+                    ("N0003",),
+                ),
+            ],
+            units=units,
+        )
+        self.assertEqual(cutnotes.validate_markdown(markdown), [])
+        self.assertLess(markdown.index("00:37"), markdown.index("00:40"))
+        self.assertNotIn("## Overall", markdown)
+        self.assertIn("## Feedback Summary", markdown)
+
+    def test_draft_payload_keeps_grounding_ids_out_of_reader_prose(self) -> None:
+        notes = cutnotes.draft_notes_from_payload(
+            {
+                "notes": [
+                    {
+                        "title": "Opening length",
+                        "body": "The opening is too short, as noted by N0003.",
+                        "source_ids": ["N0003"],
+                    }
+                ]
+            },
+            {"N0003"},
+        )
+        self.assertEqual(notes[0].body, "The opening is too short.")
+
+    def test_grounded_timestamp_fallbacks_preserve_clear_editorial_meaning(self) -> None:
+        cases = (
+            (
+                "00:31",
+                "The song edit is noticeable and too jagged.",
+                "Smooth the song edit",
+            ),
+            (
+                "00:37",
+                "Maybe crop so the bra lands closer to the center of the frame.",
+                "Improve the framing of the falling clothing",
+            ),
+            (
+                "01:23",
+                "Maybe cut so we don't see her face looking into camera, but the bra pull still reads; a swoosh could help the turn.",
+                "Avoid the look into camera",
+            ),
+            (
+                "01:26",
+                "Unintelligible background lyrics.",
+                "No clear actionable note captured",
+            ),
+        )
+        for index, (timecode, text, expected_title) in enumerate(cases, start=1):
+            with self.subTest(timecode):
+                note = providers_module._fallback_timestamp_note(
+                    timecode,
+                    [cutnotes.SourceUnit(f"T{index:04d}", text, (timecode,))],
+                )
+                self.assertEqual(note.title, expected_title)
+
+    def test_grounding_rejects_advice_invented_from_general_praise(self) -> None:
+        unit = cutnotes.SourceUnit("N0001", "The opening feels strong.", ())
+        units = {unit.id: unit}
+        grounded = cutnotes.DraftNote(
+            "Opening strength",
+            "The opening feels strong.",
+            (unit.id,),
+        )
+        invented = cutnotes.DraftNote(
+            "Improve the opening",
+            "The opening could be improved by adding a more engaging hook or a clearer introduction to the main theme.",
+            (unit.id,),
+        )
+
+        self.assertEqual(
+            providers_module._sanitize_grounded_note(grounded, units),
+            grounded,
+        )
+        self.assertIsNone(
+            providers_module._sanitize_grounded_note(invented, units)
+        )
 
     def test_markdown_validator_requires_exact_ordered_headings(self) -> None:
         malformed = (
@@ -266,6 +399,95 @@ class CutNotesUnitTests(unittest.TestCase):
         command = popen.call_args.args[0]
         self.assertEqual(command[command.index("-i") + 1], ":default")
 
+    def test_recording_controls_pause_resume_finish_cancel_and_closed_pipe(self) -> None:
+        class FakeCaptureProcess:
+            def __init__(self) -> None:
+                self.stdin = io.BytesIO()
+                self.return_code: int | None = None
+
+            def poll(self):
+                return self.return_code
+
+            def wait(self):
+                self.return_code = 0
+                return self.return_code
+
+            def send_signal(self, _signal):
+                self.return_code = 130
+
+        scenarios = (
+            ("pause, resume, finish", b"pause\nresume\nfinish\n", 2, 320, False),
+            ("finish while paused", b"pause\nfinish\n", 1, 160, False),
+            ("cancel while paused", b"pause\ncancel\n", 1, 160, True),
+            (
+                "repeated controls are idempotent",
+                b"pause\npause\nresume\nresume\nfinish\n",
+                2,
+                320,
+                False,
+            ),
+            ("closed control pipe finishes", b"", 1, 160, False),
+        )
+        for label, controls, process_count, expected_frames, cancelled in scenarios:
+            with self.subTest(label):
+                processes: list[FakeCaptureProcess] = []
+
+                def start_capture(command, **_kwargs):
+                    segment = Path(command[-1])
+                    with wave.open(str(segment), "wb") as recording:
+                        recording.setnchannels(1)
+                        recording.setsampwidth(2)
+                        recording.setframerate(16_000)
+                        recording.writeframes(b"\x01\x00" * 160)
+                    process = FakeCaptureProcess()
+                    processes.append(process)
+                    return process
+
+                with tempfile.TemporaryDirectory() as temporary_directory:
+                    output = Path(temporary_directory) / "audio.wav"
+                    read_fd, write_fd = os.pipe()
+                    try:
+                        if controls:
+                            os.write(write_fd, controls)
+                        os.close(write_fd)
+                        write_fd = -1
+                        with mock.patch.object(
+                            cutnotes.subprocess,
+                            "Popen",
+                            side_effect=start_capture,
+                        ) as popen:
+                            if cancelled:
+                                with self.assertRaises(CutNotesError) as raised:
+                                    cutnotes.record_audio(
+                                        "/fake/ffmpeg",
+                                        output,
+                                        None,
+                                        "System Default",
+                                        True,
+                                        control_fd=read_fd,
+                                    )
+                                self.assertEqual(raised.exception.code, "cancelled")
+                                self.assertTrue(raised.exception.preserved.audio)
+                            else:
+                                cutnotes.record_audio(
+                                    "/fake/ffmpeg",
+                                    output,
+                                    None,
+                                    "System Default",
+                                    True,
+                                    control_fd=read_fd,
+                                )
+                    finally:
+                        os.close(read_fd)
+                        if write_fd >= 0:
+                            os.close(write_fd)
+
+                    with wave.open(str(output), "rb") as recording:
+                        self.assertEqual(recording.getnframes(), expected_frames)
+                        self.assertEqual(recording.getframerate(), 16_000)
+
+                self.assertEqual(popen.call_count, process_count)
+
     def test_interactive_mode_prompts_then_starts_recording(self) -> None:
         doctor = {
             "healthy": True,
@@ -336,14 +558,16 @@ import sys
 
 args = sys.argv[1:]
 output = pathlib.Path(args[args.index("--output-last-message") + 1])
-plan = {
-    "highest_priority_changes": ["N0001"],
-    "sound_and_foley_direction": [],
-    "recurring_themes": [],
-    "open_questions": [],
-    "positive_notes": [],
+schema = json.loads(pathlib.Path(args[args.index("--output-schema") + 1]).read_text(encoding="utf-8"))
+source_id = schema["properties"]["notes"]["items"]["properties"]["source_ids"]["items"]["enum"][0]
+draft = {
+    "notes": [{
+        "title": "Shorten the shot",
+        "body": "Shorten the shot.",
+        "source_ids": [source_id],
+    }],
 }
-output.write_text(json.dumps(plan), encoding="utf-8")
+output.write_text(json.dumps(draft), encoding="utf-8")
 """,
             )
             environment = os.environ.copy()
@@ -372,8 +596,93 @@ output.write_text(json.dumps(plan), encoding="utf-8")
             self.assertEqual(result.returncode, 0, result.stderr)
             payload = json.loads(result.stdout)
             self.assertEqual(Path(payload["markdown"]), output.resolve())
-            self.assertIn("### `[00:05]`", output.read_text(encoding="utf-8"))
+            self.assertIn("**00:05 — Shorten the shot**", output.read_text(encoding="utf-8"))
             self.assertIn("Shorten the shot.", output.read_text(encoding="utf-8"))
+
+    def test_apple_format_batches_long_transcript_for_local_context_window(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temp = Path(temporary_directory)
+            transcript = temp / "transcript.txt"
+            output = temp / "feedback.md"
+            transcript.write_text(
+                " ".join(
+                    (
+                        "Editorial observation 40 contains SENSITIVE_MARKER and must still be preserved."
+                        if index == 40
+                        else f"Editorial observation {index} should preserve this distinct requested change."
+                    )
+                    for index in range(1, 81)
+                ),
+                encoding="utf-8",
+            )
+
+            fake_engine = self.make_executable(
+                temp,
+                "CutNotesLocal",
+                """#!/usr/bin/env python3
+import json
+import pathlib
+import sys
+
+args = sys.argv[1:]
+prompt = pathlib.Path(args[args.index("--prompt") + 1]).read_text(encoding="utf-8")
+if "SENSITIVE_MARKER" in prompt:
+    print(
+        "CutNotesLocal: guardrailViolation: May contain unsafe content",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+if len(prompt) > 2_500:
+    print(
+        "CutNotesLocal: exceededContextWindowSize: maximum allowed context size of 4096",
+        file=sys.stderr,
+    )
+    raise SystemExit(1)
+output = pathlib.Path(args[args.index("--output") + 1])
+source_ids = []
+for token in prompt.replace(":", " ").replace(",", " ").split():
+    if len(token) == 5 and token.startswith("N") and token[1:].isdigit() and token not in source_ids:
+        source_ids.append(token)
+output.write_text(json.dumps({
+    "schema_version": "cutnotes.local.draft.v1",
+    "draft": {
+        "notes": ([{
+            "title": "Preserve the requested change",
+            "body": "Preserve the distinct requested editorial change.",
+            "source_ids": [source_ids[0]],
+        }] if source_ids else []),
+    },
+}), encoding="utf-8")
+""",
+            )
+            environment = os.environ.copy()
+            environment["CUTNOTES_LOCAL_ENGINE"] = str(fake_engine)
+
+            result = subprocess.run(
+                [
+                    sys.executable,
+                    str(SCRIPT),
+                    "format",
+                    str(transcript),
+                    "--title",
+                    "Long Review",
+                    "--output",
+                    str(output),
+                    "--formatter",
+                    "apple",
+                    "--json",
+                ],
+                check=False,
+                capture_output=True,
+                text=True,
+                env=environment,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertTrue(output.is_file())
+            self.assertIn("## Feedback Summary", output.read_text(encoding="utf-8"))
+            self.assertIn("Preserve the distinct requested editorial change.", output.read_text(encoding="utf-8"))
+            self.assertIn("SENSITIVE_MARKER", transcript.read_text(encoding="utf-8"))
 
     def test_format_rejects_non_utf8_transcript_with_machine_error(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

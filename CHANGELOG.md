@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 — 2026-09-07
+
+- Splits large Apple on-device formatting work into context-safe source batches, retries rejected batches at a smaller size, and preserves isolated guardrail-rejected passages through deterministic local rendering without exposing internal Foundation Models errors.
+- Replaces sentence-dump formatting with a concise Notion-style feedback summary and chronological timestamped notes. The core normalizes common spoken timecode forms before provider use, groups adjacent edit points, rejects cross-time or contradictory drafts, and handles clear rough-cut patterns locally while Apple or Codex rewrites unstructured prose.
+- Adds pause and resume for app recordings. Pauses finalize lossless WAV segments, exclude paused time from the four-hour captured-audio cap, and rejoin the session without inserted silence.
+
 ## 1.0.0 — 2026-08-28
 
 - Adds the native Apple Silicon SwiftUI app for record, import, and format workflows.

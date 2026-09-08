@@ -6,7 +6,7 @@ CutNotes is free, open-source software under the MIT License.
 
 ## What 1.0 does
 
-- **Record** a voice-note session from a selected microphone.
+- **Record** a voice-note session from a selected microphone, with pause and resume.
 - **Import** any audio or video file that the bundled FFmpeg can read.
 - **Format** an existing UTF-8 plain-text transcript.
 - Transcribe locally with the pinned Parakeet TDT 0.6B v3 Core ML model.
@@ -15,7 +15,7 @@ CutNotes is free, open-source software under the MIT License.
 - Preserve audio and transcripts when a later stage fails.
 - Save every session without overwriting an earlier one.
 
-The maximum recording or imported-media duration is four hours. Recording warns at 3 hours 45 minutes and stops at 4 hours; imports longer than four hours are rejected before transcription.
+The maximum recording or imported-media duration is four hours. Recording warns at 3 hours 45 minutes of captured audio and stops at 4 hours; paused time does not count. Imports longer than four hours are rejected before transcription.
 
 ## Import format, in plain language
 
@@ -58,7 +58,7 @@ cutnotes model download
 cutnotes record "Project — Rough Cut"
 ```
 
-Running `cutnotes` without a subcommand starts guided terminal mode. During terminal recording, press `q` to finish. In the app, use **Finish Recording** or **Cancel**.
+Running `cutnotes` without a subcommand starts guided terminal mode. During terminal recording, press `q` to finish. In the app, use **Pause Recording**, **Resume Recording**, **Finish Recording**, or **Cancel**. Pause closes the current audio segment cleanly, and resume continues the same session without inserting silence.
 
 Default output:
 
@@ -71,6 +71,11 @@ Default output:
 ```
 
 New sessions receive timestamped names rather than replacing existing files.
+
+Formatted Markdown is a compact editor handoff: a general feedback summary followed by
+chronological timestamp-specific notes. CutNotes normalizes clear spoken forms such as
+`0031`, “zero minutes thirty-seven,” “three minutes fifty-four,” “three twenty-four,”
+and “four oh nine” into `MM:SS` before the selected formatter runs.
 
 Useful explicit provider choices:
 

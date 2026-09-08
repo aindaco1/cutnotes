@@ -16,7 +16,7 @@ Descriptor 3 is newline-delimited `cutnotes.progress.v1` JSON. Sequence numbers 
 
 ## Recording control
 
-Descriptor 4 accepts only newline-terminated `finish` and `cancel` commands. `finish` asks FFmpeg to close the recording normally. `cancel` interrupts capture and returns an error describing any preserved audio. Noninteractive recording without this descriptor is rejected.
+Descriptor 4 accepts only newline-terminated `pause`, `resume`, `finish`, and `cancel` commands. `pause` closes the active fixed-format WAV segment normally, and `resume` begins the next segment in the same session. `finish` closes the active segment and joins every captured segment into one WAV without inserting paused time. `cancel` interrupts active capture, joins any usable segments, and returns an error describing the preserved audio. Repeated `pause` or `resume` commands are harmless. A closed control descriptor finishes safely. Noninteractive recording without this descriptor is rejected.
 
 ## Diagnostics and capabilities
 

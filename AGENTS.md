@@ -9,7 +9,7 @@
 ## Machine interface
 
 - App commands always pass `--json --progress-fd 3`; recording also passes `--control-fd 4`.
-- Descriptor 3 is bounded NDJSON progress. Descriptor 4 accepts only `finish` or `cancel` lines.
+- Descriptor 3 is bounded NDJSON progress. Descriptor 4 accepts only `pause`, `resume`, `finish`, or `cancel` lines.
 - Standard output is one final JSON result. Expected failures are one final JSON error on standard error with a stable code and preserved-artifact flags.
 - Machine schema changes require Python and Swift decoding tests and a schema version change when compatibility is broken.
 
@@ -18,7 +18,7 @@
 - Default transcription is local Parakeet v3; default formatting is Apple on-device when available.
 - MacWhisper and Codex CLI are explicit optional providers. Never add silent provider fallback.
 - User source media is read-only. Sessions never overwrite prior artifacts.
-- Four hours is the hard cap; recording warns at 3:45.
+- Four hours of captured audio is the hard cap; paused time does not count, and recording warns at 3:45.
 - No telemetry, profiling, analytics, or first-party upload path.
 - Keep the CLI fully usable without the app.
 

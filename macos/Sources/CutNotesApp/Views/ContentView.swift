@@ -195,10 +195,14 @@ struct ContentView: View {
             }
             Spacer()
             if store.isRecording {
+                Button(
+                    store.isRecordingPaused ? "Resume Recording" : "Pause Recording",
+                    action: store.toggleRecordingPause
+                )
                 Button("Finish Recording", action: store.finishRecording)
                     .buttonStyle(.borderedProminent)
                     .tint(CutNotesBrand.dust)
-            } else {
+            } else if !store.isRunning {
                 Button(store.workflow.actionTitle) {
                     Task { await store.run() }
                 }
