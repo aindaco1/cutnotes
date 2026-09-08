@@ -77,7 +77,7 @@ if [[ -z "$submission_id" ]]; then
 fi
 
 notary_status=""
-for ((attempt = 1; attempt <= 180; attempt++)); do
+for ((attempt = 1; attempt <= 360; attempt++)); do
   if ! status_output="$(
     cd "$stage_dir"
     /usr/bin/xcrun notarytool info "$submission_id" "${credential_arguments[@]}"
@@ -106,7 +106,7 @@ for ((attempt = 1; attempt <= 180; attempt++)); do
   esac
 done
 if [[ "$notary_status" != "Accepted" ]]; then
-  echo "Notarization did not finish within 30 minutes." >&2
+  echo "Notarization did not finish within 60 minutes." >&2
   exit 6
 fi
 
