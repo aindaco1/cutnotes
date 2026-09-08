@@ -23,8 +23,8 @@ fi
 
 python_version="$($python_framework_source/Versions/3.14/bin/python3 -c 'import platform; print(platform.python_version())')"
 ffmpeg_version="$($ffmpeg_source -version | /usr/bin/awk 'NR == 1 {print $3}')"
-if [[ "$python_version" != "3.14.6" || "$ffmpeg_version" != "8.1.1" ]]; then
-  echo "Runtime lock mismatch: expected Python 3.14.6 and FFmpeg 8.1.1" >&2
+if [[ "$python_version" != "3.14.7" || "$ffmpeg_version" != "8.1.1" ]]; then
+  echo "Runtime lock mismatch: expected Python 3.14.7 and FFmpeg 8.1.1" >&2
   exit 3
 fi
 ffmpeg_license_text="$("$ffmpeg_source" -L 2>&1)"

@@ -24,7 +24,7 @@ if [[ ! -d "$app_bundle" ]]; then
   exit 4
 fi
 
-stage_dir="$(mktemp -d)"
+stage_dir="$(mktemp -d /private/tmp/cutnotes-release.XXXXXX)"
 trap 'hdiutil detach "$stage_dir/mount" >/dev/null 2>&1 || true; rm -rf "$stage_dir"' EXIT
 /usr/bin/ditto --norsrc --noextattr "$app_bundle" "$stage_dir/CutNotes.app"
 /bin/ln -s /Applications "$stage_dir/Applications"
@@ -40,12 +40,17 @@ rm -f "$pending_dmg"
 /usr/bin/codesign --force --sign "$identity" --timestamp "$pending_dmg"
 /usr/bin/codesign --verify --verbose=2 "$pending_dmg"
 
-notary_arguments=(submit "$pending_dmg" --wait --no-s3-acceleration)
+notary_dmg_name="$(basename "$pending_dmg")"
+/bin/cp "$pending_dmg" "$stage_dir/$notary_dmg_name"
+credential_arguments=()
 if [[ -n "${CUTNOTES_NOTARY_PROFILE:-}" ]]; then
-  notary_arguments+=(--keychain-profile "$CUTNOTES_NOTARY_PROFILE")
+  credential_arguments+=(--keychain-profile "$CUTNOTES_NOTARY_PROFILE")
 elif [[ -n "${CUTNOTES_NOTARY_KEY:-}" && -n "${CUTNOTES_NOTARY_KEY_ID:-}" && -n "${CUTNOTES_NOTARY_ISSUER:-}" ]]; then
-  notary_arguments+=(
-    --key "$CUTNOTES_NOTARY_KEY"
+  notary_key_name="$(basename "$CUTNOTES_NOTARY_KEY")"
+  /bin/cp "$CUTNOTES_NOTARY_KEY" "$stage_dir/$notary_key_name"
+  /bin/chmod 600 "$stage_dir/$notary_key_name"
+  credential_arguments+=(
+    --key "$notary_key_name"
     --key-id "$CUTNOTES_NOTARY_KEY_ID"
     --issuer "$CUTNOTES_NOTARY_ISSUER"
   )
@@ -55,7 +60,52 @@ else
   exit 5
 fi
 
-/usr/bin/xcrun notarytool "${notary_arguments[@]}"
+submission_output="$(
+  cd "$stage_dir"
+  /usr/bin/xcrun notarytool submit "$notary_dmg_name" \
+    --no-wait --no-progress --no-s3-acceleration \
+    "${credential_arguments[@]}"
+)"
+printf '%s\n' "$submission_output"
+submission_id="$(
+  printf '%s\n' "$submission_output" \
+    | /usr/bin/sed -n 's/^[[:space:]]*id: \([^[:space:]]*\)$/\1/p'
+)"
+if [[ -z "$submission_id" ]]; then
+  echo "Notarization upload did not return a submission ID." >&2
+  exit 6
+fi
+
+notary_status=""
+for ((attempt = 1; attempt <= 180; attempt++)); do
+  status_output="$(
+    cd "$stage_dir"
+    /usr/bin/xcrun notarytool info "$submission_id" "${credential_arguments[@]}"
+  )"
+  notary_status="$(
+    printf '%s\n' "$status_output" \
+      | /usr/bin/sed -n 's/^[[:space:]]*status: \(.*\)$/\1/p'
+  )"
+  case "$notary_status" in
+    Accepted)
+      printf '%s\n' "$status_output"
+      break
+      ;;
+    "In Progress")
+      /bin/sleep 10
+      ;;
+    *)
+      printf '%s\n' "$status_output" >&2
+      echo "Notarization failed with status: ${notary_status:-unknown}" >&2
+      exit 6
+      ;;
+  esac
+done
+if [[ "$notary_status" != "Accepted" ]]; then
+  echo "Notarization did not finish within 30 minutes." >&2
+  exit 6
+fi
+
 /usr/bin/xcrun stapler staple "$pending_dmg"
 /usr/bin/xcrun stapler validate "$pending_dmg"
 rm -f "$final_dmg"

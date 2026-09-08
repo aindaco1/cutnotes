@@ -31,7 +31,7 @@ jobs:
       - name: Install pinned build dependencies
         run: |
           brew install python@3.14
-          test "$(/opt/homebrew/opt/python@3.14/bin/python3.14 -c 'import platform; print(platform.python_version())')" = 3.14.6
+          test "$(/opt/homebrew/opt/python@3.14/bin/python3.14 -c 'import platform; print(platform.python_version())')" = 3.14.7
       - name: Import Developer ID certificate
         env:
           CERTIFICATE_BASE64: ${{ secrets.CUTNOTES_CERTIFICATE_BASE64 }}

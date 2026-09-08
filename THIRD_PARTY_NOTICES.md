@@ -4,7 +4,7 @@ CutNotes source code is MIT-licensed. Release builds aggregate the components be
 
 | Component | Pinned version | License | Purpose |
 |---|---:|---|---|
-| Python | 3.14.6 | PSF License | Bundled CLI interpreter |
+| Python | 3.14.7 | PSF License | Bundled CLI interpreter |
 | FFmpeg / FFprobe | 8.1.1 | LGPL 2.1 or later | Recording, media probing, decoding, and chunking |
 | Record | 1.2.2 | MIT | Reusable local speech interface |
 | FluidAudio | 0.15.6 | Apache 2.0 | Core ML Parakeet inference |
