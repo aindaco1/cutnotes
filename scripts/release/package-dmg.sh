@@ -40,7 +40,7 @@ rm -f "$pending_dmg"
 /usr/bin/codesign --force --sign "$identity" --timestamp "$pending_dmg"
 /usr/bin/codesign --verify --verbose=2 "$pending_dmg"
 
-notary_arguments=(submit "$pending_dmg" --wait)
+notary_arguments=(submit "$pending_dmg" --wait --no-s3-acceleration)
 if [[ -n "${CUTNOTES_NOTARY_PROFILE:-}" ]]; then
   notary_arguments+=(--keychain-profile "$CUTNOTES_NOTARY_PROFILE")
 elif [[ -n "${CUTNOTES_NOTARY_KEY:-}" && -n "${CUTNOTES_NOTARY_KEY_ID:-}" && -n "${CUTNOTES_NOTARY_ISSUER:-}" ]]; then
