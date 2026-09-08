@@ -4,6 +4,18 @@ import SwiftUI
 
 struct ContentView: View {
     @Bindable var store: CutNotesStore
+    @ObservedObject var updates: AppUpdateController
+    @State private var isReviewingSupport = false
+    @State private var reportReview: SupportReportReviewStore
+
+    init(store: CutNotesStore, updates: AppUpdateController) {
+        self.store = store
+        self.updates = updates
+        _reportReview = State(initialValue: SupportReportReviewStore(
+            currentState: { store.supportReport() },
+            submitter: CutNotesSupportSubmissionClient(enabled: AppSupportPaths.supportSubmissionEnabled())
+        ))
+    }
 
     var body: some View {
         ScrollView {
@@ -42,6 +54,26 @@ struct ContentView: View {
                 message: Text(failureMessage(failure)),
                 dismissButton: .default(Text("OK"))
             )
+        }
+        .sheet(isPresented: $isReviewingSupport) {
+            SupportReportReviewView(review: reportReview)
+        }
+        .toolbar {
+            ToolbarItem(placement: .secondaryAction) {
+                Button { isReviewingSupport = true } label: {
+                    Label("Report a Problem", systemImage: "exclamationmark.bubble")
+                }
+                .help("Review current state and recent crash reports before sending")
+                .accessibilityLabel("Report a Problem")
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Button { updates.checkForUpdates() } label: {
+                    Label("Check for Updates", systemImage: "arrow.down.circle")
+                }
+                .disabled(!updates.canCheckForUpdates)
+                .help("Check GitHub Releases for a signed CutNotes update")
+                .accessibilityLabel("Check for Updates")
+            }
         }
     }
 

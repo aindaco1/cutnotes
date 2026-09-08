@@ -50,6 +50,8 @@ Use **CutNotes > Install cutnotes Command…** after moving the app to `/Applica
 /usr/local/bin/cutnotes -> /Applications/CutNotes.app/Contents/Resources/CLI/bin/cutnotes
 ```
 
+The top-right arrow icon checks GitHub Releases for a signed update. The adjacent report icon opens an exact JSON preview of the current app state and up to five recent CutNotes crash summaries. Nothing is sent merely by opening the review, and sending requires the explicit **Send Reviewed Reports** button.
+
 ## CLI quick start
 
 ```bash
@@ -94,7 +96,7 @@ CutNotes exposes all 25 languages listed by the official Parakeet v3 model, usin
 
 ## Privacy
 
-Parakeet transcription and Apple formatting run on the Mac. CutNotes has no telemetry, analytics, accounts, or first-party upload service. Selecting Codex CLI or MacWhisper delegates only that stage to the separately installed tool and its own configuration. No provider fallback happens silently. See [docs/PRIVACY.md](docs/PRIVACY.md).
+Parakeet transcription and Apple formatting run on the Mac. CutNotes has no telemetry, analytics, accounts, or automatic crash upload. A user may explicitly review and send a bounded support report to the open-source GitHub repository; source media, transcripts, project context, paths, device names, raw logs, and crash stacks cannot enter that report. Selecting Codex CLI or MacWhisper delegates only that stage to the separately installed tool and its own configuration. No provider fallback happens silently. See [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Build and test
 

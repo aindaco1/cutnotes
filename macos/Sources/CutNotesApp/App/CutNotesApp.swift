@@ -8,7 +8,7 @@ struct CutNotesApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView(store: store)
+            ContentView(store: store, updates: updates)
                 .frame(minWidth: 720, minHeight: 620)
                 .preferredColorScheme(.dark)
                 .onAppear {
@@ -19,10 +19,6 @@ struct CutNotesApp: App {
         .defaultSize(width: 820, height: 760)
         .windowResizability(.contentMinSize)
         .commands {
-            CommandGroup(after: .appInfo) {
-                Button("Check for Updates…") { updates.checkForUpdates() }
-                    .disabled(!updates.canCheckForUpdates)
-            }
             CommandGroup(after: .newItem) {
                 Button("Install cutnotes Command…") {
                     Task { await store.installCommand() }

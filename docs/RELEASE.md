@@ -12,21 +12,23 @@ Keep all secrets outside Git:
 
 The public Sparkle key is committed in `config/sparkle-public-key.txt`. Never export or commit its private half.
 
+Production support-report submission is additionally gated by the exact bundle identifier `com.dustwave.cutnotes`, a non-debug build, and `CutNotesSupportReportsEnabled=true` in the signed app. The review sheet must show the exact payload before any network request. Verify the relay separately; a successful app build does not establish GitHub issue delivery.
+
 ## Local candidate
 
 ```bash
 export CUTNOTES_SIGNING_IDENTITY='Developer ID Application: Example (TEAMID)'
 export CUTNOTES_NOTARY_PROFILE='cutnotes-notary'
-./scripts/release/release.sh 1.0.1
+./scripts/release/release.sh 1.0.2
 ```
 
 The script verifies version agreement, runs both test suites, builds the pinned LGPL FFmpeg runtime and app, signs every nested executable, creates and signs the DMG, submits it to Apple, staples it, validates Gatekeeper, signs the update archive with Sparkle, and writes checksums.
 
 ## GitHub release
 
-Push an annotated `v1.0.1` tag only after local acceptance. `.github/workflows/release.yml` repeats the release pipeline using repository secrets and uploads:
+Push an annotated `v1.0.2` tag only after local acceptance. `.github/workflows/release.yml` repeats the release pipeline using repository secrets and uploads:
 
-- `CutNotes-1.0.1-arm64.dmg`
+- `CutNotes-1.0.2-arm64.dmg`
 - `appcast.xml`
 - `SHA256SUMS`
 
@@ -34,4 +36,4 @@ The app feed is `https://github.com/aindaco1/cutnotes/releases/latest/download/a
 
 ## Manual acceptance
 
-After publishing, download the GitHub asset rather than reusing the local file. Verify its checksum, notarization ticket, mount, copy, first launch, model setup, one real import, terminal command installation, manual update check, and absence of profiling. Record these as separate evidence. For 1.0.1 and later, also perform a real update from the immediately previous public app.
+After publishing, download the GitHub asset rather than reusing the local file. Verify its checksum, notarization ticket, mount, copy, first launch, model setup, one real import, terminal command installation, top-right manual update check, reviewed support-report preview, deployed relay receipt, and absence of profiling. Record these as separate evidence. For 1.0.1 and later, also perform a real update from the immediately previous public app.

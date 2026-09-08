@@ -38,5 +38,6 @@ let package = Package(
             ]
         ),
         .testTarget(name: "CutNotesCoreTests", dependencies: ["CutNotesCore"]),
+        .testTarget(name: "CutNotesAppTests", dependencies: ["CutNotesApp", "CutNotesCore"]),
     ]
 )

@@ -3,7 +3,7 @@ import FoundationModels
 import RecordCore
 import RecordSpeech
 
-private let version = "1.0.1"
+private let version = "1.0.2"
 
 private enum LocalEngineError: Error, CustomStringConvertible {
     case invalidArguments(String)

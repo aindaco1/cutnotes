@@ -538,6 +538,58 @@ class CutNotesIntegrationTests(unittest.TestCase):
         path.chmod(path.stat().st_mode | stat.S_IXUSR)
         return path
 
+    def test_bundled_launcher_resolves_terminal_command_symlink(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            temp = Path(temporary_directory)
+            resources = temp / "CutNotes.app" / "Contents" / "Resources"
+            launcher = resources / "CLI" / "bin" / "cutnotes"
+            launcher.parent.mkdir(parents=True)
+            launcher.write_bytes(
+                (PROJECT_DIR / "scripts" / "macos" / "cutnotes-launcher").read_bytes()
+            )
+            launcher.chmod(launcher.stat().st_mode | stat.S_IXUSR)
+
+            cli_entrypoint = resources / "CLI" / "cutnotes"
+            cli_entrypoint.write_text("test entrypoint", encoding="utf-8")
+            runtime = (
+                resources
+                / "Runtime"
+                / "Python.framework"
+                / "Versions"
+                / "3.14"
+                / "bin"
+            )
+            runtime.mkdir(parents=True)
+            self.make_executable(
+                runtime,
+                "python3",
+                """#!/bin/sh
+printf 'ENTRYPOINT=%s\\n' "$1"
+printf 'ARG=%s\\n' "$2"
+printf 'FFMPEG=%s\\n' "$CUTNOTES_FFMPEG"
+""",
+            )
+
+            command_dir = temp / "usr" / "local" / "bin"
+            command_dir.mkdir(parents=True)
+            command = command_dir / "cutnotes"
+            command.symlink_to(launcher)
+
+            result = subprocess.run(
+                [str(command), "--version"],
+                check=False,
+                capture_output=True,
+                text=True,
+            )
+
+            self.assertEqual(result.returncode, 0, result.stderr)
+            self.assertIn(f"ENTRYPOINT={cli_entrypoint}", result.stdout)
+            self.assertIn("ARG=--version", result.stdout)
+            self.assertIn(
+                f"FFMPEG={resources / 'Runtime' / 'bin' / 'ffmpeg'}",
+                result.stdout,
+            )
+
     def test_format_command_with_fake_codex(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             temp = Path(temporary_directory)

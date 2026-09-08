@@ -7,6 +7,14 @@ enum AppWorkflow: String, CaseIterable, Identifiable {
 
     var id: String { rawValue }
 
+    var supportValue: String {
+        switch self {
+        case .record: "record"
+        case .importMedia: "import"
+        case .format: "format"
+        }
+    }
+
     var actionTitle: String {
         switch self {
         case .record: "Start Recording"
@@ -19,6 +27,7 @@ enum AppWorkflow: String, CaseIterable, Identifiable {
 struct PresentedFailure: Equatable, Identifiable {
     let id = UUID()
     let title: String
+    let code: String
     let message: String
     let recovery: String
     let audioPreserved: Bool

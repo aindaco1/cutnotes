@@ -78,6 +78,42 @@ final class CutNotesStore {
             && (workflow == .record || sourceURL != nil)
     }
 
+    func supportReport() -> CutNotesSupportReport {
+        let progressStage = progress.map(\.stage).flatMap {
+            CutNotesSupportState.progressStages.contains($0) ? $0 : nil
+        }
+        let failureCode = failure.map(\.code).map {
+            CutNotesSupportState.failureCodes.contains($0) ? $0 : "unknown"
+        }
+        let selectedFormatter = formatter == .codex ? "codex" : "apple"
+        let selectedLanguage = CutNotesSupportState.languages.contains(language) ? language : "en"
+        return CutNotesSupportReport(
+            state: CutNotesSupportState(
+                workflow: workflow.supportValue,
+                isRunning: isRunning,
+                isRecording: isRecording,
+                isPaused: isRecordingPaused,
+                hasSource: sourceURL != nil,
+                transcriptOnly: transcriptOnly,
+                language: selectedLanguage,
+                transcriber: transcriber == .macwhisper ? "macwhisper" : "parakeet",
+                formatter: selectedFormatter,
+                usesSystemDefaultMicrophone: microphoneIndex == nil,
+                microphoneCount: doctor?.microphones.count,
+                coreHealthy: doctor?.healthy,
+                defaultWorkflowReady: doctor?.defaultWorkflowReady,
+                parakeetReady: doctor.map { $0.parakeet.state == "ready" },
+                appleFormatterReady: doctor.map { $0.appleFormatter.state == "ready" },
+                ffmpegAvailable: doctor.map { $0.ffmpeg.path != nil },
+                macwhisperAvailable: doctor.map { $0.macwhisper.path != nil },
+                codexAvailable: doctor.map { $0.codex.path != nil },
+                progressStage: progressStage,
+                failureCode: failureCode
+            ),
+            application: AppSupportPaths.applicationInfo()
+        )
+    }
+
     func refreshDoctor() async {
         do {
             let execution = try await client.run(try builder().doctor())
@@ -302,6 +338,7 @@ final class CutNotesStore {
         if let payload = error as? CLIErrorPayload {
             return PresentedFailure(
                 title: payload.code == "cancelled" ? "Cancelled" : "CutNotes could not finish",
+                code: payload.code,
                 message: payload.message,
                 recovery: payload.recovery,
                 audioPreserved: payload.preserved.audio,
@@ -311,6 +348,7 @@ final class CutNotesStore {
         let message = (error as? LocalizedError)?.errorDescription ?? error.localizedDescription
         return PresentedFailure(
             title: "CutNotes could not finish",
+            code: "unknown",
             message: message,
             recovery: "Review the setup, then try again. Existing source files were not changed.",
             audioPreserved: false,
