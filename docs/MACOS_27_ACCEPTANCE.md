@@ -4,7 +4,7 @@ Host: Apple Silicon, macOS 27.0 (26A428), Xcode 27.0 (27A266a), Swift 6.4.
 
 ## Verified
 
-- 37 Python tests, including four regression tests for model readiness and preserved artifacts.
+- 41 Python tests, including eight regression tests for model readiness, preserved artifacts, and spoken section boundaries.
 - 12 Swift command and decoding tests; arm64 release builds of the app and local helper.
 - Reproduced a packaging failure when separate product builds remove Sparkle from the shared output directory under Swift Build. Building the complete package retains both executables and the framework; CI checks these outputs together.
 - Installed 1.0.2 passes strict deep signing, Gatekeeper, and stapled-ticket checks.
@@ -12,9 +12,11 @@ Host: Apple Silicon, macOS 27.0 (26A428), Xcode 27.0 (27A266a), Swift 6.4.
 - Apple reports `modelNotReady` on this upgraded host. With the 1.0.3 source CLI and installed helper, real import returns `apple_model_unavailable`, exit 6, with both session audio and transcript preserved. A formatting retry preserves the transcript and explains how to retry once the model is ready.
 - No implicit provider fallback is introduced; an unrelated helper failure retains its original error category.
 
+- After model preparation completed, a full Parakeet-to-Apple import succeeded. Review exposed comma-only spoken section boundaries merging separate edit points; the fix retains the general note and individual 00:12 and 00:24 edits. A real Apple formatting retry produced both distinct instructions. Audio bytes remained identical to the synthetic source.
+
 ## Pending acceptance
 
-- Successful Apple formatting after system model preparation, including long transcripts.
+- Long-transcript Apple formatting and repeated record/pause/resume/cancel acceptance.
 - Native record/pause/resume/cancel and visible recovery controls.
 - Downloaded signed 1.0.3 DMG installation and launch, terminal command installation, and the real 1.0.2-to-1.0.3 Sparkle update.
 
