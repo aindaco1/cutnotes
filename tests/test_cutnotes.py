@@ -244,6 +244,18 @@ class CutNotesUnitTests(unittest.TestCase):
         self.assertEqual(len(units), 1)
         self.assertEqual(units[0].timecodes, ("00:12", "00:24"))
 
+    def test_duration_edits_are_retained_when_apple_cannot_rewrite_them(self) -> None:
+        for instruction in (
+            "shorten the pause before the door opens",
+            "lengthen the pause before the door opens",
+            "trim the pause before the door opens",
+        ):
+            with self.subTest(instruction=instruction):
+                units = cutnotes.source_units(f"Timestamp 12 seconds, {instruction}.")
+                note = providers_module._fallback_timestamp_note("00:12", units)
+                self.assertEqual(note.title, "Editorial note")
+                self.assertEqual(note.body, instruction)
+
     def test_editorial_draft_renders_concise_chronological_handoff(self) -> None:
         units = cutnotes.source_units(
             "General note. The opening is too short. At 00:40, smooth the music edit. "
