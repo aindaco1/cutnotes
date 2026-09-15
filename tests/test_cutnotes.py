@@ -336,6 +336,27 @@ class CutNotesUnitTests(unittest.TestCase):
                 )
                 self.assertEqual(note.title, expected_title)
 
+    def test_general_dialogue_and_structure_notes_survive_final_filter(self) -> None:
+        for instruction in (
+            "Keep consistent dialogue levels.",
+            "Keep a clear beginning.",
+            "Keep a clear ending.",
+            "Keep a clear beginning and ending, with consistent dialogue levels.",
+        ):
+            with self.subTest(instruction=instruction):
+                markdown = providers_module._render_drafted_document(
+                    transcript=f"General note. {instruction}",
+                    title="General feedback",
+                    context=None,
+                    generate=lambda prompt, allowed_ids: [
+                        cutnotes.DraftNote("General note", instruction, tuple(sorted(allowed_ids)))
+                    ],
+                    batch_limit=2_400,
+                    reporter=ProgressReporter(None),
+                )
+                self.assertIn(instruction, markdown)
+                self.assertNotIn("No clear general feedback was identified", markdown)
+
     def test_grounding_rejects_advice_invented_from_general_praise(self) -> None:
         unit = cutnotes.SourceUnit("N0001", "The opening feels strong.", ())
         units = {unit.id: unit}
