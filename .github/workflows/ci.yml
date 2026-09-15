@@ -17,5 +17,8 @@ jobs:
       - name: Test Swift contracts and app build
         run: |
           swift test --package-path macos
-          swift build --package-path macos -c release --arch arm64 --product CutNotes
-          swift build --package-path macos -c release --arch arm64 --product CutNotesLocal
+          swift build --package-path macos -c release --arch arm64
+          binary_root="$(swift build --package-path macos -c release --arch arm64 --show-bin-path)"
+          test -x "$binary_root/CutNotes"
+          test -x "$binary_root/CutNotesLocal"
+          test -d "$binary_root/Sparkle.framework"

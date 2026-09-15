@@ -2,6 +2,7 @@
 
 ## 1.0.3 — 2026-09-15
 
+- Build the app and local helper together so Xcode 27's Swift Build retains the Sparkle framework required for packaging.
 - Explain when Apple Intelligence models are unavailable or still preparing after an OS upgrade, and retain the existing `apple_model_unavailable` error code for formatting retries.
 - Report preserved session audio and transcripts accurately when a later recording/import stage fails.
 
