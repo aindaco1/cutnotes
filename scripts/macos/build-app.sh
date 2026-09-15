@@ -32,8 +32,10 @@ if [[ -z "${CUTNOTES_FFMPEG_SOURCE:-}" || -z "${CUTNOTES_FFPROBE_SOURCE:-}" ]]; 
   export CUTNOTES_FFMPEG_PREFIX="$ffmpeg_prefix"
 fi
 
-swift build --package-path "$package_dir" -c "$configuration" --arch arm64 --product CutNotes
-swift build --package-path "$package_dir" -c "$configuration" --arch arm64 --product CutNotesLocal
+# Xcode 27's Swift Build reconciles this output directory to the selected
+# product graph. Building only CutNotesLocal last removes the app's Sparkle
+# framework. Build both products together so the bundle has one complete graph.
+swift build --package-path "$package_dir" -c "$configuration" --arch arm64
 bin_dir="$(swift build --package-path "$package_dir" -c "$configuration" --arch arm64 --show-bin-path)"
 
 rm -rf "$app_bundle"

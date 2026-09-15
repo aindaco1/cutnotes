@@ -7,15 +7,26 @@ on:
 
 jobs:
   test:
-    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-26, xcode-27]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Verify Apple Silicon host
-        run: test "$(uname -m)" = arm64
+        run: |
+          test "$(uname -m)" = arm64
+          sw_vers
+          xcodebuild -version
       - name: Test Python CLI
         run: python3 -m unittest discover -s tests -v
       - name: Test Swift contracts and app build
         run: |
           swift test --package-path macos
-          swift build --package-path macos -c release --arch arm64 --product CutNotes
-          swift build --package-path macos -c release --arch arm64 --product CutNotesLocal
+          swift build --package-path macos -c release --arch arm64
+          binary_root="$(swift build --package-path macos -c release --arch arm64 --show-bin-path)"
+          test -x "$binary_root/CutNotes"
+          test -x "$binary_root/CutNotesLocal"
+          test -d "$binary_root/Sparkle.framework"

@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.3 — 2026-09-15
+
+- Build the app and local helper together so Xcode 27's Swift Build retains the Sparkle framework required for packaging.
+- Keep separate spoken timestamp and general-note sections when transcription joins them with commas or semicolons.
+- Retain clear trim, shorten, and lengthen instructions when the formatter cannot rewrite them.
+- Explain when Apple Intelligence models are unavailable or still preparing after an OS upgrade, and retain the existing `apple_model_unavailable` error code for formatting retries.
+- Report preserved session audio and transcripts accurately when a later recording/import stage fails.
+
 ## 1.0.2 — 2026-09-07
 
 - Fixes the installed `/usr/local/bin/cutnotes` command so the bundled launcher resolves its application symlink before locating the self-contained Python and media runtimes.

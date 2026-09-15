@@ -572,6 +572,16 @@ def _metadata(args, *, status: str, **extra) -> dict:
     return payload
 
 
+def _preserve_session_artifact_flags(error: CutNotesError, audio: Path, transcript: Path) -> None:
+    """Provider errors cannot know which earlier session stages finished."""
+    error.preserved = PreservedArtifacts(
+        audio=error.preserved.audio or (not audio.is_symlink() and audio.is_file()),
+        transcript=error.preserved.transcript or (
+            not transcript.is_symlink() and transcript.is_file()
+        ),
+    )
+
+
 def run_record(args) -> dict:
     reporter = ProgressReporter(args.progress_fd)
     ffmpeg, transcriber_tool, formatter_tool = _required_pipeline_tools(args)
@@ -628,6 +638,7 @@ def run_record(args) -> dict:
         metadata["completed_at"] = dt.datetime.now().astimezone().isoformat()
         write_json(metadata_path, metadata)
     except CutNotesError as error:
+        _preserve_session_artifact_flags(error, audio, transcript)
         metadata["status"] = "cancelled" if error.exit_code == EXIT_CANCELLED else "failed"
         metadata["error_code"] = error.code
         metadata["updated_at"] = dt.datetime.now().astimezone().isoformat()
@@ -708,6 +719,7 @@ def run_import(args) -> dict:
         metadata["completed_at"] = dt.datetime.now().astimezone().isoformat()
         write_json(metadata_path, metadata)
     except CutNotesError as error:
+        _preserve_session_artifact_flags(error, audio, transcript)
         metadata["status"] = "failed"
         metadata["error_code"] = error.code
         metadata["updated_at"] = dt.datetime.now().astimezone().isoformat()

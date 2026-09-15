@@ -217,6 +217,45 @@ class CutNotesUnitTests(unittest.TestCase):
         self.assertIn("music is working well", sound_section)
         self.assertEqual(cutnotes.validate_timecodes(markdown, "Timestamp 12 minutes 34 seconds."), ([], []))
 
+    def test_spoken_section_markers_survive_comma_only_transcription(self) -> None:
+        transcript = (
+            "General note, the scene has a clear beginning and ending, "
+            "timestamp 12 seconds, shorten the pause before the door opens, "
+            "timestamp 24 seconds, keep the music quieter under the dialogue."
+        )
+        units = cutnotes.source_units(transcript)
+        self.assertEqual([unit.timecodes for unit in units], [(), ("00:12",), ("00:24",)])
+        self.assertIn("beginning and ending", units[0].text)
+        self.assertNotIn("pause", units[0].text)
+        self.assertIn("pause", units[1].text)
+        self.assertNotIn("music", units[1].text)
+        self.assertIn("music", units[2].text)
+
+    def test_spoken_general_marker_resets_time_after_semicolon(self) -> None:
+        units = cutnotes.source_units(
+            "Timestamp 12 seconds, shorten the pause; general note, the music works."
+        )
+        self.assertEqual([unit.timecodes for unit in units], [("00:12",), ()])
+
+    def test_connected_spoken_range_remains_one_observation(self) -> None:
+        units = cutnotes.source_units(
+            "Timestamp 12 seconds to timestamp 24 seconds, keep the music quieter."
+        )
+        self.assertEqual(len(units), 1)
+        self.assertEqual(units[0].timecodes, ("00:12", "00:24"))
+
+    def test_duration_edits_are_retained_when_apple_cannot_rewrite_them(self) -> None:
+        for instruction in (
+            "shorten the pause before the door opens",
+            "lengthen the pause before the door opens",
+            "trim the pause before the door opens",
+        ):
+            with self.subTest(instruction=instruction):
+                units = cutnotes.source_units(f"Timestamp 12 seconds, {instruction}.")
+                note = providers_module._fallback_timestamp_note("00:12", units)
+                self.assertEqual(note.title, "Editorial note")
+                self.assertEqual(note.body, instruction)
+
     def test_editorial_draft_renders_concise_chronological_handoff(self) -> None:
         units = cutnotes.source_units(
             "General note. The opening is too short. At 00:40, smooth the music edit. "
