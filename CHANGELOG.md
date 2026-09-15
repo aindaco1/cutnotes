@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4 — 2026-09-15
+
+- Retain grounded general feedback about dialogue, beginnings, and endings through the final editorial-note filter.
+
 ## 1.0.3 — 2026-09-15
 
 - Build the app and local helper together so Xcode 27's Swift Build retains the Sparkle framework required for packaging.

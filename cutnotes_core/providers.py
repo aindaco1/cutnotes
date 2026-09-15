@@ -578,7 +578,7 @@ DraftGenerator = Callable[[str, set[str]], list[DraftNote]]
 
 EDITORIAL_LANGUAGE = re.compile(
     r"(?i)\b(cut|shot|edit|scene|sequence|audio|music|sound|crop|frame|"
-    r"reaction|pacing|continuity|opening|strong|works?|better|worse|long|short|"
+    r"reaction|pacing|continuity|opening|beginning|ending|dialogue|strong|works?|better|worse|long|short|"
     r"add|remove|change|preserve|trim|shorten|lengthen|"
     r"obvious|beat|camera|transition|outro)\b"
 )
