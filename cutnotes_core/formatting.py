@@ -327,7 +327,16 @@ class DraftNote:
 def source_units(transcript: str) -> list[SourceUnit]:
     """Split the transcript into lossless, referenceable observations."""
 
-    normalized = canonicalize_timecodes(transcript.strip())
+    # Speech recognition can place commas between spoken section markers.
+    # Preserve those boundaries before canonicalization removes marker words.
+    # A range joined by "to" or "and" remains one observation.
+    marked_transcript = re.sub(
+        r"([,;])\s*(?=(?:timestamp|timecode|(?:general|overall)\s+notes?)\b)",
+        r"\1\n",
+        transcript.strip(),
+        flags=re.IGNORECASE,
+    )
+    normalized = canonicalize_timecodes(marked_transcript)
     timecode_token = r"\[\d{2,3}:\d{2}(?:[–-]\d{2,3}:\d{2})?\]"
     normalized = re.sub(
         rf"\s+(?=(?:(?:okay|yeah|so|um|uh|just|at)[,\s]+)+{timecode_token})",
