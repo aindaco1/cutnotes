@@ -8,6 +8,14 @@ swift test --package-path macos
 ./script/build_and_run.sh --verify
 ```
 
+After an OS upgrade, Apple Intelligence can report `modelNotReady` while its
+models prepare. A failed Apple formatting request must report
+`apple_model_unavailable`, explain how to retry when the model is ready, and
+preserve the original transcript. A recording or import that already produced
+audio and a transcript must report both as preserved. Test successful formatting
+separately once the system model is ready; a graceful unavailable result does
+not prove model inference.
+
 Release acceptance is deliberately split into separate claims:
 
 1. Python unit/integration tests pass.

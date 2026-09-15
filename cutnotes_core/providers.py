@@ -354,6 +354,17 @@ def _generate_with_apple(
             )
         except CutNotesError as error:
             detail = str(error)
+            if "Apple on-device formatting is unavailable." in detail:
+                raise CutNotesError(
+                    "Apple on-device formatting is not ready on this Mac.",
+                    EXIT_FORMATTING,
+                    code="apple_model_unavailable",
+                    recovery=(
+                        "Check Apple Intelligence in System Settings and wait for its models "
+                        "to finish preparing, then retry formatting; the transcript was preserved."
+                    ),
+                    preserved=PreservedArtifacts(transcript=True),
+                ) from error
             if (
                 "exceededContextWindowSize" in detail
                 or "maximum allowed context size" in detail
