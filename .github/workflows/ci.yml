@@ -7,11 +7,19 @@ on:
 
 jobs:
   test:
-    runs-on: macos-26
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-26, xcode-27]
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
       - name: Verify Apple Silicon host
-        run: test "$(uname -m)" = arm64
+        run: |
+          test "$(uname -m)" = arm64
+          sw_vers
+          xcodebuild -version
       - name: Test Python CLI
         run: python3 -m unittest discover -s tests -v
       - name: Test Swift contracts and app build
