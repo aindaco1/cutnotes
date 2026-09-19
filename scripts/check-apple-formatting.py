@@ -26,6 +26,7 @@ def evaluate(markdown: str, case: dict) -> list[str]:
     failures.extend(f"Invented time: {value}" for value in invented)
     failures.extend(f"Missing time: {value}" for value in omitted)
     general, _, timed = markdown.partition("## Timestamped feedback")
+    general_notes = [line[2:].strip() for line in general.splitlines() if line.startswith("- ")]
     rows = []
     for line in timed.splitlines():
         cells = re.split(r"(?<!\\)\|", line.strip())
@@ -35,9 +36,22 @@ def evaluate(markdown: str, case: dict) -> list[str]:
         failures.append("Incomplete formatting")
     for check in case["checks"]:
         if check["scope"] == "general":
-            content = general
+            candidates = general_notes
         else:
-            content = "\n".join(body for label, body in rows if re.search(check["scope"], label))
+            candidates = [body for label, body in rows if re.search(check["scope"], label)]
+        if len(candidates) < check.get("minimum_notes", 0):
+            failures.append(f"{check['name']}: missing distinct notes")
+        if check.get("same_note"):
+            if not any(
+                all(re.search(pattern, body, re.IGNORECASE | re.DOTALL)
+                    for pattern in check.get("contains", []))
+                and not any(re.search(pattern, body, re.IGNORECASE | re.DOTALL)
+                            for pattern in check.get("excludes", []))
+                for body in candidates
+            ):
+                failures.append(f"{check['name']}: no single note preserves the expected meaning")
+            continue
+        content = "\n".join(candidates)
         for pattern in check.get("contains", []):
             if not re.search(pattern, content, re.IGNORECASE | re.DOTALL):
                 failures.append(f"{check['name']}: missing {pattern}")

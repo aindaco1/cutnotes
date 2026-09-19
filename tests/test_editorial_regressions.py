@@ -96,6 +96,8 @@ class EditorialRegressionTests(unittest.TestCase):
 
         def generate(prompt, ids):
             calls.append(prompt)
+            if "the mouth is still" in prompt:
+                return [f.DraftNote("Mouth movement", "The mouth is still.", tuple(sorted(ids)))]
             return [f.DraftNote("Dialogue levels", "The dialogue is too quiet.", (sorted(ids)[-1],))]
 
         markdown = self.render(
@@ -121,7 +123,7 @@ class EditorialRegressionTests(unittest.TestCase):
             self.assertEqual(source.read_bytes(), original)
             self.assertFalse(output.exists())
 
-    def test_partial_rewrite_warns_and_does_not_dump_chatter(self):
+    def test_partial_rewrite_fails_without_disclosing_source(self):
         reporter = mock.Mock(spec=ProgressReporter)
 
         def generate(prompt, ids):
@@ -129,14 +131,43 @@ class EditorialRegressionTests(unittest.TestCase):
                 return []
             return [f.DraftNote("Dialogue", "The dialogue is quiet.", (sorted(ids)[0],))]
 
-        markdown = self.render(
-            "At five seconds, the dialogue is quiet. At twelve seconds, PRIVATE_BACKGROUND_CHATTER.",
-            generate, reporter,
-        )
-        self.assertIn("**00:12 — Formatting incomplete**", markdown)
-        self.assertNotIn("PRIVATE_BACKGROUND_CHATTER", markdown)
-        reporter.warning.assert_called()
-        self.assertNotIn("PRIVATE_BACKGROUND_CHATTER", str(reporter.warning.call_args))
+        with self.assertRaises(CutNotesError) as raised:
+            self.render(
+                "At five seconds, the dialogue is quiet. At twelve seconds, PRIVATE_BACKGROUND_CHATTER.",
+                generate, reporter,
+            )
+        self.assertEqual(raised.exception.code, "formatter_incomplete")
+        self.assertTrue(raised.exception.preserved.transcript)
+        self.assertNotIn("PRIVATE_BACKGROUND_CHATTER", str(raised.exception.payload()))
+
+    def test_second_issue_at_same_time_cannot_disappear_behind_first(self):
+        def generate(prompt, ids):
+            if "door slam" in prompt:
+                return []
+            return [f.DraftNote("Picture", "The picture is too dark.", tuple(sorted(ids)))]
+
+        with self.assertRaises(CutNotesError) as raised:
+            self.render("At fourteen seconds, the picture is too dark. "
+                        "At fourteen seconds, does the door slam land early?", generate)
+        self.assertEqual(raised.exception.code, "formatter_incomplete")
+
+    def test_partial_failure_preserves_source_and_prior_output(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source, output = (Path(temporary) / name for name in ("transcript.txt", "notes.md"))
+            source.write_text("At five seconds, the dialogue is quiet. At twelve seconds, the frame is dark.")
+            output.write_text("Earlier approved notes")
+            source_bytes, output_bytes = source.read_bytes(), output.read_bytes()
+            reporter = mock.Mock(spec=ProgressReporter)
+            with mock.patch.object(p, "_draft_with_apple", side_effect=[
+                [f.DraftNote("Dialogue", "The dialogue is quiet.", ("N0001",))], []
+            ]):
+                with self.assertRaises(CutNotesError) as raised:
+                    p.format_with_apple(engine="fake", transcript_path=source, output_path=output,
+                                        title="Synthetic", context=None, reporter=reporter)
+            self.assertEqual(raised.exception.code, "formatter_incomplete")
+            self.assertEqual(source.read_bytes(), source_bytes)
+            self.assertEqual(output.read_bytes(), output_bytes)
+            self.assertFalse(any(call.args[1] == 1.0 for call in reporter.progress.call_args_list))
 
     def test_long_single_timestamp_is_bounded_and_remains_one_moment(self):
         calls = []

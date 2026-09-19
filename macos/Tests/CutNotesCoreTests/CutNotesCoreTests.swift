@@ -51,6 +51,15 @@ import Testing
     #expect(result.paths.markdown == "/tmp/notes.md")
 }
 
+@Test func incompleteFormattingDecodesAsFailureWithPreservedArtifacts() throws {
+    let data = Data(#"{"schema_version":"cutnotes.error.v1","code":"formatter_incomplete","message":"Formatting is incomplete.","recovery":"Retry using the preserved transcript.","exit_code":6,"preserved":{"audio":true,"transcript":true}}"#.utf8)
+    let failure = try ContractDecoder.decode(CLIErrorPayload.self, from: data)
+    #expect(failure.code == "formatter_incomplete")
+    #expect(failure.preserved.audio)
+    #expect(failure.preserved.transcript)
+    #expect(CutNotesSupportState.failureCodes.contains(failure.code))
+}
+
 @Test func doctorContractDecodesCoreOwnedNativeLanguageNames() throws {
     let data = Data(#"{"schema_version":"cutnotes.doctor.v1","healthy":true,"default_workflow_ready":true,"cutnotes":"1.0.0","architecture":"arm64","ffmpeg":{"path":"/tmp/ffmpeg","version":"8.1.1"},"ffprobe":{"path":"/tmp/ffprobe","version":"8.1.1"},"local_engine":{"path":"/tmp/CutNotesLocal","version":"1.0.0","apple":{"state":"ready","reason":null}},"parakeet":{"id":"parakeet-tdt-0.6b-v3","state":"ready","detail":null,"path":"/tmp/model","bytes":1,"source":"test","revision":"test","license":"CC-BY-4.0","license_url":"https://example.com","languages":[{"code":"fr","name":"Français"},{"code":"uk","name":"Українська"}]},"apple_formatter":{"state":"ready","reason":null},"macwhisper":{"path":null,"version":null,"optional":true,"models":[]},"codex":{"path":null,"version":null,"optional":true,"models":null},"microphones":[]}"#.utf8)
     let doctor = try ContractDecoder.decode(DoctorPayload.self, from: data)

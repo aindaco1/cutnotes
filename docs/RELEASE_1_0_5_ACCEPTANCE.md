@@ -12,9 +12,9 @@ The 1.0.5 work fixes unselected MacWhisper CLI probes and deterministic formatti
 
 | Gate | Status |
 | --- | --- |
-| Python regressions | 71 passed locally |
-| Swift contracts/app support | 17 passed locally |
-| CI on macOS 26 and Xcode 27 | Check the current commit's [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks); both passed at `63c8e94` before this follow-up |
+| Python regressions | 73 passed locally after the incomplete-result follow-up |
+| Swift contracts/app support | 18 passed locally after the incomplete-result follow-up |
+| CI on macOS 26 and Xcode 27 | Check the current commit's [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks); both passed at `4287ed9` before this follow-up |
 | Local release build | Passed |
 | Developer ID candidate signing | Earlier candidate passed; subsequent source changes require rebuilding and re-signing; not notarized |
 | Real Parakeet transcription | Passed on the supplied recording during diagnosis |
@@ -52,6 +52,19 @@ this macOS 27 machine cannot establish the macOS 26 native result. The user conf
 that no macOS 26 Mac is available. Validate backward compatibility with the macOS
 26 CI build/contracts and the unchanged API availability/wire contract, recording
 the native-model testing limitation explicitly.
+
+The approved small-schema experiment produced nine responses in each of two native
+Apple runs. Both failed: qualifications disappeared, background speech remained,
+and observations changed meaning. The example-based variant also copied optionality
+into an unrelated note. These are private diagnostic prototypes, not shipping code.
+The user subsequently authorized benchmarking a separately downloaded local model
+as an explicit formatter choice. Cached Qwen models also failed content acceptance;
+that investigation does not establish release readiness or change the default provider.
+
+Detected partial failures now return `formatter_incomplete` and preserve the
+transcript and previous Markdown. A dropped timed passage cannot be hidden by
+another note at the same timestamp. General semantic coverage still requires the
+native acceptance gate; these checks do not claim to detect every omission.
 
 Local cleanup moved obsolete duplicate files, old output links and a superseded test build to a recoverable Trash folder with a restore manifest. The active SwiftPM cache, pinned media runtime, current candidate and diagnostic evidence remain available for development and testing. There were no stale merged branches to delete.
 

@@ -44,3 +44,35 @@ None.
         failures = evaluate(text, case)
         self.assertEqual(len(failures), 2)
         self.assertTrue(all("Later sound" in failure for failure in failures))
+
+    def test_one_timestamp_does_not_establish_two_distinct_notes(self):
+        case = {"transcript": "At fourteen seconds, the face is offset. At fourteen seconds, the sound is early.",
+                "checks": [{"name": "Separate issues", "scope": "^00:14$", "minimum_notes": 2}]}
+        text = """# Review
+## General feedback
+- Looks good.
+## Timestamped feedback
+| Video time | Feedback |
+| --- | --- |
+| **00:14** | The face is offset and the sound is early. |
+"""
+        self.assertIn("Separate issues: missing distinct notes", evaluate(text, case))
+        text = text.replace("The face is offset and the sound is early.", "The face is offset.")
+        text += "| **00:14** | The sound is early. |\n"
+        self.assertEqual(evaluate(text, case), [])
+
+    def test_qualification_must_be_in_the_note_it_qualifies(self):
+        case = {"transcript": "Overall, the sky is too bright, but it could be my display. The dialogue is quiet.",
+                "checks": [{"name": "Display uncertainty", "scope": "general", "same_note": True,
+                            "contains": ["sky", "bright", "could.{0,30}display"]}]}
+        text = """# Review
+## General feedback
+- The sky is too bright.
+- The dialogue is quiet, but it could be my display.
+## Timestamped feedback
+No timestamp-specific notes were identified.
+"""
+        self.assertTrue(evaluate(text, case))
+        text = text.replace("The sky is too bright.", "The sky is too bright, but it could be my display.")
+        text = text.replace("The dialogue is quiet, but it could be my display.", "The dialogue is quiet.")
+        self.assertEqual(evaluate(text, case), [])

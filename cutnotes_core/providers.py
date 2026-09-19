@@ -680,15 +680,6 @@ def _draft_batch_with_retries(
         raise
 
 
-def _fallback_timestamp_note(timecode: str, units: list[SourceUnit]) -> DraftNote:
-    """Mark incomplete synthesis without pretending a transcript dump is an edit note."""
-    return DraftNote(
-        "Formatting incomplete",
-        "An editorial note could not be generated for this moment. Review the preserved transcript.",
-        tuple(unit.id for unit in units),
-    )
-
-
 def _timecode_value(value: str) -> int:
     minutes, seconds = value.split(":", 1)
     return (int(minutes) * 60) + int(seconds)
@@ -851,6 +842,7 @@ def _render_drafted_document(
             passages.append([unit])
     batches = [batch for passage in passages for batch in _unit_batches(passage, batch_limit)]
     notes: list[DraftNote] = []
+    incomplete_parts: list[int] = []
     for index, batch in enumerate(batches, start=1):
         drafts = _draft_batch_with_retries(
             units=batch, context=context,
@@ -863,6 +855,7 @@ def _render_drafted_document(
             r"(?i)\b(?:that(?:'s| is)|this was|I mean)[^.!?]{0,45}\b(?:around|at)\s*\[", unit.text
         ) for time in unit.timecodes)
         last_note = max(drafts, key=lambda note: max(note.source_ids, default=""), default=None)
+        accepted_count = 0
         for draft in drafts:
             if draft.location == "auto":
                 if retrospective_times and draft is last_note:
@@ -897,9 +890,14 @@ def _render_drafted_document(
                 continue
             if note.approximate and not re.search(r"(?i)\b(?:around|roughly|near)\s*\[", evidence):
                 note = replace(note, approximate=False)
+            accepted_count += 1
             if not any(existing.body == note.body and note_timecodes(existing, by_id) == times
                        and existing.location == note.location for existing in notes):
                 notes.append(note)
+        # A different note at the same timestamp cannot stand in for this
+        # passage. Count valid duplicates before document-level deduplication.
+        if not accepted_count and any(unit.timecodes for unit in batch):
+            incomplete_parts.append(index)
         reporter.progress("formatting", index / len(batches) * 0.9,
                           f"Polished feedback part {index} of {len(batches)}")
 
@@ -914,13 +912,13 @@ def _render_drafted_document(
                      and note.location not in {"end", "beginning"}]
     timestamped_notes = [note for note in notes if note not in general_notes]
     covered_times = {time for note in timestamped_notes for time in note_timecodes(note, by_id)}
-    for unit in _timestamp_source_units(units):
-        missing = tuple(time for time in unit.timecodes if time not in covered_times)
-        if missing:
-            reporter.warning("formatting", f"Formatting is incomplete for {unit.id}; review the preserved transcript")
-            timestamped_notes.append(replace(_fallback_timestamp_note(missing[0], []),
-                                             location="timestamp", timecodes=missing))
-            covered_times.update(missing)
+    if incomplete_parts or allowed_times - covered_times:
+        raise CutNotesError(
+            "Formatting is incomplete: one or more video observations could not be rewritten.",
+            EXIT_FORMATTING, code="formatter_incomplete",
+            recovery="The transcript was preserved. Retry formatting or explicitly choose another provider.",
+            preserved=PreservedArtifacts(transcript=True),
+        )
     return render_editorial_draft(
         title=title, review_date=dt.date.today().strftime("%B %-d, %Y"),
         general_notes=_select_general_notes(general_notes),

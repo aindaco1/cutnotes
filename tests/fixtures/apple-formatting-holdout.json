@@ -1,0 +1,204 @@
+[
+  {
+    "name": "Late brake should move earlier",
+    "transcript": "At seventeen seconds, the bus brake squeal comes too late. Move it earlier so it starts as the wheel stops.",
+    "checks": [
+      {
+        "name": "Earlier brake",
+        "scope": "^00:17$",
+        "contains": [
+          "brake|squeal",
+          "earlier",
+          "wheel|stop"
+        ],
+        "excludes": [
+          "move.{0,30}later"
+        ],
+        "same_note": true
+      }
+    ],
+    "excludes": []
+  },
+  {
+    "name": "Qualify an improvement without abandoning it",
+    "transcript": "At twenty-three seconds, the silhouette is difficult to read. There may be limited room to fix it, but a clearer shape would help.",
+    "checks": [
+      {
+        "name": "Limited silhouette fix",
+        "scope": "^00:23$",
+        "contains": [
+          "silhouette|shape",
+          "clear|read",
+          "may|might|could",
+          "limit|little"
+        ],
+        "excludes": [],
+        "same_note": true
+      }
+    ],
+    "excludes": []
+  },
+  {
+    "name": "Matching vocabulary does not mean matching intent",
+    "transcript": "At thirteen seconds, leave the red light on. At twenty-one seconds, do not leave the red light on; it gives away the surprise.",
+    "checks": [
+      {
+        "name": "Keep first light",
+        "scope": "^00:13$",
+        "contains": [
+          "light",
+          "leave|keep"
+        ],
+        "excludes": [
+          "off|remove"
+        ],
+        "same_note": true
+      },
+      {
+        "name": "Remove second light",
+        "scope": "^00:21$",
+        "contains": [
+          "light",
+          "not|off|remove",
+          "surprise"
+        ],
+        "excludes": [],
+        "same_note": true
+      }
+    ],
+    "excludes": []
+  },
+  {
+    "name": "Personal sports conversation and a real sports sound note",
+    "transcript": "At eleven seconds, the racket sound precedes the ball contact. Delay the sound until contact. My sister played tennis last Sunday. Overall, the camera movement is lovely.",
+    "checks": [
+      {
+        "name": "Racket synchronization",
+        "scope": "^00:11$",
+        "contains": [
+          "racket|sound",
+          "delay|contact"
+        ],
+        "excludes": [],
+        "same_note": true
+      },
+      {
+        "name": "Camera praise",
+        "scope": "general",
+        "contains": [
+          "camera",
+          "lovely|good|great"
+        ],
+        "excludes": [],
+        "same_note": true
+      }
+    ],
+    "excludes": [
+      "sister",
+      "Sunday"
+    ]
+  },
+  {
+    "name": "Adjacent times remain one range",
+    "transcript": "At twelve, thirteen seconds, the prop vanishes while she lifts it. Keep it visible throughout that motion.",
+    "checks": [
+      {
+        "name": "Continuous prop",
+        "scope": "^00:12[\u2013-]00:13$",
+        "contains": [
+          "prop",
+          "vanish|visib",
+          "motion|lift|throughout"
+        ],
+        "excludes": [],
+        "same_note": true
+      }
+    ],
+    "excludes": []
+  },
+  {
+    "name": "Optional ending with two actions and a reason",
+    "transcript": "This is a bonus thought. If time allows, at the end desaturate the last frame and dissolve to black. It would make the ending feel quieter.",
+    "checks": [
+      {
+        "name": "Qualified ending",
+        "scope": "^End of video",
+        "contains": [
+          "optional|bonus|if.{0,30}time",
+          "desaturat",
+          "dissolv|fade",
+          "black",
+          "quiet"
+        ],
+        "excludes": [],
+        "same_note": true
+      }
+    ],
+    "excludes": []
+  },
+  {
+    "name": "A general caveat belongs with its own issue",
+    "transcript": "Overall, the dialogue sounds muffled, though my headphones could be responsible. One other thing, the grading is too warm.",
+    "checks": [
+      {
+        "name": "Headphone caveat",
+        "scope": "general",
+        "contains": [
+          "dialogue",
+          "muffl",
+          "headphone",
+          "could|may|might"
+        ],
+        "excludes": [],
+        "same_note": true
+      },
+      {
+        "name": "Warm grading",
+        "scope": "general",
+        "contains": [
+          "grad|color|colour",
+          "warm"
+        ],
+        "excludes": [],
+        "same_note": true
+      }
+    ],
+    "excludes": []
+  },
+  {
+    "name": "Small requested change and positive feedback at same time",
+    "transcript": "At twenty-six seconds, the blink is good. At twenty-six seconds, is the eyebrow too high? Lower it just a little; do not change the smile.",
+    "checks": [
+      {
+        "name": "Separate blink and eyebrow",
+        "scope": "^00:26$",
+        "contains": [],
+        "excludes": [],
+        "minimum_notes": 2
+      },
+      {
+        "name": "Blink praise",
+        "scope": "^00:26$",
+        "contains": [
+          "blink",
+          "good|well|keep"
+        ],
+        "excludes": [],
+        "same_note": true
+      },
+      {
+        "name": "Subtle eyebrow correction",
+        "scope": "^00:26$",
+        "contains": [
+          "eyebrow",
+          "lower",
+          "little|slight|subtle",
+          "not.{0,20}change.{0,20}smile|keep.{0,25}smile"
+        ],
+        "excludes": [],
+        "same_note": true
+      }
+    ],
+    "excludes": []
+  }
+]

@@ -37,7 +37,7 @@ For 1.0.0 there is no earlier Sparkle-enabled public version, so the real previo
 
 ## Formatting and optional-provider regressions
 
-The 1.0.5 tests cover mouth and facial-animation observations without keyword gating; generated source IDs used as titles; malformed and unknown grounding IDs; adjacent spoken ranges; conversational second markers; natural general-note transitions; opening conversation followed by actual feedback; bounded long single edit moments; and context-limit retries. Full formatting failure must preserve the source and return an error; partial failure must mark the affected timestamp and emit a bounded warning without copying unrelated speech into the output.
+The 1.0.5 tests cover mouth and facial-animation observations without keyword gating; generated source IDs used as titles; malformed and unknown grounding IDs; adjacent spoken ranges; conversational second markers; natural general-note transitions; opening conversation followed by actual feedback; bounded long single edit moments; and context-limit retries. Both full and detected partial formatting failure must preserve the source and prior output and return an error. A separate missing passage at a timestamp already covered by another note must also fail, without disclosing source text in errors.
 
 Apple request tests assert that session instructions exclude untrusted source/context
 and that temporary request files are removed afterward. The prompt file retains
@@ -69,6 +69,12 @@ feedback, praise, and unrelated conversation. Their checks accept paraphrases;
 also read the generated notes, since pattern checks cannot prove semantic fidelity.
 Private transcripts can use a separate local fixture file with `--fixtures`; do
 not commit private input or output.
+
+The development corpus contains 12 cases. Evaluate finalists separately against
+the eight cases in `tests/fixtures/apple-formatting-holdout.json`. Checks can
+require a minimum number of distinct notes and require a qualification to occur
+in the same note as the observation it qualifies. This prevents aggregate keyword
+matches from accepting misplaced caveats. Manual semantic review is still required.
 
 Run this native gate on macOS 26 and macOS 27 wherever a ready model is available.
 The user currently has no macOS 26 Mac available: record that native quality on

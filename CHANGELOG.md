@@ -5,12 +5,13 @@
 - Stop setup checks from launching MacWhisper through version and model queries. Invoke its CLI only when MacWhisper is selected for transcription.
 - Remove the keyword gate that discarded animation and facial-position feedback, repair unusable generated titles, and process feedback throughout the transcript even when it starts with unrelated speech.
 - Recognize conversational second markers and adjacent spoken ranges, and separate natural general-feedback transitions from timestamped notes.
-- Separate Apple model instructions from source material, bound long edit moments, and replace scene-specific canned notes and transcript dumps with explicit incomplete-formatting notices. Return an error when no usable notes are generated.
+- Separate Apple model instructions from source material and bound long edit moments. Return an error when no usable notes are generated or a timed passage remains incomplete; preserve the source and prior notes instead of writing canned advice, transcript dumps or placeholder notes.
 - Add regression coverage for provider isolation, source preservation, spoken timestamps, summary selection, model-request separation, malformed drafts, and formatting failures.
 - Preserve short general feedback and distinct notes with similar wording; deduplicate only repeated text.
 - Preserve end-of-video placement when the model cites an explanatory sentence and the preceding sentence supplies its location.
 - Keep complete prompts compatible with older draft-v1 helpers while newer helpers separate instructions from source data without duplicating them in the model request.
 - Add a real Apple formatting acceptance command with synthetic meaning, qualification, timing and background-conversation checks for macOS 26 and 27. The combined release remains held until native acceptance passes.
+- Expand native acceptance to 12 development cases and eight held-out cases, including separate issues at one timestamp and qualifications attached to the correct observation.
 
 ## 1.0.4 — 2026-09-15
 

@@ -244,15 +244,6 @@ class CutNotesUnitTests(unittest.TestCase):
         self.assertEqual(len(units), 1)
         self.assertEqual(units[0].timecodes, ("00:12", "00:24"))
 
-    def test_unrewritten_duration_edits_are_marked_incomplete(self) -> None:
-        for instruction in ("shorten the pause", "lengthen the pause", "trim the pause"):
-            with self.subTest(instruction=instruction):
-                units = cutnotes.source_units(f"Timestamp 12 seconds, {instruction}.")
-                note = providers_module._fallback_timestamp_note("00:12", units)
-                self.assertEqual(note.title, "Formatting incomplete")
-                self.assertIn("preserved transcript", note.body)
-                self.assertNotIn(instruction, note.body)
-
     def test_editorial_draft_renders_concise_chronological_handoff(self) -> None:
         units = cutnotes.source_units(
             "General note. The opening is too short. At 00:40, smooth the music edit. "
@@ -301,14 +292,6 @@ class CutNotesUnitTests(unittest.TestCase):
             {"N0003"},
         )
         self.assertEqual(notes[0].body, "The opening is too short.")
-
-    def test_timestamp_fallback_does_not_invent_scene_specific_advice(self) -> None:
-        unit = cutnotes.SourceUnit("T0001", "The song edit is jagged. PRIVATE_CHATTER", ("00:31",))
-        note = providers_module._fallback_timestamp_note("00:31", [unit])
-        self.assertEqual(note.title, "Formatting incomplete")
-        self.assertEqual(note.source_ids, ("T0001",))
-        self.assertNotIn("PRIVATE_CHATTER", note.body)
-        self.assertNotIn("Smooth", note.body)
 
     def test_general_dialogue_and_structure_notes_survive_final_filter(self) -> None:
         for instruction in (
