@@ -244,17 +244,14 @@ class CutNotesUnitTests(unittest.TestCase):
         self.assertEqual(len(units), 1)
         self.assertEqual(units[0].timecodes, ("00:12", "00:24"))
 
-    def test_duration_edits_are_retained_when_apple_cannot_rewrite_them(self) -> None:
-        for instruction in (
-            "shorten the pause before the door opens",
-            "lengthen the pause before the door opens",
-            "trim the pause before the door opens",
-        ):
+    def test_unrewritten_duration_edits_are_marked_incomplete(self) -> None:
+        for instruction in ("shorten the pause", "lengthen the pause", "trim the pause"):
             with self.subTest(instruction=instruction):
                 units = cutnotes.source_units(f"Timestamp 12 seconds, {instruction}.")
                 note = providers_module._fallback_timestamp_note("00:12", units)
-                self.assertEqual(note.title, "Editorial note")
-                self.assertEqual(note.body, instruction)
+                self.assertEqual(note.title, "Formatting incomplete")
+                self.assertIn("preserved transcript", note.body)
+                self.assertNotIn(instruction, note.body)
 
     def test_editorial_draft_renders_concise_chronological_handoff(self) -> None:
         units = cutnotes.source_units(
@@ -288,7 +285,7 @@ class CutNotesUnitTests(unittest.TestCase):
         self.assertEqual(cutnotes.validate_markdown(markdown), [])
         self.assertLess(markdown.index("00:37"), markdown.index("00:40"))
         self.assertNotIn("## Overall", markdown)
-        self.assertIn("## Feedback Summary", markdown)
+        self.assertIn("## General feedback", markdown)
 
     def test_draft_payload_keeps_grounding_ids_out_of_reader_prose(self) -> None:
         notes = cutnotes.draft_notes_from_payload(
@@ -305,36 +302,13 @@ class CutNotesUnitTests(unittest.TestCase):
         )
         self.assertEqual(notes[0].body, "The opening is too short.")
 
-    def test_grounded_timestamp_fallbacks_preserve_clear_editorial_meaning(self) -> None:
-        cases = (
-            (
-                "00:31",
-                "The song edit is noticeable and too jagged.",
-                "Smooth the song edit",
-            ),
-            (
-                "00:37",
-                "Maybe crop so the bra lands closer to the center of the frame.",
-                "Improve the framing of the falling clothing",
-            ),
-            (
-                "01:23",
-                "Maybe cut so we don't see her face looking into camera, but the bra pull still reads; a swoosh could help the turn.",
-                "Avoid the look into camera",
-            ),
-            (
-                "01:26",
-                "Unintelligible background lyrics.",
-                "No clear actionable note captured",
-            ),
-        )
-        for index, (timecode, text, expected_title) in enumerate(cases, start=1):
-            with self.subTest(timecode):
-                note = providers_module._fallback_timestamp_note(
-                    timecode,
-                    [cutnotes.SourceUnit(f"T{index:04d}", text, (timecode,))],
-                )
-                self.assertEqual(note.title, expected_title)
+    def test_timestamp_fallback_does_not_invent_scene_specific_advice(self) -> None:
+        unit = cutnotes.SourceUnit("T0001", "The song edit is jagged. PRIVATE_CHATTER", ("00:31",))
+        note = providers_module._fallback_timestamp_note("00:31", [unit])
+        self.assertEqual(note.title, "Formatting incomplete")
+        self.assertEqual(note.source_ids, ("T0001",))
+        self.assertNotIn("PRIVATE_CHATTER", note.body)
+        self.assertNotIn("Smooth", note.body)
 
     def test_general_dialogue_and_structure_notes_survive_final_filter(self) -> None:
         for instruction in (
@@ -708,7 +682,7 @@ output.write_text(json.dumps(draft), encoding="utf-8")
             self.assertEqual(result.returncode, 0, result.stderr)
             payload = json.loads(result.stdout)
             self.assertEqual(Path(payload["markdown"]), output.resolve())
-            self.assertIn("**00:05 — Shorten the shot**", output.read_text(encoding="utf-8"))
+            self.assertIn("**00:05**", output.read_text(encoding="utf-8"))
             self.assertIn("Shorten the shot.", output.read_text(encoding="utf-8"))
 
     def test_apple_format_batches_long_transcript_for_local_context_window(self) -> None:
@@ -751,10 +725,8 @@ if len(prompt) > 2_500:
     )
     raise SystemExit(1)
 output = pathlib.Path(args[args.index("--output") + 1])
-source_ids = []
-for token in prompt.replace(":", " ").replace(",", " ").split():
-    if len(token) == 5 and token.startswith("N") and token[1:].isdigit() and token not in source_ids:
-        source_ids.append(token)
+import re
+source_ids = list(dict.fromkeys(re.findall(r"obs_[a-z]+", prompt)))
 output.write_text(json.dumps({
     "schema_version": "cutnotes.local.draft.v1",
     "draft": {
@@ -762,6 +734,7 @@ output.write_text(json.dumps({
             "title": "Preserve the requested change",
             "body": "Preserve the distinct requested editorial change.",
             "source_ids": [source_ids[0]],
+            "location": "general", "timecodes": [], "approximate": False,
         }] if source_ids else []),
     },
 }), encoding="utf-8")
@@ -792,7 +765,7 @@ output.write_text(json.dumps({
 
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue(output.is_file())
-            self.assertIn("## Feedback Summary", output.read_text(encoding="utf-8"))
+            self.assertIn("## General feedback", output.read_text(encoding="utf-8"))
             self.assertIn("Preserve the distinct requested editorial change.", output.read_text(encoding="utf-8"))
             self.assertIn("SENSITIVE_MARKER", transcript.read_text(encoding="utf-8"))
 

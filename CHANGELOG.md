@@ -1,5 +1,13 @@
 # Changelog
 
+## 1.0.5 — Unreleased
+
+- Stop setup checks from launching MacWhisper through version and model queries. Invoke its CLI only when MacWhisper is selected for transcription.
+- Remove the keyword gate that discarded animation and facial-position feedback, repair unusable generated titles, and process feedback throughout the transcript even when it starts with unrelated speech.
+- Recognize conversational second markers and adjacent spoken ranges, and separate natural general-feedback transitions from timestamped notes.
+- Separate Apple model instructions from source material, bound long edit moments, and replace scene-specific canned notes and transcript dumps with explicit incomplete-formatting notices. Return an error when no usable notes are generated.
+- Add regression coverage for provider isolation, source preservation, spoken timestamps, summary selection, model-request separation, malformed drafts, and formatting failures.
+
 ## 1.0.4 — 2026-09-15
 
 - Retain grounded general feedback about dialogue, beginnings, and endings through the final editorial-note filter.

@@ -31,6 +31,16 @@ Release acceptance is deliberately split into separate claims:
 
 The recording gate includes pause/resume with more than one pause, finish while paused, cancel while paused, and verification that the joined WAV contains no paused interval. The formatting gate includes a transcript large enough to require multiple Apple Foundation Models requests; no individual request may consume the full model context window.
 
-Formatting fixtures must cover colon, compact-digit, explicit minute/second, and spoken shorthand timecodes; out-of-order source mentions; adjacent ranges; orphaned markers; false starts; background lyrics; and guardrail rejection. Acceptance requires a concise general summary, one chronological note per distinct edit moment, no source IDs in reader-facing prose, no cross-time merging, no reversed negation, and exact preservation of the source transcript.
+Formatting fixtures must cover colon, compact-digit, explicit minute/second, and spoken shorthand timecodes; out-of-order source mentions; adjacent ranges; orphaned markers; false starts; background lyrics; and guardrail rejection. Acceptance requires a concise general summary, chronological notes with distinct issues at the same moment kept separate, no source IDs in reader-facing prose, no cross-time merging, no reversed negation, and exact preservation of the source transcript.
 
 For 1.0.0 there is no earlier Sparkle-enabled public version, so the real previous-version update hop becomes a mandatory 1.0.1 release gate. Feed generation and archive signatures are still required for 1.0.0.
+
+## Formatting and optional-provider regressions
+
+The 1.0.5 tests cover mouth and facial-animation observations without keyword gating; generated source IDs used as titles; malformed and unknown grounding IDs; adjacent spoken ranges; conversational second markers; natural general-note transitions; opening conversation followed by actual feedback; bounded long single edit moments; and context-limit retries. Full formatting failure must preserve the source and return an error; partial failure must mark the affected timestamp and emit a bounded warning without copying unrelated speech into the output.
+
+Apple request tests assert that task instructions and untrusted source/context travel in separate files and that both are removed afterward. Run native inference separately: mocked contract tests do not establish model output quality. Inspect the final summary and every timestamped body for instruction echoes, unsupported meaning changes, raw transcript dumps, omitted edits, and incorrectly attached general feedback.
+
+Provider-isolation tests prohibit executing MacWhisper during setup and the Parakeet workflow, and verify that explicit MacWhisper selection invokes only its CLI transcription command. A detected CLI with null version and an empty model list must continue to decode in Swift.
+
+The reference handoff test covers two general notes, adjacent lip-sync timestamps, a qualified reaction observation, separate face/impact notes at the same time, a retrospective approximate marker, and an optional relative end note. Native sample acceptance is required in addition to this mocked controller test.
