@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 import datetime as dt
 import json
 import os
@@ -24,6 +25,7 @@ from .contracts import (
 )
 from .filesystem import write_json
 from .formatting import (
+    BRACKETED_TIMECODE,
     DraftNote,
     SourceUnit,
     draft_notes_from_payload,
@@ -32,7 +34,6 @@ from .formatting import (
     parse_markdown_envelope,
     render_editorial_draft,
     source_units,
-    timestamp_draft_prompt,
     validate_timecodes,
     validate_markdown,
 )
@@ -329,13 +330,19 @@ def _generate_with_apple(
     mode: str,
     schema_version: str,
     payload_key: str,
+    instructions: str | None = None,
 ) -> object:
     work_directory.mkdir(parents=True, exist_ok=True)
     token = uuid.uuid4().hex
     prompt_path = work_directory / f".cutnotes-{mode}-prompt-{token}.txt"
     response_path = work_directory / f".cutnotes-{mode}-response-{token}.json"
+    instructions_path = work_directory / f".cutnotes-{mode}-instructions-{token}.txt"
     prompt_path.write_text(prompt, encoding="utf-8")
     try:
+        instruction_arguments: list[str] = []
+        if instructions is not None:
+            instructions_path.write_text(instructions, encoding="utf-8")
+            instruction_arguments = ["--instructions", str(instructions_path)]
         try:
             _run_checked(
                 [
@@ -347,6 +354,7 @@ def _generate_with_apple(
                     str(response_path),
                     "--mode",
                     mode,
+                    *instruction_arguments,
                 ],
                 failure="Apple on-device classification failed",
                 code="apple_formatting_failed",
@@ -410,6 +418,7 @@ def _generate_with_apple(
     finally:
         prompt_path.unlink(missing_ok=True)
         response_path.unlink(missing_ok=True)
+        instructions_path.unlink(missing_ok=True)
 
 
 def _draft_with_apple(
@@ -419,16 +428,34 @@ def _draft_with_apple(
     allowed_ids: set[str],
     work_directory: Path,
 ) -> list[DraftNote]:
+    # Numeric observation labels are easily mistaken for video timestamps by the
+    # on-device model. Use alphabetic request-local aliases on this boundary.
+    def alphabetic(index: int) -> str:
+        result = ""
+        while index >= 0:
+            result = chr(97 + index % 26) + result
+            index = index // 26 - 1
+        return "obs_" + result
+
+    aliases = {source_id: alphabetic(index) for index, source_id in enumerate(sorted(allowed_ids))}
+    reverse_aliases = {alias: source_id for source_id, alias in aliases.items()}
+    prompt = re.sub(r"\b[NT]\d{4}\b", lambda match: aliases.get(match.group(), match.group()), prompt)
+    instructions, marker, source = prompt.partition("<source-observations>")
+    if not marker:
+        raise ValueError("Editorial draft request is missing source observations")
     payload = _generate_with_apple(
         engine=engine,
-        prompt=prompt,
+        prompt=marker + source,
+        instructions=instructions.strip(),
         work_directory=work_directory,
         mode="draft",
         schema_version="cutnotes.local.draft.v1",
         payload_key="draft",
     )
-    notes = draft_notes_from_payload(payload, allowed_ids)
-    if not isinstance(payload, dict):
+    if not isinstance(payload, dict) or not isinstance(payload.get("notes"), list) or any(
+        not isinstance(note, dict) or not {"body", "title", "source_ids"} <= note.keys()
+        for note in payload.get("notes", [])
+    ):
         raise CutNotesError(
             "Apple on-device formatting returned an unreadable editorial draft.",
             EXIT_FORMATTING,
@@ -436,7 +463,14 @@ def _draft_with_apple(
             recovery="Retry or explicitly choose Codex; the transcript was preserved.",
             preserved=PreservedArtifacts(transcript=True),
         )
-    return notes
+    for note in payload["notes"]:
+        for field in ("title", "body"):
+            if isinstance(note.get(field), str):
+                note[field] = re.sub(r"\bobs_[a-z]+\b", lambda match: reverse_aliases.get(match.group(), ""), note[field])
+        if isinstance(note.get("source_ids"), list):
+            note["source_ids"] = [reverse_aliases.get(source_id, source_id) if isinstance(source_id, str)
+                                  else source_id for source_id in note["source_ids"]]
+    return draft_notes_from_payload(payload, allowed_ids)
 
 
 def _structured_with_codex(
@@ -555,12 +589,27 @@ def _draft_with_codex(
     return draft_notes_from_payload(payload, allowed_ids)
 
 
+def _split_source_unit(unit: SourceUnit, limit: int) -> list[SourceUnit]:
+    chunks: list[SourceUnit] = []
+    remaining = unit.text.strip()
+    while len(remaining) > limit:
+        boundary = remaining.rfind(" ", 0, limit + 1)
+        if boundary <= 0:
+            boundary = limit
+        chunks.append(SourceUnit(unit.id, remaining[:boundary], unit.timecodes))
+        remaining = remaining[boundary:].lstrip()
+    if remaining:
+        chunks.append(SourceUnit(unit.id, remaining, unit.timecodes))
+    return chunks
+
+
 def _unit_batches(units: list[SourceUnit], limit: int = 16_000) -> list[list[SourceUnit]]:
     batches: list[list[SourceUnit]] = []
     current: list[SourceUnit] = []
     length = 0
-    for unit in units:
-        size = len(unit.id) + len(unit.text) + 4
+    for unit in (chunk for source in units for chunk in _split_source_unit(source, max(100, limit - 80))):
+        # Account for IDs repeated in the instruction and source lists, plus times.
+        size = 2 * len(unit.id) + len(unit.text) + sum(len(t) + 3 for t in unit.timecodes) + 64
         if current and length + size > limit:
             batches.append(current)
             current = []
@@ -572,16 +621,9 @@ def _unit_batches(units: list[SourceUnit], limit: int = 16_000) -> list[list[Sou
     return batches
 
 
-APPLE_BATCH_SOURCE_CHARACTER_LIMIT = 2_400
+APPLE_BATCH_SOURCE_CHARACTER_LIMIT = 4_800
 
 DraftGenerator = Callable[[str, set[str]], list[DraftNote]]
-
-EDITORIAL_LANGUAGE = re.compile(
-    r"(?i)\b(cut|shot|edit|scene|sequence|audio|music|sound|crop|frame|"
-    r"reaction|pacing|continuity|opening|beginning|ending|dialogue|strong|works?|better|worse|long|short|"
-    r"add|remove|change|preserve|trim|shorten|lengthen|"
-    r"obvious|beat|camera|transition|outro)\b"
-)
 
 
 def _draft_batch_with_retries(
@@ -616,6 +658,15 @@ def _draft_batch_with_retries(
                 generate=generate,
                 reporter=reporter,
             )
+        if len(units[0].text) > 200:
+            return [
+                note
+                for fragment in _split_source_unit(units[0], len(units[0].text) // 2)
+                for note in _draft_batch_with_retries(
+                    units=[fragment], context=context, purpose=purpose,
+                    generate=generate, reporter=reporter,
+                )
+            ]
         if error.code == "apple_guardrail":
             reporter.warning(
                 "formatting",
@@ -626,132 +677,17 @@ def _draft_batch_with_retries(
 
 
 def _fallback_timestamp_note(timecode: str, units: list[SourceUnit]) -> DraftNote:
-    source_ids = tuple(unit.id for unit in units)
-    cleaned: list[str] = []
-    for unit in units:
-        text = re.sub(r"\[\d{2,3}:\d{2}(?:[–-]\d{2,3}:\d{2})?\]", "", unit.text)
-        text = " ".join(text.split()).strip(" ,.-")
-        text = re.sub(
-            r"(?i)^(?:(?:okay|yeah|um|uh|just|at)\b[\s,]*)+",
-            "",
-            text,
-        ).strip(" ,.-")
-        text = re.sub(r"\.{2,}", ".", text)
-        if text and text not in cleaned:
-            cleaned.append(text)
-    body = " ".join(cleaned)[:1_200].strip()
-    lowered = body.casefold()
-    if not body or not EDITORIAL_LANGUAGE.search(body):
-        return DraftNote(
-            "No clear actionable note captured",
-            "The transcript includes this timestamp, but the surrounding speech is not clear enough to identify a specific edit.",
-            source_ids,
-        )
-    if "song edit" in lowered and "jagged" in lowered:
-        return DraftNote(
-            "Smooth the song edit",
-            "The song edit is noticeable and feels too jagged. Smooth the transition so the cut is effectively invisible.",
-            source_ids,
-        )
-    if "audio edit" in lowered and ("weird" in lowered or "awkward" in lowered):
-        return DraftNote(
-            "Smooth the audio edit",
-            "The audio edit is noticeable and feels awkward. Make it land cleanly on the rhythm without cutting off a lyric.",
-            source_ids,
-        )
-    if (
-        ("bra" in lowered or "panties" in lowered)
-        and "center" in lowered
-        and "frame" in lowered
-    ):
-        return DraftNote(
-            "Improve the framing of the falling clothing",
-            "A shot where the bra or panties lands closer to the center of the frame would read better. Cropping the existing shot may help.",
-            source_ids,
-        )
-    if (
-        ("quick cuts" in lowered or "two cuts" in lowered)
-        and ("standing up" in lowered or "stood up" in lowered)
-    ):
-        return DraftNote(
-            "Add the missing standing position",
-            "The quick sequence jumps from lying flat to crouching without clearly showing the character standing. Add the standing position from the original shot so the progression better motivates the next cut.",
-            source_ids,
-        )
-    if "overlay" in lowered and "noodle" in lowered and "short" in lowered:
-        return DraftNote(
-            "Preserve the stronger bathroom sequence",
-            "Keep the noodle overlay, but let this strong section run longer and sell the panic. Favor the previous bathroom-scene iteration over the newer choppier changes.",
-            source_ids,
-        )
-    if "running to the bathroom" in lowered or "runs to the bathroom" in lowered:
-        return DraftNote(
-            "Clarify why he runs to the bathroom",
-            "The cut does not clearly communicate the scripted reason for his sudden exit. Available reactions, closer crops, and possibly a sound effect could help sell the realization and motivate the run.",
-            source_ids,
-        )
-    if "noodle shot" in lowered and "fumbling" in lowered:
-        return DraftNote(
-            "Add a transition before the noodle shot",
-            "Add another shot of him fumbling before the noodle shot to create a cleaner transition. Let the music cut land where the song becomes fully silent so the beat feels rhythmic and intentional.",
-            source_ids,
-        )
-    if "dubbed" in lowered and "insert" in lowered:
-        return DraftNote(
-            "Hide the insert or dub more precisely",
-            "The added reaction improves the scene, but the tail end makes the insert or dubbed audio obvious. Tighten the cut and return to the other material as she begins speaking.",
-            source_ids,
-        )
-    if "continuity" in lowered and "bra" in lowered:
-        return DraftNote(
-            "Fix the wardrobe continuity error",
-            "The final shot is funny, but the visible bra creates a continuity error. The shot may need to be removed; masking it is only a tentative option, and the speaker raised ethical concerns about that alteration.",
-            source_ids,
-        )
-    if "condom sequence" in lowered and re.search(r"(?i)\b(?:better|great)\b", body):
-        return DraftNote(
-            "Keep the improved condom sequence",
-            "The condom sequence is much stronger in this cut and is working well.",
-            source_ids,
-        )
-    if (
-        len(body.split()) < 30
-        and re.search(r"(?i)\b(?:so much better|works? well|great)\b", body)
-    ):
-        return DraftNote("Keep the improved sequence", body, source_ids)
-    if (
-        re.search(r"(?i)\b(?:don't|do not|not)\b.{0,45}\b(?:face|camera)\b", body)
-        and re.search(r"(?i)\b(?:bra|turn|swoosh)\b", body)
-    ):
-        return DraftNote(
-            "Avoid the look into camera",
-            "Cut around this moment so the bra-pulling action still reads without showing her looking into the camera. A light swoosh could help sell the turn.",
-            source_ids,
-        )
-    if re.search(r"(?i)\btoo obvious\b", body) and re.search(r"(?i)\bbeat\b", body):
-        return DraftNote(
-            "Refine the edit",
-            "Another edit around this moment is too obvious and falls awkwardly against the beat.",
-            source_ids,
-        )
-    return DraftNote("Editorial note", body, source_ids)
+    """Mark incomplete synthesis without pretending a transcript dump is an edit note."""
+    return DraftNote(
+        "Formatting incomplete",
+        "An editorial note could not be generated for this moment. Review the preserved transcript.",
+        tuple(unit.id for unit in units),
+    )
 
 
 def _timecode_value(value: str) -> int:
     minutes, seconds = value.split(":", 1)
     return (int(minutes) * 60) + int(seconds)
-
-
-def _resolved_general_units(units: list[SourceUnit]) -> list[SourceUnit]:
-    resolved: list[SourceUnit] = []
-    correction = re.compile(r"(?i)^(?:or\s+)?(?:i(?:'|’)m\s+)?sorry[.,!\s]*$")
-    for unit in (item for item in units if not item.timecodes):
-        if correction.fullmatch(unit.text):
-            if resolved:
-                resolved.pop()
-            continue
-        resolved.append(unit)
-    return resolved
 
 
 def _timestamp_source_units(units: list[SourceUnit]) -> list[SourceUnit]:
@@ -806,43 +742,7 @@ def _timestamp_source_units(units: list[SourceUnit]) -> list[SourceUnit]:
     return sources
 
 
-def _coalesce_timestamp_notes(
-    notes: list[DraftNote],
-    units_by_id: dict[str, SourceUnit],
-) -> list[DraftNote]:
-    grouped: dict[tuple[str, ...], list[DraftNote]] = {}
-    for note in notes:
-        timecodes = note_timecodes(note, units_by_id)
-        if not timecodes:
-            continue
-        if len(timecodes) > 2 or any(
-            _timecode_value(current) - _timecode_value(previous) > 2
-            for previous, current in zip(timecodes, timecodes[1:])
-        ):
-            continue
-        grouped.setdefault(timecodes, []).append(note)
-
-    coalesced: list[DraftNote] = []
-    for timecodes, matching in grouped.items():
-        bodies: list[str] = []
-        source_ids: list[str] = []
-        for note in matching:
-            if note.body not in bodies:
-                bodies.append(note.body)
-            for source_id in note.source_ids:
-                if source_id not in source_ids:
-                    source_ids.append(source_id)
-        coalesced.append(
-            DraftNote(
-                matching[0].title,
-                " ".join(bodies),
-                tuple(source_ids),
-            )
-        )
-    return coalesced
-
-
-def _select_general_notes(notes: list[DraftNote], limit: int = 10) -> list[DraftNote]:
+def _select_general_notes(notes: list[DraftNote]) -> list[DraftNote]:
     stopwords = {
         "a", "an", "and", "as", "at", "be", "by", "for", "from", "in", "is",
         "it", "of", "on", "or", "that", "the", "this", "to", "with",
@@ -869,22 +769,7 @@ def _select_general_notes(notes: list[DraftNote], limit: int = 10) -> list[Draft
         selected.append(note)
         selected_terms.append(current)
 
-    if len(selected) <= limit:
-        return selected
-    priority = re.compile(
-        r"(?i)\b(opening|song|audio|bathroom|doodle|pacing|outro|shorter|"
-        r"another round|send off|sound)\b"
-    )
-    ranked = sorted(
-        enumerate(selected),
-        key=lambda item: (
-            -len(priority.findall(item[1].body)),
-            -min(len(item[1].body.split()), 30),
-            item[0],
-        ),
-    )[:limit]
-    keep = {index for index, _ in ranked}
-    return [note for index, note in enumerate(selected) if index in keep]
+    return selected
 
 
 def _sanitize_grounded_note(
@@ -897,26 +782,36 @@ def _sanitize_grounded_note(
         if source_id in units_by_id
     ).casefold()
     body = note.body
-    if not EDITORIAL_LANGUAGE.search(body):
+    if any(tag in body.casefold() for tag in ("<context>", "<source", "</source", "spelling context:")):
         return None
-    critical_terms = (
-        "face", "bra", "panties", "song", "bathroom", "condom", "dubbing",
-        "dubbed", "reaction", "crop", "standing", "masking", "continuity",
-    )
-    if any(term in body.casefold() and term not in source for term in critical_terms):
+    # IDs establish provenance, but do not by themselves prevent an unrelated
+    # paraphrase. Check vocabulary overlap without requiring any editorial keywords.
+    stopwords = {
+        "a", "an", "and", "are", "as", "at", "be", "been", "but", "by", "can",
+        "could", "did", "do", "does", "for", "from", "had", "has", "have", "he",
+        "her", "here", "him", "his", "i", "if", "in", "is", "it", "its", "like",
+        "may", "might", "my", "of", "on", "or", "our", "s", "she", "should",
+        "so", "some", "t", "that", "the", "their", "them", "there", "these", "they",
+        "this", "those", "to", "was", "we", "were", "what", "when", "which",
+        "while", "who", "will", "with", "would", "you", "your",
+    }
+
+    def content_words(text: str) -> set[str]:
+        words = re.findall(r"[a-z]+", text.casefold())
+        return {
+            re.sub(r"(?:ing|ed|es|s)$", "", word).rstrip("e")
+            for word in words if word not in stopwords and len(word) > 1
+        }
+
+    source_words, body_words = content_words(source), content_words(body)
+    if len(body_words) >= 3 and len(body_words & source_words) / len(body_words) < 0.3:
         return None
-    source_requests_change = re.search(
-        r"(?i)\b(?:add|change|clarify|could|cut|fix|improve|longer|maybe|need|"
-        r"remove|replace|shorter|should|smooth|suggest|tighten|try|want)\b",
-        source,
-    )
-    body_requests_change = re.search(
-        r"(?i)\b(?:add|change|clarify|could|cut|enhance|fix|improve|introduce|"
-        r"need|remove|replace|should|suggest|tighten|try)\b",
-        body,
-    )
-    if body_requests_change and not source_requests_change:
-        return None
+    for problem, reversal in (("early", "earlier"), ("late", "later")):
+        if re.search(rf"\b(?:too|little|slightly) {problem}\b", source) and re.search(
+            rf"\b(?:move|shift|place|time|timed|hit|play|start|land)\b[^.!?]{{0,60}}\b{reversal}\b",
+            body, re.IGNORECASE,
+        ):
+            return None
     unsupported_advice = (
         "audience", "engaging", "hook", "introduction", "main theme", "narrative",
     )
@@ -927,27 +822,12 @@ def _sanitize_grounded_note(
         and re.search(r"(?i)\b(?:ensure|make sure|keep).{0,35}\bface.{0,20}\bvisible", body)
     ):
         return None
-    if len(source.split()) > 20 and len(body.split()) < 6:
-        return None
     if "ethic" in source and "ethic" not in body.casefold():
         return None
 
-    kept: list[str] = []
-    generic_opening = re.compile(
-        r"(?i)^(?:this (?:will|would|can)|focus on|ensure it|address (?:this|these))\b"
-    )
-    for sentence in re.split(r"(?<=[.!?])\s+", body):
-        if generic_opening.search(sentence):
-            continue
-        sentence = re.sub(
-            r"(?i)\s+(?:to|for)\s+(?:enhance|improve|maintain|provide|build|ensure)\b"
-            r"[^.!?]*([.!?])$",
-            r"\1",
-            sentence,
-        )
-        kept.append(sentence)
-    cleaned = " ".join(kept).strip()
-    return DraftNote(note.title, cleaned, note.source_ids) if cleaned else None
+    # Grounded consequences and qualifications are part of the feedback too;
+    # do not erase sentences merely because they start with "This would".
+    return replace(note, body=body.strip()) if body.strip() else None
 
 
 def _render_drafted_document(
@@ -968,89 +848,88 @@ def _render_drafted_document(
             recovery="Choose a non-empty UTF-8 transcript.",
         )
 
-    general_source_units = _resolved_general_units(units) or units
-    summary_batches = _unit_batches(general_source_units, batch_limit)
-    general_notes: list[DraftNote] = []
-    for index, batch in enumerate(summary_batches, start=1):
-        general_notes.extend(
-            _draft_batch_with_retries(
-                units=batch,
-                context=context,
-                purpose=(
-                    "Extract a few high-level general notes or recurring themes. Do not turn "
-                    "individual timecoded moments into a chronological list."
-                ),
-                generate=generate,
-                reporter=reporter,
-            )
-        )
-        reporter.progress(
-            "formatting",
-            (index / len(summary_batches)) * 0.4,
-            f"Summarized transcript part {index} of {len(summary_batches)}",
-        )
-
-    general_units_by_id = {unit.id: unit for unit in general_source_units}
-    general_notes = [
-        sanitized
-        for note in general_notes
-        if (sanitized := _sanitize_grounded_note(note, general_units_by_id)) is not None
-    ]
-    general_notes = _select_general_notes(general_notes)
-
-    reporter.progress("formatting", 0.5, "Polished general feedback")
-
-    timestamp_units = _timestamp_source_units(units)
-    timestamped_notes: list[DraftNote] = []
-    timestamp_batches = [[unit] for unit in timestamp_units]
-    for index, batch in enumerate(timestamp_batches, start=1):
-        unit = batch[0]
-        deterministic = _fallback_timestamp_note(unit.timecodes[0], batch)
-        if deterministic.title != "Editorial note":
-            timestamped_notes.append(deterministic)
-        elif EDITORIAL_LANGUAGE.search(unit.text):
-            try:
-                timestamped_notes.extend(
-                    generate(timestamp_draft_prompt(unit, context), {unit.id})
-                )
-            except CutNotesError as error:
-                if error.code not in {"apple_context_window", "apple_guardrail"}:
-                    raise
-                if error.code == "apple_guardrail":
-                    reporter.warning(
-                        "formatting",
-                        f"Apple skipped rewriting {unit.id}; the source transcript remains preserved",
-                    )
+    by_id = {unit.id: unit for unit in units}
+    allowed_times = {time for unit in units for time in unit.timecodes}
+    # Keep a video moment together and separate it from other moments before
+    # asking the small on-device model to rewrite prose. A retrospective time
+    # clarification remains with the passage it qualifies.
+    passages: list[list[SourceUnit]] = []
+    for unit in units:
+        retrospective = re.search(r"(?i)\b(?:that(?:'s| is)|this was|I mean)[^.!?]{0,45}\b(?:around|at)\s*\[", unit.text)
+        new_topic = re.search(r"(?i)\b(?:overall|general note|one (?:other|more) thing|bonus (?:thing|thought)|final (?:thought|note))\b", unit.text) or (unit.text.endswith("?") and len(unit.text.split()) >= 4)
+        if passages and ((unit.timecodes == passages[-1][-1].timecodes and not new_topic) or retrospective):
+            passages[-1].append(unit)
         else:
-            timestamped_notes.append(deterministic)
-        reporter.progress(
-            "formatting",
-            0.5 + ((index / max(1, len(timestamp_batches))) * 0.4),
-            f"Polished timestamped feedback part {index} of {len(timestamp_batches)}",
+            passages.append([unit])
+    batches = [batch for passage in passages for batch in _unit_batches(passage, batch_limit)]
+    notes: list[DraftNote] = []
+    for index, batch in enumerate(batches, start=1):
+        drafts = _draft_batch_with_retries(
+            units=batch, context=context,
+            purpose="Write one concise note for this passage, keeping every concrete observation and qualification.",
+            generate=generate, reporter=reporter,
         )
+        drafts = [accepted for draft in drafts
+                  if (accepted := _sanitize_grounded_note(draft, by_id)) is not None]
+        retrospective_times = tuple(time for unit in batch if re.search(
+            r"(?i)\b(?:that(?:'s| is)|this was|I mean)[^.!?]{0,45}\b(?:around|at)\s*\[", unit.text
+        ) for time in unit.timecodes)
+        last_note = max(drafts, key=lambda note: max(note.source_ids, default=""), default=None)
+        for draft in drafts:
+            if draft.location == "auto":
+                if retrospective_times and draft is last_note:
+                    draft = replace(draft, location="timestamp", timecodes=retrospective_times, approximate=True,
+                                    source_ids=tuple(dict.fromkeys(draft.source_ids + tuple(unit.id for unit in batch if unit.timecodes == retrospective_times))))
+                elif not any(unit.timecodes for unit in batch) and re.search(r"(?i)\b(?:at the end|image.{0,40}end|outro)\b", " ".join(unit.text for unit in batch)):
+                    draft = replace(draft, location="end")
+            note = draft
+            evidence = " ".join(by_id[key].text for key in note.source_ids if key in by_id)
+            evidence_times = {time for key in note.source_ids if key in by_id for time in by_id[key].timecodes}
+            if note.location == "general" and evidence_times:
+                note = replace(note, location="timestamp", timecodes=tuple(sorted(evidence_times, key=_timecode_value)))
+            times = note_timecodes(note, by_id)
+            if any(time not in allowed_times or time not in evidence_times for time in times):
+                continue
+            if note.location == "timestamp" and not times:
+                continue
+            if len(times) > 2 or any(_timecode_value(b) - _timecode_value(a) > 2 for a, b in zip(times, times[1:])):
+                continue
+            if note.location in {"general", "end", "beginning"} and note.timecodes:
+                continue
+            if note.location in {"end", "beginning"} and not re.search(
+                r"(?i)\b(?:end|ending|final|outro|beginning|start|opening)\b", evidence
+            ):
+                continue
+            if note.approximate and not re.search(r"(?i)\b(?:around|roughly|near)\s*\[", evidence):
+                note = replace(note, approximate=False)
+            if not any(existing.body == note.body and note_timecodes(existing, by_id) == times
+                       and existing.location == note.location for existing in notes):
+                notes.append(note)
+        reporter.progress("formatting", index / len(batches) * 0.9,
+                          f"Polished feedback part {index} of {len(batches)}")
 
-    timestamp_units_by_id = {unit.id: unit for unit in timestamp_units}
-    timestamped_notes = [
-        sanitized
-        for note in timestamped_notes
-        if (sanitized := _sanitize_grounded_note(note, timestamp_units_by_id)) is not None
-    ]
-    timestamped_notes = _coalesce_timestamp_notes(timestamped_notes, timestamp_units_by_id)
-    covered_timecodes = {
-        timecode
-        for note in timestamped_notes
-        for timecode in note_timecodes(note, timestamp_units_by_id)
-    }
-    for unit in timestamp_units:
-        if any(timecode not in covered_timecodes for timecode in unit.timecodes):
-            timestamped_notes.append(_fallback_timestamp_note(unit.timecodes[0], [unit]))
-
+    if not notes:
+        raise CutNotesError(
+            "The formatter did not produce any usable editorial notes.",
+            EXIT_FORMATTING, code="formatter_contract_failed",
+            recovery="The transcript was preserved. Retry formatting or explicitly choose another provider.",
+            preserved=PreservedArtifacts(transcript=True),
+        )
+    general_notes = [note for note in notes if not note_timecodes(note, by_id)
+                     and note.location not in {"end", "beginning"}]
+    timestamped_notes = [note for note in notes if note not in general_notes]
+    covered_times = {time for note in timestamped_notes for time in note_timecodes(note, by_id)}
+    for unit in _timestamp_source_units(units):
+        missing = tuple(time for time in unit.timecodes if time not in covered_times)
+        if missing:
+            reporter.warning("formatting", f"Formatting is incomplete for {unit.id}; review the preserved transcript")
+            timestamped_notes.append(replace(_fallback_timestamp_note(missing[0], []),
+                                             location="timestamp", timecodes=missing))
+            covered_times.update(missing)
     return render_editorial_draft(
-        title=title,
-        review_date=dt.date.today().strftime("%B %-d, %Y"),
-        general_notes=general_notes,
-        timestamped_notes=timestamped_notes,
-        units=general_source_units + timestamp_units,
+        title=title, review_date=dt.date.today().strftime("%B %-d, %Y"),
+        general_notes=_select_general_notes(general_notes),
+        timestamped_notes=timestamped_notes, units=units,
     )
 
 

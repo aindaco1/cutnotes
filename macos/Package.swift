@@ -37,6 +37,7 @@ let package = Package(
                 ])
             ]
         ),
+        .testTarget(name: "CutNotesLocalTests", dependencies: ["CutNotesLocal"]),
         .testTarget(name: "CutNotesCoreTests", dependencies: ["CutNotesCore"]),
         .testTarget(name: "CutNotesAppTests", dependencies: ["CutNotesApp", "CutNotesCore"]),
     ]

@@ -22,6 +22,8 @@ Descriptor 4 accepts only newline-terminated `pause`, `resume`, `finish`, and `c
 
 `doctor --json` returns one `cutnotes.doctor.v1` object. The ordered `parakeet.languages` array contains `{ "code", "name" }` entries for every language exposed by the selected Parakeet model. `cutnotes_core` owns this capability list; the app renders the supplied native names and passes only the selected code back to the CLI.
 
+MacWhisper discovery is passive: `macwhisper.path` reports the available CLI, while `version` remains null and `models` remains an empty array. Setup never runs `mw version` or `mw models`, because those commands can launch MacWhisper. The pipeline invokes `mw transcribe` only when MacWhisper is explicitly selected. These values retain the v1 field types.
+
 ## Compatibility rule
 
 Additive fields may be introduced within v1. Removing a field, changing its type, or changing descriptor semantics requires a new schema version plus Python producer and Swift consumer tests.

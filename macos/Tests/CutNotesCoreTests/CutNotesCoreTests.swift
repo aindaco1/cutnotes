@@ -57,6 +57,14 @@ import Testing
     #expect(doctor.parakeet.languages?.map(\.name) == ["Français", "Українська"])
 }
 
+@Test func doctorContractAcceptsDetectedMacWhisperWithoutProbingIt() throws {
+    let data = Data(#"{"path":"/Applications/MacWhisper.app/Contents/MacOS/mw","version":null,"optional":true,"models":[]}"#.utf8)
+    let provider = try JSONDecoder().decode(DoctorPayload.OptionalTool.self, from: data)
+    #expect(provider.path != nil)
+    #expect(provider.version == nil)
+    #expect(provider.models == [])
+}
+
 @Test func formatCommandNeverAddsRecordingControlChannel() throws {
     let builder = try CLICommandBuilder(executable: URL(fileURLWithPath: "/tmp/cutnotes"))
     let command = try builder.formatTranscript(
