@@ -337,7 +337,11 @@ def _generate_with_apple(
     prompt_path = work_directory / f".cutnotes-{mode}-prompt-{token}.txt"
     response_path = work_directory / f".cutnotes-{mode}-response-{token}.json"
     instructions_path = work_directory / f".cutnotes-{mode}-instructions-{token}.txt"
-    prompt_path.write_text(prompt, encoding="utf-8")
+    # Draft-v1 helpers before 1.0.5 ignore --instructions. Keep a complete request
+    # in their existing prompt file; newer helpers remove this exact prefix before
+    # sending the source to the model with separate session instructions.
+    compatible_prompt = f"{instructions.strip()}\n\n{prompt}" if instructions else prompt
+    prompt_path.write_text(compatible_prompt, encoding="utf-8")
     try:
         instruction_arguments: list[str] = []
         if instructions is not None:
@@ -743,32 +747,16 @@ def _timestamp_source_units(units: list[SourceUnit]) -> list[SourceUnit]:
 
 
 def _select_general_notes(notes: list[DraftNote]) -> list[DraftNote]:
-    stopwords = {
-        "a", "an", "and", "as", "at", "be", "by", "for", "from", "in", "is",
-        "it", "of", "on", "or", "that", "the", "this", "to", "with",
-    }
-
-    def terms(note: DraftNote) -> set[str]:
-        return {
-            token
-            for token in re.findall(r"[a-z]+", note.body.casefold())
-            if token not in stopwords
-        }
-
+    # Similar vocabulary is not equivalent feedback: "keep the music" and
+    # "do not keep the music" must not collapse into one observation.
     selected: list[DraftNote] = []
-    selected_terms: list[set[str]] = []
+    seen: set[str] = set()
     for note in notes:
-        current = terms(note)
-        if len(current) < 3:
-            continue
-        if any(
-            len(current & previous) / max(1, len(current | previous)) >= 0.5
-            for previous in selected_terms
-        ):
+        key = " ".join(note.body.casefold().split()).rstrip(".!?")
+        if not key or key in seen:
             continue
         selected.append(note)
-        selected_terms.append(current)
-
+        seen.add(key)
     return selected
 
 

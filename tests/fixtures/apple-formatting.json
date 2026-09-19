@@ -1,0 +1,34 @@
+[
+  {
+    "name": "Observations, qualifications and an optional end suggestion",
+    "transcript": "At eight seconds, her lips keep moving after the dialogue ends. At eighteen seconds, her reaction is hard to read. I don't know how much we can improve that, but the joke doesn't land as well as it could. At thirty-two seconds, Ava's mouth doesn't move during her line. The movement should be subtle, but this line is important. This is a bonus thing. If time allows, stylize the final image at the end and crossfade into live action. This would clarify that the animation is just a short illustration. Overall, it looks great and has lots of charm. One other thing, some dialogue is quiet in the mix. Maybe we can adjust it on our end, but the dialogue should be front and center.",
+    "checks": [
+      {"name": "Continuing lips", "scope": "^00:08$", "contains": ["lip|mouth", "after|end|stop"]},
+      {"name": "Reaction and limited improvement", "scope": "^00:18$", "contains": ["reaction", "joke", "(?:not|n't|little|limit|uncertain|unsure|how much).{0,90}(?:improv|fix|do|change)|(?:improv|fix).{0,60}(?:limit|uncertain)"]},
+      {"name": "Missing subtle movement", "scope": "^00:32$", "contains": ["mouth|lip", "subtle|small|minimal|slight", "line|dialogue"]},
+      {"name": "Optional end transition and reason", "scope": "^End of video", "contains": ["optional|bonus|if.{0,30}time|time allow", "styl|illustrat|animat", "cross.?fade", "live.action"]},
+      {"name": "Praise and dialogue", "scope": "general", "contains": ["great|charm", "dialogue", "front|forward|prominen", "(?:we|our).{0,35}(?:adjust|end)|adjust.{0,35}(?:we|our)"]}
+    ],
+    "excludes": ["re.?record", "re.?shoot", "Formatting incomplete"]
+  },
+  {
+    "name": "Opposite timing directions and negative instructions",
+    "transcript": "At ten seconds, the door slam lands too early. Move it later to match the door closing. At twenty seconds, the footstep lands too late. Move it earlier to match the foot touching the floor. At thirty seconds, do not show her face looking into camera. Keep this shot on her hands. Overall, the music works well; leave it as it is.",
+    "checks": [
+      {"name": "Early slam is corrected", "scope": "^00:10$", "contains": ["door|slam", "\\bearly\\b|later|align.{0,60}clos"], "excludes": ["move.{0,30}earlier"]},
+      {"name": "Late step moves earlier", "scope": "^00:20$", "contains": ["foot|step", "earlier"], "excludes": ["move.{0,30}later"]},
+      {"name": "Do not show face", "scope": "^00:30$", "contains": ["(?:not|n't|avoid).{0,40}(?:show|face)|keep.{0,40}hands"], "excludes": ["keep.{0,30}face.{0,20}visible"]},
+      {"name": "Keep successful music", "scope": "general", "contains": ["music", "well|unchanged|as it is|leave"]}
+    ]
+  },
+  {
+    "name": "Mixed conversation without invented criticism",
+    "transcript": "At seven seconds, um, the character's mouth keeps moving even though the line is over. My neighbor bought a bicycle and my brother went to the grocery store. Does that sound effect land correctly? It hits too early. It should hit when the creature touches the window. That would make the impact stronger. That's around twenty-two seconds. Overall, the character design looks wonderful.",
+    "checks": [
+      {"name": "Dialogue ended", "scope": "^00:07$", "contains": ["mouth|lip", "over|end|after|beyond"]},
+      {"name": "Retrospective impact time", "scope": "^Around 00:22", "contains": ["sound|effect", "early", "window|impact"]},
+      {"name": "Positive design", "scope": "general", "contains": ["character|design", "wonderful|great|prais|good|excellent"]}
+    ],
+    "excludes": ["bicycle", "grocery", "neighbor", "brother", "Formatting incomplete"]
+  }
+]

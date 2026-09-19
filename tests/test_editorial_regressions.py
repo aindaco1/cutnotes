@@ -44,6 +44,23 @@ class EditorialRegressionTests(unittest.TestCase):
         self.assertEqual(notes[0].title, "Editorial feedback")
         self.assertEqual(notes[0].body, "Her mouth barely moves during her line.")
 
+    def test_short_general_feedback_is_not_discarded_for_its_word_count(self):
+        for body in ("Keep the music.", "Looks great.", "Leave it unchanged."):
+            with self.subTest(body=body):
+                note = f.DraftNote("Overall", body, ("N0001",))
+                self.assertEqual(p._select_general_notes([note]), [note])
+
+    def test_similar_words_do_not_merge_distinct_or_opposite_feedback(self):
+        notes = [f.DraftNote("Feedback", body, (f"N{index:04d}",)) for index, body in enumerate((
+            "The background music is too quiet.",
+            "The dialogue is too quiet.",
+            "Keep the music in the opening.",
+            "Do not keep the music in the opening.",
+        ), start=1)]
+        self.assertEqual(p._select_general_notes(notes), notes)
+        repeated = f.DraftNote("Repeated", "  THE dialogue is too quiet!", ("N0005",))
+        self.assertEqual(p._select_general_notes(notes + [repeated]), notes)
+
     def test_unknown_or_malformed_grounding_ids_are_not_partially_accepted(self):
         for ids in (["N0001", "UNKNOWN"], ["N0001", {}], "N0001"):
             with self.subTest(ids=ids):
@@ -183,7 +200,7 @@ class EditorialRegressionTests(unittest.TestCase):
                 self.assertIn("Rewrite the spoken feedback", instructions)
                 self.assertNotIn("PRIVATE_SOURCE", instructions)
                 self.assertIn("PRIVATE_SOURCE", prompt)
-                self.assertNotIn("Rewrite the spoken feedback", prompt)
+                self.assertTrue(prompt.startswith(instructions + "\n\n"))
                 output = Path(command[command.index("--output") + 1])
                 output.write_text(json.dumps({"schema_version": "cutnotes.local.draft.v1", "draft": {
                     "notes": [{"title": "Facial alignment", "body": "The face is offset.", "source_ids": ["N0001"], "location": "general", "timecodes": [], "approximate": False}],
@@ -197,6 +214,29 @@ class EditorialRegressionTests(unittest.TestCase):
                     ), allowed_ids={"N0001"}, work_directory=root,
                 )
             self.assertEqual(notes[0].body, "The face is offset.")
+            self.assertEqual(list(root.iterdir()), [])
+
+    def test_legacy_draft_helper_gets_instructions_without_reading_new_option(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+
+            def legacy_native(command, **kwargs):
+                # Released draft-v1 helpers read only --prompt, not --instructions.
+                prompt = Path(command[command.index("--prompt") + 1]).read_text()
+                self.assertIn("Rewrite the spoken feedback", prompt)
+                self.assertIn("<source-observations>", prompt)
+                self.assertIn("The dialogue is quiet.", prompt)
+                Path(command[command.index("--output") + 1]).write_text(json.dumps({
+                    "schema_version": "cutnotes.local.draft.v1",
+                    "draft": {"notes": [{"title": "Dialogue", "body": "The dialogue is quiet.",
+                                          "source_ids": ["obs_a"]}]},
+                }))
+
+            with mock.patch.object(p, "_run_checked", side_effect=legacy_native):
+                notes = p._draft_with_apple(engine="legacy", prompt=f.editorial_draft_prompt(
+                    [f.SourceUnit("N0001", "The dialogue is quiet.", ())], None, purpose="Polish the feedback.",
+                ), allowed_ids={"N0001"}, work_directory=root)
+            self.assertEqual(notes[0].source_ids, ("N0001",))
             self.assertEqual(list(root.iterdir()), [])
 
     def test_reference_handoff_keeps_distinct_issues_and_retrospective_time(self):

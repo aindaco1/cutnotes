@@ -3,6 +3,20 @@ import XCTest
 @testable import CutNotesLocal
 
 final class EditorialDraftTests: XCTestCase {
+    func testCompatiblePromptRemovesOnlyDuplicatedInstructions() {
+        let instructions = "Preserve the feedback."
+        let source = "<source>Private transcript</source>"
+        XCTAssertEqual(draftSourcePrompt(instructions + "\n\n" + source, instructions: instructions), source)
+        XCTAssertEqual(draftSourcePrompt(source, instructions: instructions), source)
+        XCTAssertEqual(draftSourcePrompt(instructions + "\n" + source, instructions: instructions), instructions + "\n" + source)
+    }
+
+    func testLegacyPromptWithoutSeparateInstructionsRemainsWhole() {
+        let prompt = "Task instructions\n\n<source>Private transcript</source>"
+        XCTAssertEqual(draftSourcePrompt(prompt, instructions: nil), prompt)
+        XCTAssertEqual(draftSourcePrompt(prompt, instructions: ""), prompt)
+    }
+
     func testDraftContractRoundTripsGrounding() throws {
         let note = EditorialDraftNotePayload(
             title: "Impact", body: "Align the sound with the impact.", sourceIDs: ["N0001", "N0002"]

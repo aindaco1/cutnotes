@@ -146,6 +146,16 @@ struct EditorialDraftEnvelope: Encodable {
     }
 }
 
+// The Python client also includes instructions in the prompt for older draft-v1
+// helpers. Remove only that exact duplicate; callers without it remain compatible.
+func draftSourcePrompt(_ prompt: String, instructions: String?) -> String {
+    guard let instructions, !instructions.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+        return prompt
+    }
+    let prefix = instructions.trimmingCharacters(in: .whitespacesAndNewlines) + "\n\n"
+    return prompt.hasPrefix(prefix) ? String(prompt.dropFirst(prefix.count)) : prompt
+}
+
 private struct Options {
     let command: String
     let values: [String: String]
@@ -276,7 +286,7 @@ private func generatePlan(prompt: String) async throws -> EditorialPlanPayload {
 private func generateDraft(prompt: String, instructions: String?) async throws -> EditorialDraftPayload {
     let session = try languageModelSession(instructions: instructions)
     let response = try await session.respond(
-        to: prompt,
+        to: draftSourcePrompt(prompt, instructions: instructions),
         generating: EditorialDraft.self,
         options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 2_048)
     )
