@@ -12,7 +12,7 @@ The 1.0.5 work fixes unselected MacWhisper CLI probes and deterministic formatti
 
 | Gate | Status |
 | --- | --- |
-| Python regressions | 70 passed locally |
+| Python regressions | 71 passed locally |
 | Swift contracts/app support | 17 passed locally |
 | CI on macOS 26 and Xcode 27 | Check the current commit's [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks); both passed at `63c8e94` before this follow-up |
 | Local release build | Passed |
@@ -33,7 +33,9 @@ discarded notes containing fewer than three content words. That word-count gate
 has been removed and short positive/keep-as-is notes have a regression test. A
 follow-up native run retained the missing music note. Vocabulary-overlap
 deduplication has also been replaced by exact-text deduplication so similar but
-distinct or opposite general notes survive.
+distinct or opposite general notes survive. End-of-video placement now retains
+the passage's location evidence when a generated note cites only its explanatory
+sentence; that valid note was previously discarded by a later evidence check.
 
 The draft-v1 request remains compatible with older local helpers that ignore
 `--instructions`: the existing prompt file contains the complete task. New helpers

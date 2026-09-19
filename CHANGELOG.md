@@ -8,6 +8,7 @@
 - Separate Apple model instructions from source material, bound long edit moments, and replace scene-specific canned notes and transcript dumps with explicit incomplete-formatting notices. Return an error when no usable notes are generated.
 - Add regression coverage for provider isolation, source preservation, spoken timestamps, summary selection, model-request separation, malformed drafts, and formatting failures.
 - Preserve short general feedback and distinct notes with similar wording; deduplicate only repeated text.
+- Preserve end-of-video placement when the model cites an explanatory sentence and the preceding sentence supplies its location.
 - Keep complete prompts compatible with older draft-v1 helpers while newer helpers separate instructions from source data without duplicating them in the model request.
 - Add a real Apple formatting acceptance command with synthetic meaning, qualification, timing and background-conversation checks for macOS 26 and 27. The combined release remains held until native acceptance passes.
 

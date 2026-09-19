@@ -285,6 +285,17 @@ class EditorialRegressionTests(unittest.TestCase):
                                       timestamped_notes=[note], units=[f.SourceUnit("N0001", "Source", ("00:05",))])
         self.assertIn("Match sound \\| picture.", text)
 
+    def test_relative_end_location_keeps_passage_evidence_for_a_cited_explanation(self):
+        def generate(prompt, ids):
+            return [f.DraftNote("Clarification", "The animation is a short illustration.", ("N0002",))]
+
+        markdown = self.render(
+            "Stylize the image at the end and crossfade into live action. "
+            "This would clarify that the animation is a short illustration.", generate,
+        )
+        self.assertIn("**End of video — Clarification**", markdown)
+        self.assertIn("The animation is a short illustration.", markdown)
+
     def test_retiming_cannot_reverse_an_early_effect(self):
         source = f.SourceUnit("N0001", "The sound hits too early. It should hit when the creature hits the glass.", ("00:25",))
         wrong = f.DraftNote("Timing", "Move the sound earlier so it hits the glass.", (source.id,))

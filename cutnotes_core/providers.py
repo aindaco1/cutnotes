@@ -869,7 +869,14 @@ def _render_drafted_document(
                     draft = replace(draft, location="timestamp", timecodes=retrospective_times, approximate=True,
                                     source_ids=tuple(dict.fromkeys(draft.source_ids + tuple(unit.id for unit in batch if unit.timecodes == retrospective_times))))
                 elif not any(unit.timecodes for unit in batch) and re.search(r"(?i)\b(?:at the end|image.{0,40}end|outro)\b", " ".join(unit.text for unit in batch)):
-                    draft = replace(draft, location="end")
+                    # The core derives the relative location from this passage,
+                    # even when the model cites only its explanatory sentence.
+                    # Keep that location evidence alongside the body evidence.
+                    end_ids = tuple(unit.id for unit in batch if re.search(
+                        r"(?i)\b(?:at the end|image.{0,40}end|outro)\b", unit.text
+                    ))
+                    draft = replace(draft, location="end",
+                                    source_ids=tuple(dict.fromkeys(draft.source_ids + end_ids)))
             note = draft
             evidence = " ".join(by_id[key].text for key in note.source_ids if key in by_id)
             evidence_times = {time for key in note.source_ids if key in by_id for time in by_id[key].timecodes}
