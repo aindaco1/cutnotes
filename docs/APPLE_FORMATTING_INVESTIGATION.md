@@ -105,6 +105,61 @@ The native probes and outputs are in ignored
 also record the engine, core source and fixture hashes. None of these findings
 lifts the release hold or establishes macOS 26 native model quality.
 
+## September 20: clause preservation and native capability checks
+
+The next investigation tested narrower editing units and independent evidence,
+without adding a model or changing the production formatter. The new probes,
+inputs and outputs are in ignored
+`build/diagnostics/release-1.0.5/apple-native-evidence/`.
+
+| Probe | Observed result |
+| --- | --- |
+| Native model identity and reasoning capability | This Mac reports **AFM 3 Core**, a 4,096-token context and `reasoning == false`. All nine requests using `ContextOptions.reasoningLevel = .deep` were rejected as unsupported. This is a capability result, not a generation-quality comparison. |
+| Built-in English `NLEmbedding` sentence similarity | Available without requesting assets. It recognized several personal-conversation sentences but also classified useful praise, reservations and context as background. It is not a deletion gate. |
+| Word-aligned audio levels | Foreground-review and unrelated-text intervals have overlapping levels. Quiet-word removal would risk deleting real feedback. No audio or transcript was changed. The presence of unrelated text alone does not establish whether it was captured speech or an ASR hallucination. |
+| Confidence-selected Parakeet re-decodes | The existing token evidence contained three lexical tokens below 0.2 confidence. Three windows around each token, using radii of 5, 8 and 12 seconds, were decoded with the existing Parakeet model. The five-second radius around the uncertain word in the mouth-movement note recovered the completed negative observation; wider windows still changed or lost wording. Window selection was mechanical, but confidence and one improved crop do not establish a safe replacement rule. |
+| Forty-three individual clause edits | Splitting at sentence boundaries and coordinating conjunctions preserved the reaction limitation and who might adjust the dialogue. Other clauses still lost details or acquired unsupported wording. No full-review pass. |
+| Required output field for each clause | Required fields prevent an omitted JSON entry, not a missing fact within its text. Qualifications survived, but one batch dropped the continuing-mouth observation and another changed a negative into an affirmative. This is not a semantic guarantee. |
+| Off-topic quotation extraction, topic-first selection and explanation-first classification | Some simple cases worked, but genuine feedback was selected for removal or personal conversation was retained. Editing before filtering did not resolve this. These classifiers remain disabled. |
+| Six small constrained-selection controls | Color, animal and film-lighting selections were correct with and without an array maximum. Selecting every sentence in the noisy review is not explained by a general inability of constrained arrays to select a subset. |
+
+A combined diagnostic used at most four clauses per request and the existing core
+grouping, renderer and evaluator. It initially passed 11/12 automated development
+checks, including the combined synthetic review that the production candidate
+fails. Manual inspection found a dangling background-speech introduction that the
+checks missed. The acceptance fixture and a regression test now reject that
+fragment. Re-scoring the same outputs gives **10/12**, with background leakage in
+two cases. The prototype was not promoted to the held-out evaluation or production.
+Its rendering also needs normal title/body handling; passing a content check is
+not a complete usability pass.
+
+The saved production-candidate outputs still score **16/20** under the stricter
+check. This was a re-evaluation of preserved native outputs, not a new inference
+run. Private reports include output and fixture hashes to distinguish the two.
+
+The promising part is **preserving clauses before editing**. The next bounded
+implementation experiment should retain the existing passage boundaries and
+renderer, let the core own clause IDs and qualifications, and give Apple narrowly
+scoped copyediting work. A failed edit must not silently erase its source clause.
+Before enabling this, test semantic changes as well as missing fields, avoid
+duplicating qualifications already retained, and verify the complete rendered
+review. Replacing the existing formatter with the tested prototype would trade
+one set of failures for another and is not approved by these results.
+
+Audio re-decoding is a separate experiment: retain the original transcript and
+record candidate text against its exact audio interval. Establish a selection
+rule on independent recordings before replacing or automatically preferring any
+candidate. The remaining relevance problem needs evidence about the origin of
+the unrelated speech; similarity, volume and another model judgment are not
+adequate substitutes for that evidence.
+
+Apple references:
+[sentence embeddings](https://developer.apple.com/documentation/naturallanguage/nlembedding),
+[reasoning options](https://developer.apple.com/documentation/foundationmodels/contextoptions),
+and [Apple's answer on selecting model variants](https://developer.apple.com/forums/thread/832555).
+The new reasoning option is macOS 27-only and was used only in the diagnostic;
+the proposed editing path uses macOS 26 Foundation Models APIs.
+
 ## Public Apple API choices
 
 Use `SystemLanguageModel` through `LanguageModelSession`. Both are available on

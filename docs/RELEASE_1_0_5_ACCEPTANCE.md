@@ -12,7 +12,7 @@ The 1.0.5 work fixes unselected MacWhisper CLI probes and deterministic formatti
 
 | Gate | Status |
 | --- | --- |
-| Python regressions | 84 passed locally after transcription-evidence and paraphrase fixes |
+| Python regressions | 85 passed locally, including rejection of dangling background-speech framing |
 | Swift contracts/app support | 20 passed locally, including native transcription evidence |
 | CI on macOS 26 and Xcode 27 | Both passed for implementation `b6e170c`: [CI run](https://github.com/aindaco1/cutnotes/actions/runs/35489201595); recheck after code changes |
 | Local release build | Passed |
@@ -96,3 +96,12 @@ fixtures only; the temporary shortcut was exported locally and removed afterward
 No Shortcuts dependency was added. The supplied transcript and a fresh full-audio
 transcription both still return `formatter_incomplete` through the final candidate;
 their source files remain unchanged. The release hold remains in effect.
+
+The September 20 clause-preservation experiment restored qualifications in the
+combined synthetic review but still leaked unrelated speech. After manual review
+exposed a false positive and strengthened the acceptance fixture, its saved output
+scores 10/12 development cases. It is not the production formatter and was not
+promoted to held-out evaluation. The unchanged production candidate's saved native
+outputs still score 16/20 under the stricter check; no fresh inference run or
+release acceptance is implied. See the investigation for the native capability,
+embedding, audio-level and confidence-selected re-decoding findings.

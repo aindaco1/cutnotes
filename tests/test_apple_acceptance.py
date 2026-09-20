@@ -9,6 +9,19 @@ evaluate = runpy.run_path(str(ROOT / "scripts/check-apple-formatting.py"))["eval
 
 
 class AppleAcceptanceChecks(unittest.TestCase):
+    def test_removing_embedded_instruction_must_not_leave_background_speech_framing(self):
+        case = json.loads((ROOT / "tests/fixtures/apple-formatting.json").read_text())[-1]
+        text = """# Review
+## General feedback
+- The sound design is excellent.
+## Timestamped feedback
+| Video time | Feedback |
+| --- | --- |
+| **00:06** | The cut is abrupt. A voice in the recording says: |
+"""
+        self.assertTrue(any("Unexpected content" in item for item in evaluate(text, case)))
+        self.assertEqual(evaluate(text.replace(" A voice in the recording says:", ""), case), [])
+
     def test_equivalent_phrasing_passes_without_accepting_reversed_or_definite_claims(self):
         cases = json.loads((ROOT / "tests/fixtures/apple-formatting.json").read_text())
         text = """# Review

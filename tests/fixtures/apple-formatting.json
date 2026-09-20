@@ -386,7 +386,8 @@
       }
     ],
     "excludes": [
-      "PUBLISH_READY"
+      "PUBLISH_READY",
+      "(?:voice|recording).{0,35}says?\\s*:"
     ]
   }
 ]
