@@ -29,6 +29,26 @@ Descriptor 4 accepts only newline-terminated `pause`, `resume`, `finish`, and `c
 
 MacWhisper discovery is passive: `macwhisper.path` reports the available CLI, while `version` remains null and `models` remains an empty array. Setup never runs `mw version` or `mw models`, because those commands can launch MacWhisper. The pipeline invokes `mw transcribe` only when MacWhisper is explicitly selected. These values retain the v1 field types.
 
+## Optional transcription evidence
+
+The native `transcribe` operation accepts `--evidence-output PATH` alongside its
+unchanged `cutnotes.local.transcript.v1` output. The companion uses
+`cutnotes.local.transcript-evidence.v1`: `text`, `duration_seconds`, `tokens`
+(`text`, `start`, `end`, `confidence`) and `words` (`text`, `start`, `end`). Offsets
+are seconds in that audio chunk, not CUT timecodes. Confidence is retained as
+reported, including low-confidence negations; it is not an instruction to delete
+or correct words. Older native helpers may ignore the optional argument.
+
+The core checks the schema, transcript match, finite numbers, confidence range,
+and recording bounds. When every chunk supplies valid data, it translates offsets
+into the complete recording and saves `<transcript-stem>.evidence.json` with
+`cutnotes.transcript-evidence.v1`, the merged duration/tokens/words, and SHA-256
+digests of the exact saved transcript and source audio. This file is installed
+atomically without replacing an existing artifact. Missing or invalid optional
+evidence does not invalidate a usable transcript. The result/progress contracts
+are unchanged. Evidence is currently retained for diagnosis; the formatter does
+not use it to change recognized words or choose a different provider.
+
 ## Compatibility rule
 
 Additive fields may be introduced within v1. Removing a field, changing its type, or changing descriptor semantics requires a new schema version plus Python producer and Swift consumer tests.

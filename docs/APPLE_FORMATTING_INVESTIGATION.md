@@ -58,10 +58,44 @@ not evidence of a framework Boolean bug. Likewise, prior OS empty-mask errors
 are a separate runtime observation, not proof of the cause of every semantic error.
 
 The Parakeet dependency already exposes token confidence and word/audio timing;
-CutNotesLocal currently retains only the text, duration and aggregate confidence.
+CutNotesLocal now retains optional word/token evidence alongside the existing text, duration and aggregate confidence contract.
 One troublesome inserted word had low token confidence in the diagnostic decode.
 Confidence can prioritize investigation, but is not calibrated proof that a word
 is wrong and must never itself delete a negation or other source content.
+
+## Follow-up native findings
+
+- A second deterministic loss was traced through the native response: Apple wrote
+  a valid positive lighting paraphrase, but the core discarded it because fewer
+  than 30 percent of its content words appeared in the source. That percentage
+  threshold is removed. A narrower check for completely unrelated vocabulary
+  remains, with function words excluded; it is not a factuality or relevance judge.
+- Acceptance checks had false negatives for ordinary paraphrases such as “image”
+  versus “picture,” “possibly” versus “might,” and matching a sound to the closing
+  door. Those alternatives now pass, while wrong direction and removed uncertainty
+  still fail. Native outputs and earlier reports remain preserved for comparison.
+- The latest complete native run passes **10 of 12 development cases and 6 of 8
+  held-out cases**. Remaining failures lose qualifications/reasons or retain quoted
+  background speech as feedback. These are content failures, not exact-prose tests.
+- Default sampling did not resolve the greedy-decoding failures. Explicit chat
+  examples also retained background speech or converted uncertainty into certainty.
+- The macOS 27 dynamic-session API produced the same nine body-only responses as
+  the macOS 26-compatible API in the controlled comparison. A newer entry point
+  alone did not improve the output.
+- Content tagging returned inconsistent languages on English input and rejected
+  one ordinary passage. It is not integrated as a deletion or relevance gate.
+- Full-recording context placed before a target passage recovered one difficult
+  mouth-movement interpretation. Other requests borrowed observations from the
+  surrounding review, retained background speech or lost qualifications. This
+  isolated improvement did not pass the complete review.
+- The real recording produces a verified companion containing 915 tokens and 516
+  words across 218.4213125 seconds. The original audio and saved transcript match
+  their recorded digests. Confidence is retained, not used to change words.
+
+The native probes and outputs are in ignored
+`build/diagnostics/release-1.0.5/statement-prototype/`. Final native fixture reports
+also record the engine, core source and fixture hashes. None of these findings
+lifts the release hold or establishes macOS 26 native model quality.
 
 ## Public Apple API choices
 
@@ -103,37 +137,43 @@ Private Cloud Compute do not meet the revised product requirement. See
 [Writing Tools coordinator](https://developer.apple.com/documentation/appkit/nswritingtoolscoordinator)
 and [Adapter toolkit](https://developer.apple.com/apple-intelligence/foundation-models-adapter/).
 
-## Recommended next prototype
+## Source-backed prototype and outcome
 
-The existing passage grouping and Markdown renderer should stay. The change to
-evaluate is **source-backed statements with retained qualifications**, rather
-than another prompt asking Apple to author an entire note from scratch.
+The existing passage grouping and Markdown renderer remain. The approved prototype
+was **source-backed statements with retained qualifications**. Transcription
+evidence is implemented; native extraction is not reliable enough to integrate.
 
-1. **Preserve useful transcription evidence.** Add optional, versioned native
-   word/token timing and confidence data with decoding tests. Preserve the raw
-   transcript. Benchmark bounded re-decoding around uncertain speech against
+1. **Preserve useful transcription evidence: implemented.** Optional, versioned
+   native word/token timing and confidence now have Python and Swift tests. The
+   core validates and merges recording offsets, binds evidence to the exact
+   transcript and source audio with SHA-256, and installs the companion atomically
+   without overwriting an existing artifact. Raw words stay unchanged.
+   Further work is needed to benchmark bounded re-decoding around uncertain speech against
    unchanged audio. Compare candidates by aligned source evidence; do not add a
    second ASR implementation, globally shorten all chunks, or silently replace
    ambiguous words. A transcript-only request must not require audio.
-2. **Extract before editing.** For each existing passage, represent observations,
+2. **Extract before editing: native prototype failed.** For each existing passage, represent observations,
    requested changes, reasons and qualifications as source-backed statements.
    Every source sentence must have an explicit disposition. Validate IDs and
    quoted spans against the source. Prototype this independently of prose quality;
    exact quotation proves provenance, not correct relevance or complete coverage.
-3. **Protect qualifications from summarization.** Keep optionality, uncertainty,
+3. **Protect qualifications from summarization: not enabled.** Keep optionality, uncertainty,
    ownership, negation and relative-location evidence attached to their statement.
    Have Apple perform a narrowly scoped wording edit. The core assembles the note
    from the retained statements, so a later summary cannot silently discard a
    caveat. Prefer plainer faithful prose to a more elegant changed meaning.
-4. **Validate with one bounded repair attempt.** Check source coverage and
+4. **Validate with one bounded repair attempt: not enabled.** Check source coverage and
    attachment, exact time/location provenance, and missing protected statements.
    Retry only a failed passage with the specific missing source evidence. The
    same Apple model judging its own work is not an independent factuality gate.
    Unresolved ambiguity must remain visible and cannot count as a release pass.
 
-Steps 2–4 are a proposed prototype, not a tested solution. First prove extraction
-and retention on synthetic cases; do not integrate another pipeline merely because
-its schema looks safer. If this structure fails the same content checks, reject it.
+Native role classification, exact quotation selection and separately generated
+observations/changes/qualifications failed the required extraction and retention
+checks. Exact-quote constraints prevented invented wording but retained unrelated
+speech. Unconstrained fields invented edits and sometimes changed uncertainty to
+certainty. Those prototypes were rejected; steps 3–4 cannot rely on their output.
+No alternate production formatter, automatic audio repair or model download was added.
 
 All orchestration, source allocation, recovery and formatting policy belong in
 `cutnotes_core`. Swift should expose only the native inference/transcription

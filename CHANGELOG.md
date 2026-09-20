@@ -12,6 +12,8 @@
 - Keep complete prompts compatible with older draft-v1 helpers while newer helpers separate instructions from source data without duplicating them in the model request.
 - Add a real Apple formatting acceptance command with synthetic meaning, qualification, timing and background-conversation checks for macOS 26 and 27. The combined release remains held until native acceptance passes.
 - Expand native acceptance to 12 development cases and eight held-out cases, including separate issues at one timestamp and qualifications attached to the correct observation.
+- Retain optional Parakeet word timing and confidence in a validated local companion file bound to the source audio and transcript. Keep uncertain words unchanged and preserve existing artifacts if evidence cannot be saved.
+- Retain valid paraphrases that share only a few words with their source; the previous word-overlap percentage check could silently discard positive feedback.
 
 ## 1.0.4 — 2026-09-15
 

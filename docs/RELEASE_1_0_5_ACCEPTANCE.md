@@ -12,13 +12,13 @@ The 1.0.5 work fixes unselected MacWhisper CLI probes and deterministic formatti
 
 | Gate | Status |
 | --- | --- |
-| Python regressions | 73 passed locally after the incomplete-result follow-up |
-| Swift contracts/app support | 18 passed locally after the incomplete-result follow-up |
-| CI on macOS 26 and Xcode 27 | Both passed at `7b037c8`; check the current commit's [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks) after subsequent changes |
+| Python regressions | 84 passed locally after transcription-evidence and paraphrase fixes |
+| Swift contracts/app support | 20 passed locally, including native transcription evidence |
+| CI on macOS 26 and Xcode 27 | Both passed at `5304e60`; check the current commit's [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks) after subsequent changes |
 | Local release build | Passed |
 | Developer ID candidate signing | Earlier candidate passed; subsequent source changes require rebuilding and re-signing; not notarized |
 | Real Parakeet transcription | Passed on the supplied recording during diagnosis |
-| Native Apple formatting | Failed content acceptance |
+| Native Apple formatting | 16/20 synthetic cases pass; the supplied review still fails content acceptance |
 | App/DMG notarization and stapling | Held |
 | Public DMG mount/install/launch | Held |
 | Public Sparkle signature/feed and previous-version update | Held |
@@ -76,3 +76,16 @@ native acceptance gate; these checks do not claim to detect every omission.
 Local cleanup moved obsolete duplicate files, old output links and a superseded test build to a recoverable Trash folder with a restore manifest. The active SwiftPM cache, pinned media runtime, current candidate and diagnostic evidence remain available for development and testing. There were no stale merged branches to delete.
 
 Apple references: [Foundation Models updates](https://developer.apple.com/documentation/updates/foundationmodels) confirms that model changes accompany OS updates; [developer forum topic](https://developer.apple.com/forums/thread/843310) reports the same empty-mask/tokenizer signature on macOS 27 betas. The local reproduction is the evidence for this machine; the forum report is corroboration, not an Apple-confirmed root cause or fix.
+
+The source-backed prototype retained optional transcription evidence but did not
+establish reliable statement extraction. Per-sentence roles, quotation constraints,
+separate output fields, sampling changes, chat examples and full-recording context
+still failed the complete supplied review. They are diagnostic probes, not enabled
+formatter paths. The latest native fixture run passes 10/12 development and 6/8
+held-out cases; remaining failures concern missing meaning and unrelated speech.
+
+A native response trace also exposed a real preservation defect: a valid lighting
+paraphrase was discarded by a word-overlap percentage threshold. That threshold is
+removed and regression-tested, while the narrower unrelated-vocabulary check
+remains. Acceptance fixtures now allow ordinary equivalent phrases while retaining
+direction and qualification tests. These corrections do not justify publication.

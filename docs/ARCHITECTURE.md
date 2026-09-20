@@ -24,6 +24,12 @@ The app does not ship model weights. The CLI installs a single pinned Parakeet v
 
 Media is normalized by bundled FFmpeg into mono 16 kHz WAV chunks no longer than 15 minutes. `CutNotesLocal` uses Record/FluidAudio offline APIs and Core ML. Chunk transcripts are joined in order.
 
+Optional native word/token timing and confidence are validated and merged by the
+core into a companion evidence file bound to the transcript and original audio
+by SHA-256. These recording offsets never become video timecodes. The raw text
+is preserved; no confidence-based word deletion or automatic audio repair is
+enabled. See the [evidence contract](CLI_PROTOCOL.md#optional-transcription-evidence).
+
 The Python `doctor` contract exposes the model's supported language codes and native display names. Swift renders that capability list rather than maintaining a second language table.
 
 ## Formatting

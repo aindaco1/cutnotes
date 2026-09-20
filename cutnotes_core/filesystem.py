@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import datetime as dt
 import json
+import os
 from pathlib import Path
 import re
+import tempfile
 import unicodedata
 
 
@@ -61,11 +63,21 @@ def allocate_session_paths(
     return candidate
 
 
-def write_json(path: Path, payload: dict) -> None:
+def write_json(path: Path, payload: dict, *, overwrite: bool = True) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    temporary = path.with_name(f".{path.name}.tmp")
-    temporary.write_text(
-        json.dumps(payload, indent=2, ensure_ascii=False) + "\n",
-        encoding="utf-8",
-    )
-    temporary.replace(path)
+    temporary: Path | None = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
+                                         prefix=f".{path.name}.", suffix=".tmp", delete=False) as output:
+            temporary = Path(output.name)
+            json.dump(payload, output, indent=2, ensure_ascii=False, allow_nan=False)
+            output.write("\n")
+        if overwrite:
+            temporary.replace(path)
+        else:
+            # Install the complete file atomically; even a concurrent writer's
+            # existing artifact must survive. Both paths are on the same volume.
+            os.link(temporary, path)
+    finally:
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)

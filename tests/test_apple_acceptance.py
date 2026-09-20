@@ -9,6 +9,29 @@ evaluate = runpy.run_path(str(ROOT / "scripts/check-apple-formatting.py"))["eval
 
 
 class AppleAcceptanceChecks(unittest.TestCase):
+    def test_equivalent_phrasing_passes_without_accepting_reversed_or_definite_claims(self):
+        cases = json.loads((ROOT / "tests/fixtures/apple-formatting.json").read_text())
+        text = """# Review
+## General feedback
+- Sky appears too bright, possibly a display issue.
+- Dialogue is quiet and needs to come forward.
+## Timestamped feedback
+No timestamp-specific notes were identified.
+"""
+        self.assertEqual(evaluate(text, cases[5]), [])
+        self.assertTrue(evaluate(text.replace("possibly a display issue", "because of the display"), cases[5]))
+        text = """# Review
+## General feedback
+None.
+## Timestamped feedback
+| Video time | Feedback |
+| --- | --- |
+| **00:14** | Image too dark. |
+| **00:14** | Move the door slam to match the closing door. |
+"""
+        self.assertEqual(evaluate(text, cases[3]), [])
+        self.assertTrue(evaluate(text.replace("slam to match", "slam earlier to match"), cases[3]))
+
     def test_coverage_alone_does_not_accept_reversed_meaning_or_missing_caveats(self):
         case = json.loads((ROOT / "tests/fixtures/apple-formatting.json").read_text())[0]
         text = """# Review

@@ -55,6 +55,48 @@ private struct TranscriptPayload: Encodable {
     }
 }
 
+// Optional companion to transcript-v1. These are recording offsets, never CUT
+// timecodes. The core owns their validation, retention and any repair decisions.
+struct TranscriptEvidencePayload: Codable {
+    struct Token: Codable {
+        let text: String
+        let start: Double
+        let end: Double
+        let confidence: Float
+    }
+
+    struct Word: Codable {
+        let text: String
+        let start: Double
+        let end: Double
+    }
+
+    let schemaVersion: String
+    let text: String
+    let durationSeconds: Double
+    let tokens: [Token]
+    let words: [Word]
+
+    init(_ transcript: ParakeetTranscriptResult) {
+        schemaVersion = "cutnotes.local.transcript-evidence.v1"
+        text = transcript.text
+        durationSeconds = transcript.durationSeconds
+        tokens = transcript.tokens.map {
+            Token(text: $0.text, start: $0.startsAtSeconds,
+                  end: $0.endsAtSeconds, confidence: $0.confidence)
+        }
+        words = transcript.words.map {
+            Word(text: $0.text, start: $0.startsAtSeconds, end: $0.endsAtSeconds)
+        }
+    }
+
+    enum CodingKeys: String, CodingKey {
+        case schemaVersion = "schema_version"
+        case durationSeconds = "duration_seconds"
+        case text, tokens, words
+    }
+}
+
 @available(macOS 26.0, *)
 @Generable(description: "A source-ID-only classification plan; never author note text")
 private struct EditorialPlan {
@@ -338,6 +380,14 @@ private enum CutNotesLocal {
                     ),
                     to: output
                 )
+                if let evidencePath = options.values["--evidence-output"] {
+                    do {
+                        try writeJSON(TranscriptEvidencePayload(transcript),
+                                      to: URL(fileURLWithPath: evidencePath))
+                    } catch {
+                        FileHandle.standardError.write(Data("CutNotesLocal: Could not save optional word timing data: \(error)\n".utf8))
+                    }
+                }
             case "generate":
                 let promptURL = URL(fileURLWithPath: try options.require("--prompt"))
                 let output = URL(fileURLWithPath: try options.require("--output"))

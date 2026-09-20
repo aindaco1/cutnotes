@@ -38,6 +38,7 @@ from .formatting import (
     validate_markdown,
 )
 from .models import default_model_directory, validate_model
+from .transcription import audio_digest, decode_local_evidence, evidence_path, merge_evidence
 
 
 MACWHISPER_CANDIDATES = (
@@ -269,12 +270,20 @@ def transcribe_with_parakeet(
     validate_model(model)
     transcript_path.parent.mkdir(parents=True, exist_ok=True)
     reporter.stage("transcribing", "Transcribing locally with Parakeet v3")
+    try:
+        source_digest = audio_digest(audio_path)
+    except OSError:
+        # The transcription adapter reports its own stable input error. Optional
+        # evidence must not replace that error or prevent a usable transcript.
+        source_digest = None
     with tempfile.TemporaryDirectory(prefix="cutnotes-audio-") as temporary:
         temporary_directory = Path(temporary)
         chunks = _create_audio_chunks(ffmpeg, audio_path, temporary_directory)
         texts: list[str] = []
+        evidence: list[dict] = []
         for index, chunk in enumerate(chunks, start=1):
             result_path = temporary_directory / f"result-{index:04d}.json"
+            evidence_result = temporary_directory / f"evidence-{index:04d}.json"
             _run_checked(
                 [
                     engine,
@@ -285,6 +294,8 @@ def transcribe_with_parakeet(
                     str(model),
                     "--output",
                     str(result_path),
+                    "--evidence-output",
+                    str(evidence_result),
                 ],
                 failure="Parakeet local transcription failed",
                 code="parakeet_failed",
@@ -303,6 +314,12 @@ def transcribe_with_parakeet(
                 ) from error
             if text:
                 texts.append(text)
+            if evidence_result.is_file():
+                try:
+                    evidence.append(decode_local_evidence(
+                        json.loads(evidence_result.read_text(encoding="utf-8")), text=text))
+                except (OSError, ValueError, TypeError):
+                    reporter.warning("transcribing", "Word timing data was invalid; the transcript was retained unchanged")
             reporter.progress(
                 "transcribing",
                 index / len(chunks),
@@ -320,6 +337,15 @@ def transcribe_with_parakeet(
     temporary_transcript = transcript_path.with_name(f".{transcript_path.name}.tmp")
     temporary_transcript.write_text(transcript + "\n", encoding="utf-8")
     temporary_transcript.replace(transcript_path)
+    # Older transcript-v1 helpers may ignore the optional evidence argument.
+    # Incomplete metadata is not used, and an existing artifact is never replaced.
+    companion = evidence_path(transcript_path)
+    if source_digest and len(evidence) == len(chunks) and not companion.exists():
+        try:
+            write_json(companion, merge_evidence(evidence, transcript + "\n", source_digest),
+                       overwrite=False)
+        except OSError:
+            reporter.warning("transcribing", "Word timing data could not be saved; the transcript was retained unchanged")
 
 
 def _generate_with_apple(
@@ -393,7 +419,7 @@ def _generate_with_apple(
                     "Apple on-device formatting declined to classify a sensitive transcript section.",
                     EXIT_FORMATTING,
                     code="apple_guardrail",
-                    recovery="CutNotes will isolate the section and preserve it through deterministic local formatting.",
+                    recovery="CutNotes will retry smaller passages; if rewriting still fails, the transcript remains preserved.",
                     preserved=PreservedArtifacts(transcript=True),
                 ) from error
             raise CutNotesError(
@@ -763,10 +789,11 @@ def _sanitize_grounded_note(
     body = note.body
     if any(tag in body.casefold() for tag in ("<context>", "<source", "</source", "spelling context:")):
         return None
-    # IDs establish provenance, but do not by themselves prevent an unrelated
-    # paraphrase. Check vocabulary overlap without requiring any editorial keywords.
+    # Do not score paraphrases by the fraction of words copied from the source.
+    # Retain the narrower backstop for an entirely unrelated vocabulary, but it
+    # is not a semantic proof; native content acceptance is still required.
     stopwords = {
-        "a", "an", "and", "are", "as", "at", "be", "been", "but", "by", "can",
+        "a", "all", "also", "an", "and", "are", "as", "at", "be", "been", "both", "but", "by", "can",
         "could", "did", "do", "does", "for", "from", "had", "has", "have", "he",
         "her", "here", "him", "his", "i", "if", "in", "is", "it", "its", "like",
         "may", "might", "my", "of", "on", "or", "our", "s", "she", "should",
@@ -783,7 +810,7 @@ def _sanitize_grounded_note(
         }
 
     source_words, body_words = content_words(source), content_words(body)
-    if len(body_words) >= 3 and len(body_words & source_words) / len(body_words) < 0.3:
+    if len(body_words) >= 3 and not body_words & source_words:
         return None
     for problem, reversal in (("early", "earlier"), ("late", "later")):
         if re.search(rf"\b(?:too|little|slightly) {problem}\b", source) and re.search(

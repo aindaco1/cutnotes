@@ -155,7 +155,7 @@
         "name": "Dark picture",
         "scope": "^00:14$",
         "contains": [
-          "picture",
+          "picture|image",
           "dark"
         ],
         "excludes": [],
@@ -166,9 +166,11 @@
         "scope": "^00:14$",
         "contains": [
           "door|slam",
-          "early|later"
+          "early|later|match.{0,35}(?:closing|close)"
         ],
-        "excludes": [],
+        "excludes": [
+          "move.{0,30}earlier"
+        ],
         "same_note": true
       }
     ],
@@ -190,7 +192,7 @@
         "scope": "general",
         "contains": [
           "light",
-          "beautiful|great|good"
+          "beautiful|appealing|great|good"
         ],
         "excludes": [],
         "same_note": true
@@ -218,7 +220,7 @@
         "contains": [
           "sky",
           "bright",
-          "might|may|could",
+          "might|may|could|possib",
           "display"
         ],
         "excludes": [],
@@ -247,7 +249,7 @@
         "contains": [
           "optional|if.{0,30}time",
           "room",
-          "absorb|departure|reflect|moment"
+          "absorb|absorp|departure|reflect|moment"
         ],
         "excludes": [],
         "same_note": true

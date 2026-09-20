@@ -78,10 +78,13 @@ def main() -> int:
         "architecture": platform.machine(),
         "fixtures_sha256": hashlib.sha256(args.fixtures.read_bytes()).hexdigest(),
         "checker_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "core_sha256": {name: hashlib.sha256((ROOT / "cutnotes_core" / name).read_bytes()).hexdigest()
+                        for name in ("providers.py", "formatting.py")},
         "passed": False,
         "cases": [],
     }
     try:
+        report["engine_sha256"] = hashlib.sha256(args.engine.read_bytes()).hexdigest()
         status = subprocess.run([str(args.engine.resolve()), "status", "--json"],
                                 capture_output=True, text=True, check=True, timeout=30)
         report["engine_status"] = json.loads(status.stdout)
