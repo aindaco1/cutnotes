@@ -14,7 +14,7 @@ The 1.0.5 work fixes unselected MacWhisper CLI probes and deterministic formatti
 | --- | --- |
 | Python regressions | 73 passed locally after the incomplete-result follow-up |
 | Swift contracts/app support | 18 passed locally after the incomplete-result follow-up |
-| CI on macOS 26 and Xcode 27 | Check the current commit's [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks); both passed at `4287ed9` before this follow-up |
+| CI on macOS 26 and Xcode 27 | Both passed at `7b037c8`; check the current commit's [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks) after subsequent changes |
 | Local release build | Passed |
 | Developer ID candidate signing | Earlier candidate passed; subsequent source changes require rebuilding and re-signing; not notarized |
 | Real Parakeet transcription | Passed on the supplied recording during diagnosis |
@@ -57,9 +57,16 @@ The approved small-schema experiment produced nine responses in each of two nati
 Apple runs. Both failed: qualifications disappeared, background speech remained,
 and observations changed meaning. The example-based variant also copied optionality
 into an unrelated note. These are private diagnostic prototypes, not shipping code.
-The user subsequently authorized benchmarking a separately downloaded local model
-as an explicit formatter choice. Cached Qwen models also failed content acceptance;
-that investigation does not establish release readiness or change the default provider.
+The brief separate-model benchmark did not establish release readiness. The user
+subsequently superseded that direction: focus on Apple Intelligence, with no model
+download beyond Parakeet. No separate formatter or dependency was integrated.
+
+The [deeper Apple-only investigation](APPLE_FORMATTING_INVESTIGATION.md) separates
+ASR wording errors from editorial-generation errors, records the controlled native
+API and audio-boundary experiments, and defines the next source-backed-statement
+prototype. Targeted re-transcription recovered clearer wording, but neither the
+alternate whole-file ASR settings nor the new Apple prompt variants passed the full
+review. These findings do not lift the release hold.
 
 Detected partial failures now return `formatter_incomplete` and preserve the
 transcript and previous Markdown. A dropped timed passage cannot be hidden by
