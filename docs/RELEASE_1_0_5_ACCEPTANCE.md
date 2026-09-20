@@ -14,7 +14,7 @@ The 1.0.5 work fixes unselected MacWhisper CLI probes and deterministic formatti
 | --- | --- |
 | Python regressions | 84 passed locally after transcription-evidence and paraphrase fixes |
 | Swift contracts/app support | 20 passed locally, including native transcription evidence |
-| CI on macOS 26 and Xcode 27 | Both passed at `5304e60`; check the current commit's [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks) after subsequent changes |
+| CI on macOS 26 and Xcode 27 | Both passed for implementation `b6e170c`: [CI run](https://github.com/aindaco1/cutnotes/actions/runs/35489201595); recheck after code changes |
 | Local release build | Passed |
 | Developer ID candidate signing | Earlier candidate passed; subsequent source changes require rebuilding and re-signing; not notarized |
 | Real Parakeet transcription | Passed on the supplied recording during diagnosis |
@@ -89,3 +89,10 @@ paraphrase was discarded by a word-overlap percentage threshold. That threshold 
 removed and regression-tested, while the narrower unrelated-vocabulary check
 remains. Acceptance fixtures now allow ordinary equivalent phrases while retaining
 direction and qualification tests. These corrections do not justify publication.
+
+An independent Shortcuts On-Device benchmark also failed the complete synthetic
+review by dropping qualifications and duplicating content. It used public synthetic
+fixtures only; the temporary shortcut was exported locally and removed afterward.
+No Shortcuts dependency was added. The supplied transcript and a fresh full-audio
+transcription both still return `formatter_incomplete` through the final candidate;
+their source files remain unchanged. The release hold remains in effect.

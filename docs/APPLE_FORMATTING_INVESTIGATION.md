@@ -91,6 +91,14 @@ is wrong and must never itself delete a negation or other source content.
 - The real recording produces a verified companion containing 915 tokens and 516
   words across 218.4213125 seconds. The original audio and saved transcript match
   their recorded digests. Confidence is retained, not used to change words.
+- Shortcuts' **Use Model / On-Device** action was also tested independently of
+  CutNotesLocal, with Text output and Follow Up disabled. A short ownership control
+  retained the responsible party but shifted its qualification. The complete
+  synthetic development review omitted the reaction caveat and ownership, and
+  duplicated timed feedback under the general heading. This wrapper did not pass
+  the review. Only public synthetic fixtures were used. The temporary shortcut
+  was exported for reproduction and removed from the library; private results are
+  in ignored `build/diagnostics/release-1.0.5/shortcuts-prototype/`.
 
 The native probes and outputs are in ignored
 `build/diagnostics/release-1.0.5/statement-prototype/`. Final native fixture reports
@@ -136,6 +144,15 @@ model and does not provide a supported macOS 27 solution. Core AI/MLX models and
 Private Cloud Compute do not meet the revised product requirement. See
 [Writing Tools coordinator](https://developer.apple.com/documentation/appkit/nswritingtoolscoordinator)
 and [Adapter toolkit](https://developer.apple.com/apple-intelligence/foundation-models-adapter/).
+
+Shortcuts explicitly offers an on-device model without a network connection;
+the native probe above tested that selection, not its cloud model. See Apple's
+[Use Model presentation](https://developer.apple.com/videos/play/wwdc2025/260/).
+It adds no demonstrated quality benefit for this release. The installed macOS 27
+`fm(1)` manual also exposes only the system model, general/content-tagging use
+cases and the existing guardrail settings. No `fm` inference was run: its CLI
+requires separate machine-wide terms acceptance, which was not changed. It is
+not a macOS 26-compatible product dependency or evidence of a better model.
 
 ## Source-backed prototype and outcome
 
@@ -198,7 +215,9 @@ holdout wording out of prompt examples. Apple also recommends systematic evaluat
 
 Use macOS 26 APIs for the implementation. Add an OS-specific prompt only if measured
 results justify it, with prompt policy remaining in the core. Both CI build/contract
-lanes passed at `7b037c8`; this machine is macOS 27.0 (26A428). No macOS 26 device is
+lanes passed for the current implementation at
+[`b6e170c`](https://github.com/aindaco1/cutnotes/actions/runs/35489201595);
+this machine is macOS 27.0 (26A428). No macOS 26 device is
 available, so macOS 26 native output quality remains unverified. Do not describe a
 successful compatibility build as a native model-quality pass.
 
