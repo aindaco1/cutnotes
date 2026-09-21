@@ -10,7 +10,8 @@ root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 app_bundle="$1"
 kit_dir="$2"
 /usr/bin/codesign --verify --deep --strict "$app_bundle"
-if ! /usr/bin/codesign -dvv "$app_bundle" 2>&1 | /usr/bin/grep -q '^Authority=Developer ID Application:'; then
+signature_details="$(/usr/bin/codesign -dvv "$app_bundle" 2>&1)"
+if [[ "$signature_details" != *$'\nAuthority=Developer ID Application:'* ]]; then
   echo "The test kit requires a Developer ID signed app." >&2
   exit 3
 fi
