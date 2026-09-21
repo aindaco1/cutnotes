@@ -2,10 +2,11 @@
 set -euo pipefail
 
 kit_dir="$(cd "$(dirname "$0")" && pwd)"
-required_model=(--require-model "AFM 3 Core Advanced")
-if [[ $# -eq 1 && "$1" == "--any-model" ]]; then
-  required_model=()
-elif [[ $# -ne 0 ]]; then
+if [[ $# -eq 0 ]]; then
+  set -- --require-model "AFM 3 Core Advanced"
+elif [[ $# -eq 1 && "$1" == "--any-model" ]]; then
+  shift
+else
   echo "usage: $0 [--any-model]" >&2
   exit 2
 fi
@@ -19,4 +20,4 @@ export PYTHONDONTWRITEBYTECODE=1
 "$resources/Runtime/Python.framework/Versions/3.14/bin/python3" \
   "$kit_dir/scripts/check-apple-formatting.py" \
   --engine "$resources/Helpers/CutNotesLocal" \
-  --output-dir "$results/acceptance" "${required_model[@]}"
+  --output-dir "$results/acceptance" "$@"

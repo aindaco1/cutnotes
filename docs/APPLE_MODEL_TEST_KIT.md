@@ -38,7 +38,9 @@ fallback provider. The app UI and MacWhisper are not opened by the benchmark.
 The private supplied recording needs a separate review on the target Mac;
 synthetic checks alone cannot establish that recording's output quality.
 
-Developers can reproduce the kit after building the app:
+Developers can reproduce the kit after building the app. Stage the directory
+outside iCloud to avoid Finder metadata invalidating the copied app signature;
+the resulting ZIP can be stored in iCloud:
 
 ```bash
 scripts/macos/prepare-apple-test-kit.sh dist/CutNotes.app /new/test-kit-directory
