@@ -12,7 +12,7 @@ The 1.0.5 work fixes unselected MacWhisper CLI probes and deterministic formatti
 
 | Gate | Status |
 | --- | --- |
-| Python regressions | 86 passed locally, including legacy/current model status and rejection of dangling background-speech framing |
+| Python regressions | 88 passed locally, including legacy/current model status, model-specific acceptance prerequisites and rejection of leaked schema prose |
 | Swift contracts/app support | 21 passed locally, including native transcription evidence and optional model metadata |
 | CI on macOS 26 and Xcode 27 | Both lanes are required for the candidate; see the current [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks) |
 | Local release build | Passed |
@@ -115,3 +115,17 @@ rebuilt production path still scores 10/12 development and 6/8 held-out cases.
 The macOS 27 SDK sampling-initializer warnings are resolved while preserving the
 same options and Xcode 26 compatibility. See the investigation for the current
 Apple hardware requirements, API decisions and unsuccessful Instruments attempt.
+
+A further required-field clause editor retained more qualifications but still
+included unrelated conversation and leaked schema instructions. It passes only
+8/12 development cases after manual review strengthened the check, and was not
+promoted to held-out evaluation or production. Unedited private output is saved
+for the user's review. The production formatter remains unchanged.
+
+The user can test Core Advanced on eligible hardware later. The
+[private model test kit](APPLE_MODEL_TEST_KIT.md) uses the same packaged core and
+helper, runs all 20 public synthetic cases, and requires the actual model name
+before inference. The requirement never selects or downloads a model. Legacy
+status without model metadata remains supported when that prerequisite is omitted.
+The documented `cutnotes-notary` keychain profile is unavailable on this Mac;
+the new private development app is signed, not a notarized release candidate.

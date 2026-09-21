@@ -68,6 +68,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--engine", type=Path, required=True, help="Candidate CutNotesLocal executable")
     parser.add_argument("--fixtures", type=Path, default=ROOT / "tests/fixtures/apple-formatting.json")
+    parser.add_argument("--require-model", help="Exact reported Apple model name required before inference; does not select a model")
     parser.add_argument("--output-dir", type=Path, required=True, help="New local evidence directory")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=False)
@@ -76,6 +77,7 @@ def main() -> int:
         "started_at": dt.datetime.now(dt.timezone.utc).isoformat(),
         "macos_version": platform.mac_ver()[0],
         "architecture": platform.machine(),
+        "required_model": args.require_model,
         "fixtures_sha256": hashlib.sha256(args.fixtures.read_bytes()).hexdigest(),
         "checker_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "core_sha256": {name: hashlib.sha256((ROOT / "cutnotes_core" / name).read_bytes()).hexdigest()
@@ -90,6 +92,9 @@ def main() -> int:
         report["engine_status"] = json.loads(status.stdout)
         if report["engine_status"].get("apple", {}).get("state") != "ready":
             report["error"] = "Apple model unavailable; native acceptance was not run."
+        elif args.require_model and report["engine_status"].get("apple", {}).get("model", {}).get("name") != args.require_model:
+            actual = report["engine_status"].get("apple", {}).get("model", {}).get("name", "unreported")
+            report["error"] = f"Required Apple model {args.require_model!r}; this Mac reports {actual!r}. Native acceptance was not run."
         else:
             cases = json.loads(args.fixtures.read_text(encoding="utf-8"))
             for index, case in enumerate(cases):

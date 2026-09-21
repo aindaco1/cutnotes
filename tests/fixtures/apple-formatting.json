@@ -53,7 +53,8 @@
     "excludes": [
       "re.?record",
       "re.?shoot",
-      "Formatting incomplete"
+      "Formatting incomplete",
+      "\\b(?:negatives|reasons|qualifications):\\s*retained\\b"
     ]
   },
   {

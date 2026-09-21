@@ -1,14 +1,64 @@
 import json
 from pathlib import Path
 import runpy
+import subprocess
+import tempfile
 import unittest
+from unittest.mock import patch
 
 
 ROOT = Path(__file__).resolve().parents[1]
-evaluate = runpy.run_path(str(ROOT / "scripts/check-apple-formatting.py"))["evaluate"]
+checker = runpy.run_path(str(ROOT / "scripts/check-apple-formatting.py"))
+evaluate = checker["evaluate"]
 
 
 class AppleAcceptanceChecks(unittest.TestCase):
+    def test_required_model_stops_inference_on_core_or_legacy_status(self):
+        for model in ({"name": "AFM 3 Core"}, None):
+            with self.subTest(model=model), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                engine = root / "engine"
+                engine.write_text("test helper")
+                apple = {"state": "ready"}
+                if model:
+                    apple["model"] = model
+                status = subprocess.CompletedProcess([], 0, json.dumps({"apple": apple}))
+                args = ["check", "--engine", str(engine), "--output-dir", str(root / "results"),
+                        "--require-model", "AFM 3 Core Advanced"]
+                with patch("sys.argv", args), patch("subprocess.run", return_value=status), \
+                        patch.dict(checker["main"].__globals__, format_with_apple=lambda **kwargs: self.fail("Unexpected inference")):
+                    self.assertEqual(checker["main"](), 1)
+                report = json.loads((root / "results/report.json").read_text())
+                self.assertFalse(report["passed"])
+                self.assertEqual(report["cases"], [])
+                self.assertIn("Native acceptance was not run", report["error"])
+
+    def test_matching_model_and_legacy_unrestricted_checks_run_inference(self):
+        for required in (None, "AFM 3 Core Advanced"):
+            with self.subTest(required=required), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                engine = root / "engine"
+                engine.write_text("test helper")
+                fixtures = root / "fixtures.json"
+                fixtures.write_text(json.dumps([{"name": "Simple praise", "transcript": "Looks great.",
+                                                "checks": [{"name": "Praise", "scope": "general", "contains": ["great"]}]}]))
+                apple = {"state": "ready"}
+                if required:
+                    apple["model"] = {"name": required}
+                status = subprocess.CompletedProcess([], 0, json.dumps({"apple": apple}))
+                args = ["check", "--engine", str(engine), "--fixtures", str(fixtures),
+                        "--output-dir", str(root / "results")]
+                if required:
+                    args += ["--require-model", required]
+                def format_fixture(**kwargs):
+                    kwargs["output_path"].write_text("# Review\n\n## General feedback\n\n- Looks great.\n\n## Timestamped feedback\n\nNone.\n")
+                with patch("sys.argv", args), patch("subprocess.run", return_value=status), \
+                        patch.dict(checker["main"].__globals__, format_with_apple=format_fixture):
+                    self.assertEqual(checker["main"](), 0)
+                report = json.loads((root / "results/report.json").read_text())
+                self.assertTrue(report["passed"])
+                self.assertEqual(len(report["cases"]), 1)
+
     def test_removing_embedded_instruction_must_not_leave_background_speech_framing(self):
         case = json.loads((ROOT / "tests/fixtures/apple-formatting.json").read_text())[-1]
         text = """# Review
@@ -64,6 +114,7 @@ None.
         text = text.replace("so the joke", "though there may be little we can improve; the joke")
         text = text.replace("Stylize the animation", "If time allows, stylize the animation")
         self.assertEqual(evaluate(text, case), [])
+        self.assertTrue(evaluate(text + "\nNegatives: retained. Reasons: retained. Qualifications: retained.", case))
 
     def test_correct_words_at_the_wrong_moment_fail(self):
         case = {"transcript": "At ten seconds, move the sound later. At twenty seconds, move the sound earlier.",
