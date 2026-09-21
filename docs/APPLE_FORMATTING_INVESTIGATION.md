@@ -162,6 +162,68 @@ the proposed editing path uses macOS 26 Foundation Models APIs.
 
 ## Public Apple API choices
 
+### September 21: macOS 27 API audit
+
+The audit covered Apple's WWDC26 Foundation Models, agentic profiles, Evaluations
+and Instruments sessions, the current macOS 27 release notes, and the installed
+Xcode 27 SDK. The existing `SystemLanguageModel` path already receives the OS's
+current local model; adopting a new session initializer does not select a larger
+model. This host is an M1 Max with 64 GB memory. The native API reports **AFM 3
+Core**, a **4,096-token** context, guided generation, tool calling and vision, with
+**no reasoning capability**. Apple's September availability notice requires an
+M3-or-later Mac with at least 12 GB for its most capable on-device model. Memory
+capacity alone does not qualify this host. Apple exposes the active variant but
+does not expose a public API to force Core Advanced. See the
+[current hardware requirements](https://www.apple.com/newsroom/2026/09/siri-ai-a-profoundly-more-capable-and-personal-assistant-is-here/),
+[variant API](https://developer.apple.com/documentation/foundationmodels/systemlanguagemodel/variant-swift.struct),
+and [Apple's selection clarification](https://developer.apple.com/forums/thread/832555).
+
+The new probes used the same nine source passages, fresh local sessions and greedy
+decoding. They did not add prompt examples or repair the supplied transcript.
+Inputs, source code, outputs, token counts and hashes are retained privately in
+`build/diagnostics/release-1.0.5/macos27-api-audit/`.
+
+| macOS 27 feature | Evidence and decision |
+| --- | --- |
+| Model identity and capabilities | Integrated into the existing native status/doctor contract as optional metadata. Acceptance reports retain it automatically. This identifies the real model without inference, downloads, telemetry or source content. Both legacy and extended payloads have Python/Swift coverage. |
+| `ContextOptions.includeSchemaInPrompt` | Compared `true` and `false` on all nine passages, holding the other inputs fixed. Omitting the schema saved 39 input tokens per passage, recovered one ownership clause, but introduced a long repetition and still retained unrelated conversation/misread lip-sync feedback. Keep the default schema inclusion. |
+| `Response.usage` and session transcripts | Captured actual input/output counts and the API-level instructions/source/response transcript in the diagnostic. Included-schema inputs were only 192–299 tokens; context exhaustion does not explain these passage failures. This does not claim a valid Instruments trace of the internal prompt. |
+| `ToolCallingMode.required` | A terminal submission tool stored one answer in memory then threw a deliberate completion error, bounding the tool loop. Nine answers returned; several qualifications survived, but background conversation and the damaged mouth-movement interpretation remained. Do not add tool orchestration to production without a demonstrated quality gain. |
+| `DynamicProfile` and history transforms | Useful for changing tools/instructions or trimming multi-turn history. Our passage requests already use isolated sessions, so there is no accumulated conversation to trim. Earlier dynamic-instructions comparisons produced the same answers. No agent framework is needed here. |
+| Evaluations framework | Available as an Xcode 27 development framework, not a better inference model. Its comparative-evaluation methodology fits the existing Python-owned fixtures and semantic checks. Keep those checks authoritative instead of duplicating policy in a Swift evaluator or accepting the same model's self-rating as proof. No new runtime dependency added. |
+| Foundation Models Instruments | Attempted a bounded trace with a public synthetic fixture. The process reached the 45-second limit without response or inference/instruction rows. Preserve this as an unsuccessful trace attempt, not proof of correct internal context. Independent session/usage evidence above is valid. |
+| Vision, OCR, Spotlight and App Intents | Do not improve this transcript-only task without additional relevant source material. The recorded voice notes are not the reviewed movie; never infer visual evidence from them or search unrelated personal data for context. |
+| `fm`, Python SDK, Core AI/MLX and PCC | `fm` and Python expose existing models through other interfaces; they do not bypass hardware/model limits. Extra-weight local models and cloud inference remain outside the product requirement. Keep the existing Swift native bridge and Python core. |
+
+The current GA [release notes](https://developer.apple.com/documentation/macos-release-notes/macos-27-release-notes)
+mark excessive tool calling with guided generation, `onPrompt` history errors and
+missing instruction callbacks as **resolved**. Earlier beta notes listing them as
+known issues should not be presented as the current state or as an explanation for
+our semantic failures.
+
+The status addition is guarded for both the SDK and runtime. Xcode 26/macOS 26
+retain the existing status shape and formatting path. The macOS 27 SDK's renamed
+sampling initializer is used when available, with the same greedy strategy/token
+limit and the legacy initializer for Xcode 26. The shared Codable status avoids
+duplicating the app/native contract. No formatter schema or deployment target changed.
+
+These 27 passage responses are controlled API probes, not 27 acceptance cases.
+They do not pass the supplied review. The best-supported next formatter change
+remains core-owned clause preservation with narrowly scoped native edits; relevant
+qualifications must survive independently of summarization, and background removal
+still needs its own passing evidence. The release hold is unchanged.
+
+Research references:
+[Foundation Models overview](https://developer.apple.com/videos/play/wwdc2026/241/),
+[context controls](https://developer.apple.com/documentation/foundationmodels/contextoptions),
+[tool-call mode and required exit condition](https://developer.apple.com/documentation/foundationmodels/generationoptions/toolcallingmode-swift.struct),
+[dynamic profiles](https://developer.apple.com/videos/play/wwdc2026/242/),
+[Evaluations](https://developer.apple.com/videos/play/wwdc2026/298/),
+[comparative prompt evaluation](https://developer.apple.com/videos/play/wwdc2026/335/),
+and [Instruments](https://developer.apple.com/videos/play/wwdc2026/243/).
+
+### Shared macOS 26 and 27 inference path
+
 Use `SystemLanguageModel` through `LanguageModelSession`. Both are available on
 macOS 26, run the system model locally, and require no app-supplied language-model
 weights. Keep the existing provider boundary and explicit selection behavior.

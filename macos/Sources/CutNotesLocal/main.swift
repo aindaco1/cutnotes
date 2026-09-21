@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import CutNotesCore
 import RecordCore
 import RecordSpeech
 
@@ -23,15 +24,10 @@ private enum LocalEngineError: Error, CustomStringConvertible {
 }
 
 private struct StatusPayload: Encodable {
-    struct AppleStatus: Encodable {
-        let state: String
-        let reason: String?
-    }
-
     let schemaVersion = "cutnotes.local.status.v1"
     let version: String
     let architecture: String
-    let apple: AppleStatus
+    let apple: DoctorPayload.AppleStatus
 
     enum CodingKeys: String, CodingKey {
         case schemaVersion = "schema_version"
@@ -270,7 +266,7 @@ private func writeJSON<T: Encodable>(_ value: T, to url: URL? = nil) throws {
     }
 }
 
-private func appleStatus() -> StatusPayload.AppleStatus {
+private func appleStatus() -> DoctorPayload.AppleStatus {
     guard #available(macOS 26.0, *) else {
         return .init(state: "unavailable", reason: "requires_macos_26")
     }
@@ -284,6 +280,23 @@ private func appleStatus() -> StatusPayload.AppleStatus {
             reason: String(describing: model.availability)
         )
     }
+    // Xcode 26 must still build this helper, and macOS 26 must still run it.
+    // This is passive local metadata, not an inference or a model download.
+    #if compiler(>=6.4)
+    if #available(macOS 27.0, *) {
+        let supported: [(String, LanguageModelCapabilities.Capability)] = [
+            ("guided_generation", .guidedGeneration),
+            ("tool_calling", .toolCalling),
+            ("reasoning", .reasoning),
+            ("vision", .vision),
+        ]
+        return .init(state: "ready", reason: nil, model: .init(
+            name: model.variant.displayName,
+            contextSize: model.contextSize,
+            capabilities: supported.compactMap { model.capabilities.contains($0.1) ? $0.0 : nil }
+        ))
+    }
+    #endif
     return .init(state: "ready", reason: nil)
 }
 
@@ -308,12 +321,22 @@ private func languageModelSession(instructions: String? = nil) throws -> Languag
 }
 
 @available(macOS 26.0, *)
+private func editorialGenerationOptions() -> GenerationOptions {
+    #if compiler(>=6.4)
+    // The renamed initializer back-deploys to macOS 26 in the macOS 27 SDK.
+    return GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 2_048)
+    #else
+    return GenerationOptions(sampling: .greedy, maximumResponseTokens: 2_048)
+    #endif
+}
+
+@available(macOS 26.0, *)
 private func generatePlan(prompt: String) async throws -> EditorialPlanPayload {
     let session = try languageModelSession()
     let response = try await session.respond(
         to: prompt,
         generating: EditorialPlan.self,
-        options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 2_048)
+        options: editorialGenerationOptions()
     )
     return EditorialPlanPayload(
         highestPriorityChanges: response.content.highestPriorityChanges,
@@ -330,7 +353,7 @@ private func generateDraft(prompt: String, instructions: String?) async throws -
     let response = try await session.respond(
         to: draftSourcePrompt(prompt, instructions: instructions),
         generating: EditorialDraft.self,
-        options: GenerationOptions(sampling: .greedy, maximumResponseTokens: 2_048)
+        options: editorialGenerationOptions()
     )
     return EditorialDraftPayload(
         notes: response.content.notes.map {

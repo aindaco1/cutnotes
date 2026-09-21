@@ -74,7 +74,11 @@ python3 scripts/check-apple-formatting.py \
 Use a new output directory for each run. The command returns failure when the model
 is unavailable or any content check fails; it never substitutes another provider.
 The local report records OS/helper versions, fixture/checker hashes, source hashes,
-and individual failures. Synthetic fixtures cover meaning at the correct moment,
+and individual failures. On macOS 27, `engine_status.apple.model` also identifies
+the actual on-device variant, context size and capabilities. Compare those values
+between runs: the OS version alone does not identify the available model. Helpers
+on macOS 26 omit this optional metadata; both contract forms are regression-tested.
+Synthetic fixtures cover meaning at the correct moment,
 opposite timing directions, negative instructions, qualifications, optional end
 feedback, praise, and unrelated conversation. Their checks accept paraphrases;
 also read the generated notes, since pattern checks cannot prove semantic fidelity.

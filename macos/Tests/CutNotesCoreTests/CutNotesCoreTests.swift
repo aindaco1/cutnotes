@@ -74,6 +74,25 @@ import Testing
     #expect(provider.models == [])
 }
 
+@Test func appleStatusAcceptsLegacyAndMacOS27ModelDetails() throws {
+    let legacy = try JSONDecoder().decode(DoctorPayload.AppleStatus.self,
+        from: Data(#"{"state":"ready","reason":null}"#.utf8))
+    #expect(legacy.state == "ready")
+    #expect(legacy.model == nil)
+
+    let current = try JSONDecoder().decode(DoctorPayload.AppleStatus.self,
+        from: Data(#"{"state":"ready","model":{"name":"AFM 3 Core","context_size":4096,"capabilities":["guided_generation","tool_calling"]}}"#.utf8))
+    #expect(current.model?.contextSize == 4096)
+    #expect(current.model?.capabilities.contains("reasoning") == false)
+    #expect(current.model?.name == "AFM 3 Core")
+    #expect(try JSONDecoder().decode(DoctorPayload.AppleStatus.self,
+        from: JSONEncoder().encode(current)) == current)
+    // Shared by the native status producer and app decoder; older payloads
+    // must keep their shape instead of adding a guessed model identity.
+    let legacyJSON = try JSONSerialization.jsonObject(with: JSONEncoder().encode(legacy)) as? [String: Any]
+    #expect(legacyJSON?["model"] == nil)
+}
+
 @Test func formatCommandNeverAddsRecordingControlChannel() throws {
     let builder = try CLICommandBuilder(executable: URL(fileURLWithPath: "/tmp/cutnotes"))
     let command = try builder.formatTranscript(

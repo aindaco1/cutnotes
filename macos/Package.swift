@@ -18,6 +18,7 @@ let package = Package(
         .executableTarget(
             name: "CutNotesLocal",
             dependencies: [
+                "CutNotesCore",
                 .product(name: "RecordCore", package: "record"),
                 .product(name: "RecordSpeech", package: "record"),
             ]

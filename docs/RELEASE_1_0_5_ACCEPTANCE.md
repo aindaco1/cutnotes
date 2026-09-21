@@ -12,13 +12,13 @@ The 1.0.5 work fixes unselected MacWhisper CLI probes and deterministic formatti
 
 | Gate | Status |
 | --- | --- |
-| Python regressions | 85 passed locally, including rejection of dangling background-speech framing |
-| Swift contracts/app support | 20 passed locally, including native transcription evidence |
-| CI on macOS 26 and Xcode 27 | Both passed for implementation `b6e170c`: [CI run](https://github.com/aindaco1/cutnotes/actions/runs/35489201595); recheck after code changes |
+| Python regressions | 86 passed locally, including legacy/current model status and rejection of dangling background-speech framing |
+| Swift contracts/app support | 21 passed locally, including native transcription evidence and optional model metadata |
+| CI on macOS 26 and Xcode 27 | Both lanes are required for the candidate; see the current [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks) |
 | Local release build | Passed |
 | Developer ID candidate signing | Earlier candidate passed; subsequent source changes require rebuilding and re-signing; not notarized |
 | Real Parakeet transcription | Passed on the supplied recording during diagnosis |
-| Native Apple formatting | 16/20 synthetic cases pass; the supplied review still fails content acceptance |
+| Native Apple formatting | Fresh September 21 run: 16/20 synthetic cases pass; the supplied review still fails content acceptance |
 | App/DMG notarization and stapling | Held |
 | Public DMG mount/install/launch | Held |
 | Public Sparkle signature/feed and previous-version update | Held |
@@ -40,8 +40,9 @@ sentence; that valid note was previously discarded by a later evidence check.
 The draft-v1 request remains compatible with older local helpers that ignore
 `--instructions`: the existing prompt file contains the complete task. New helpers
 remove only its exact duplicated instruction prefix before using the separate
-session instructions. Python and Swift tests cover both forms. No macOS 27-only
-API or deployment-target change has been introduced.
+session instructions. Python and Swift tests cover both forms. Formatting still
+uses the macOS 26 API path; only passive model metadata uses SDK/runtime-guarded
+macOS 27 APIs. The deployment target is unchanged.
 
 Experiments with free text, surrounding context, source quotations before writing,
 more detailed generation guides, and a second editing pass have not reliably
@@ -105,3 +106,12 @@ promoted to held-out evaluation. The unchanged production candidate's saved nati
 outputs still score 16/20 under the stricter check; no fresh inference run or
 release acceptance is implied. See the investigation for the native capability,
 embedding, audio-level and confidence-selected re-decoding findings.
+
+The September 21 macOS 27 audit verified this host's AFM 3 Core identity and
+capabilities, compared schema inclusion and required tool calls on nine identical
+passages, and integrated passive model metadata into the existing status contract.
+Neither experimental mode passes the supplied review. A fresh run through the
+rebuilt production path still scores 10/12 development and 6/8 held-out cases.
+The macOS 27 SDK sampling-initializer warnings are resolved while preserving the
+same options and Xcode 26 compatibility. See the investigation for the current
+Apple hardware requirements, API decisions and unsuccessful Instruments attempt.

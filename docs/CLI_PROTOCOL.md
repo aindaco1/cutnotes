@@ -29,6 +29,15 @@ Descriptor 4 accepts only newline-terminated `pause`, `resume`, `finish`, and `c
 
 MacWhisper discovery is passive: `macwhisper.path` reports the available CLI, while `version` remains null and `models` remains an empty array. Setup never runs `mw version` or `mw models`, because those commands can launch MacWhisper. The pipeline invokes `mw transcribe` only when MacWhisper is explicitly selected. These values retain the v1 field types.
 
+On macOS 27, helpers built with Xcode 27 also return an optional `apple.model`
+object in `cutnotes.local.status.v1`, passed through as `local_engine.apple.model`
+and `apple_formatter.model` in doctor output. It contains `name`, `context_size`
+(tokens), and a `capabilities` string array. This is passive system-model metadata;
+it performs no generation and contains no user content. Older helpers, SDKs and
+systems omit it. Missing metadata means unknown, not unsupported. Consumers must
+continue to accept legacy status payloads. The native helper and Swift app share
+this Codable definition; Python preserves it for local acceptance reports.
+
 ## Optional transcription evidence
 
 The native `transcribe` operation accepts `--evidence-output PATH` alongside its
