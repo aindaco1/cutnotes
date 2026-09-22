@@ -1,5 +1,14 @@
 # Evidence editing experiment — September 22, 2026
 
+**September 22 release integration:** The user accepted the reviewed v4 output
+and requested publication. Its prompts and revision/relevance policy are now
+shared in `cutnotes_core/apple_editorial.py` and invoked by the production Apple
+provider. The acoustic proposal is available to record/import with exact source
+alignment. The historical scores and limitations below are unchanged; this
+manual acceptance does not turn failed synthetic checks into passes. MiniCheck,
+Jev, alternative rubrics, and the probe remain development-only tools.
+
+
 This is a development experiment, not the app's formatter. The representative
 recording is substantially more readable, but public failures still prevent
 promotion. User review and acceptance remain required before release.

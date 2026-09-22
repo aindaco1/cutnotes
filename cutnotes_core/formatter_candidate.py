@@ -1,8 +1,8 @@
-"""Development candidate: organize source statements without rewriting their meaning.
+"""Source-preserving editorial formatter shared by Apple and development experiments.
 
-This is deliberately not wired into a user provider. Native acceptance and a human
-review must pass before promotion. Apple supplies bounded classification decisions;
-the core owns source text, time evidence, grouping, and Markdown rendering.
+Apple supplies bounded decisions; the core owns source text, time evidence,
+grouping, revision checks, and Markdown rendering. The audit supports local review;
+its checks do not prove semantic correctness.
 """
 
 from __future__ import annotations

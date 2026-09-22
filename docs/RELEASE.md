@@ -19,16 +19,16 @@ Production support-report submission is additionally gated by the exact bundle i
 ```bash
 export CUTNOTES_SIGNING_IDENTITY='Developer ID Application: Example (TEAMID)'
 export CUTNOTES_NOTARY_PROFILE='cutnotes-notary'
-./scripts/release/release.sh 1.0.2
+./scripts/release/release.sh 1.0.5
 ```
 
 The script verifies version agreement, runs both test suites, builds the pinned LGPL FFmpeg runtime and app, and signs every nested executable. It then notarizes, staples, and Gatekeeper-validates the app before packaging it; signs, notarizes, staples, and Gatekeeper-validates the DMG separately; signs the Sparkle update archive; and writes checksums. App and DMG submissions are distinct release gates.
 
 ## GitHub release
 
-Push an annotated `v1.0.2` tag only after local acceptance. `.github/workflows/release.yml` repeats the release pipeline using repository secrets and uploads:
+Push an annotated `v1.0.5` tag only after local acceptance. `.github/workflows/release.yml` repeats the release pipeline using repository secrets and uploads:
 
-- `CutNotes-1.0.2-arm64.dmg`
+- `CutNotes-1.0.5-arm64.dmg`
 - `appcast.xml`
 - `SHA256SUMS`
 

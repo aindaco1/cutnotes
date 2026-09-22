@@ -184,6 +184,29 @@ struct EditorialDraftEnvelope: Encodable {
     }
 }
 
+@available(macOS 26.0, *)
+@Generable private struct Decision { var answer: Bool }
+
+@available(macOS 26.0, *)
+@Generable private struct EditorialText {
+    @Guide(description: "The edited passage retaining its meaning and concrete details") var text: String
+}
+
+struct EditorialResultPayload: Codable {
+    var answer: Bool? = nil
+    var text: String? = nil
+}
+
+struct EditorialResultEnvelope: Encodable {
+    let schemaVersion = "cutnotes.local.editorial.v1"
+    let result: EditorialResultPayload
+
+    enum CodingKeys: String, CodingKey {
+        case schemaVersion = "schema_version"
+        case result
+    }
+}
+
 // The Python client also includes instructions in the prompt for older draft-v1
 // helpers. Remove only that exact duplicate; callers without it remain compatible.
 func draftSourcePrompt(_ prompt: String, instructions: String?) -> String {
@@ -321,13 +344,33 @@ private func languageModelSession(instructions: String? = nil) throws -> Languag
 }
 
 @available(macOS 26.0, *)
-private func editorialGenerationOptions() -> GenerationOptions {
+private func editorialGenerationOptions(maximumResponseTokens: Int = 2_048) -> GenerationOptions {
     #if compiler(>=6.4)
     // The renamed initializer back-deploys to macOS 26 in the macOS 27 SDK.
-    return GenerationOptions(samplingMode: .greedy, maximumResponseTokens: 2_048)
+    return GenerationOptions(samplingMode: .greedy, maximumResponseTokens: maximumResponseTokens)
     #else
-    return GenerationOptions(sampling: .greedy, maximumResponseTokens: 2_048)
+    return GenerationOptions(sampling: .greedy, maximumResponseTokens: maximumResponseTokens)
     #endif
+}
+
+@available(macOS 26.0, *)
+private func generateEditorial(prompt: String, instructions: String?, mode: String) async throws -> EditorialResultPayload {
+    let session = try languageModelSession(instructions: instructions)
+    let source = draftSourcePrompt(prompt, instructions: instructions)
+    let options = editorialGenerationOptions(maximumResponseTokens: mode == "editorial-decision" ? 40 : 768)
+    switch mode {
+    case "editorial-decision":
+        let response = try await session.respond(to: source, generating: Decision.self, options: options)
+        return EditorialResultPayload(answer: response.content.answer)
+    case "editorial-edit":
+        let response = try await session.respond(to: source, generating: EditorialText.self, options: options)
+        return EditorialResultPayload(text: response.content.text)
+    case "editorial-text":
+        let response = try await session.respond(to: source, options: options)
+        return EditorialResultPayload(text: response.content)
+    default:
+        throw LocalEngineError.invalidArguments("Unsupported generation mode: \(mode)")
+    }
 }
 
 @available(macOS 26.0, *)
@@ -423,20 +466,25 @@ private enum CutNotesLocal {
                     throw LocalEngineError.appleUnavailable
                 }
                 let mode = options.values["--mode"] ?? "plan"
+                var instructions: String?
+                if let instructionsPath = options.values["--instructions"] {
+                    let instructionsURL = URL(fileURLWithPath: instructionsPath)
+                    try requireRegularFile(instructionsURL, label: "Instructions")
+                    instructions = try String(contentsOf: instructionsURL, encoding: .utf8)
+                }
                 if mode == "plan" {
                     try writeJSON(
                         EditorialPlanEnvelope(plan: try await generatePlan(prompt: prompt)),
                         to: output
                     )
                 } else if mode == "draft" {
-                    var instructions: String?
-                    if let instructionsPath = options.values["--instructions"] {
-                        let instructionsURL = URL(fileURLWithPath: instructionsPath)
-                        try requireRegularFile(instructionsURL, label: "Instructions")
-                        instructions = try String(contentsOf: instructionsURL, encoding: .utf8)
-                    }
                     try writeJSON(
                         EditorialDraftEnvelope(draft: try await generateDraft(prompt: prompt, instructions: instructions)),
+                        to: output
+                    )
+                } else if ["editorial-decision", "editorial-text", "editorial-edit"].contains(mode) {
+                    try writeJSON(
+                        EditorialResultEnvelope(result: try await generateEditorial(prompt: prompt, instructions: instructions, mode: mode)),
                         to: output
                     )
                 } else {

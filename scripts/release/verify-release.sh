@@ -17,6 +17,7 @@ trap 'hdiutil detach "$mount_point" >/dev/null 2>&1 || true; rm -rf "$mount_root
 mkdir -p "$mount_point"
 /usr/bin/hdiutil attach -readonly -nobrowse -mountpoint "$mount_point" "$dmg" >/dev/null
 app="$mount_point/CutNotes.app"
+[[ -L "$mount_point/Applications" && "$(readlink "$mount_point/Applications")" == /Applications ]]
 /usr/bin/codesign --verify --deep --strict --verbose=2 "$app"
 /usr/bin/xcrun stapler validate "$app"
 /usr/sbin/spctl --assess --type execute --verbose=2 "$app"

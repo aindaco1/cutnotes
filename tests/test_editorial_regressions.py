@@ -127,7 +127,7 @@ class EditorialRegressionTests(unittest.TestCase):
             output = Path(temporary) / "notes.md"
             source.write_text("At five seconds, her mouth is still.")
             original = source.read_bytes()
-            with mock.patch.object(p, "_draft_with_apple", return_value=[]):
+            with mock.patch.object(p, "format_candidate", return_value=("", {"rendered_source_ids": [], "unassigned_timing_ids": []})):
                 with self.assertRaises(CutNotesError) as raised:
                     p.format_with_apple(engine="fake", transcript_path=source, output_path=output,
                                         title="Synthetic", context=None, reporter=ProgressReporter(None))
@@ -171,9 +171,9 @@ class EditorialRegressionTests(unittest.TestCase):
             output.write_text("Earlier approved notes")
             source_bytes, output_bytes = source.read_bytes(), output.read_bytes()
             reporter = mock.Mock(spec=ProgressReporter)
-            with mock.patch.object(p, "_draft_with_apple", side_effect=[
-                [f.DraftNote("Dialogue", "The dialogue is quiet.", ("N0001",))], []
-            ]):
+            with mock.patch.object(p, "format_candidate", return_value=("", {
+                "rendered_source_ids": ["S0001"], "unassigned_timing_ids": ["S0002"]
+            })):
                 with self.assertRaises(CutNotesError) as raised:
                     p.format_with_apple(engine="fake", transcript_path=source, output_path=output,
                                         title="Synthetic", context=None, reporter=reporter)

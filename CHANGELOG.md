@@ -1,19 +1,14 @@
 # Changelog
 
-## 1.0.5 — Unreleased
+## 1.0.5 — 2026-09-22
 
-- Stop setup checks from launching MacWhisper through version and model queries. Invoke its CLI only when MacWhisper is selected for transcription.
-- Remove the keyword gate that discarded animation and facial-position feedback, repair unusable generated titles, and process feedback throughout the transcript even when it starts with unrelated speech.
-- Recognize conversational second markers and adjacent spoken ranges, and separate natural general-feedback transitions from timestamped notes.
-- Separate Apple model instructions from source material and bound long edit moments. Return an error when no usable notes are generated or a timed passage remains incomplete; preserve the source and prior notes instead of writing canned advice, transcript dumps or placeholder notes.
-- Add regression coverage for provider isolation, source preservation, spoken timestamps, summary selection, model-request separation, malformed drafts, and formatting failures.
-- Preserve short general feedback and distinct notes with similar wording; deduplicate only repeated text.
-- Preserve end-of-video placement when the model cites an explanatory sentence and the preceding sentence supplies its location.
-- Keep complete prompts compatible with older draft-v1 helpers while newer helpers separate instructions from source data without duplicating them in the model request.
-- Add a real Apple formatting acceptance command with synthetic meaning, qualification, timing and background-conversation checks for macOS 26 and 27. The combined release remains held until native acceptance passes.
-- Expand native acceptance to 12 development cases and eight held-out cases, including separate issues at one timestamp and qualifications attached to the correct observation.
-- Retain optional Parakeet word timing and confidence in a validated local companion file bound to the source audio and transcript. Keep uncertain words unchanged and preserve existing artifacts if evidence cannot be saved.
-- Retain valid paraphrases that share only a few words with their source; the previous word-overlap percentage check could silently discard positive feedback.
+- Fix MacWhisper opening unexpectedly. CutNotes invokes its transcription CLI only when MacWhisper is selected; setup and other providers do not probe it.
+- Rework Apple Intelligence formatting around short, source-backed passages. Keep usable observations as written, combine repeated feedback, and preserve conditions, uncertainty, and positive notes. When a proposed edit fails the meaning checks, retain the original wording for review.
+- Improve spoken cut timestamps, adjacent ranges, retrospective timing corrections, general feedback, and end-of-video notes.
+- Use local word alignment and relative audio levels to exclude very quiet background speech from formatted notes when exact evidence is available. Preserve the complete original audio and transcript, plus a local review record of excluded speech and proposed edits.
+- Add quiet-place and headphone guidance to recording and import. Apple Intelligence formatting remains on-device and requires no additional model download beyond Parakeet for transcription.
+- Expand regression coverage for source preservation, meaning changes, provider isolation, helper contracts, audio evidence, and malformed or incomplete results. Jev remains a development-only evaluator of public synthetic fixtures.
+- Retain macOS 26 compatibility and report the system-selected Apple model on macOS 27. Output quality still depends on the recording, transcription, and available Apple model; review your notes before sharing.
 
 ## 1.0.4 — 2026-09-15
 

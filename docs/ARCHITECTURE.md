@@ -36,7 +36,23 @@ The Python `doctor` contract exposes the model's supported language codes and na
 
 Python normalizes clear spoken and compact CUT timecodes before provider use, then groups coherent passages at timestamp and natural topic boundaries. Natural general-feedback transitions clear the active timestamp. Adjacent markers can form a range when the surrounding note is continuous. All passages remain eligible for formatting, including feedback after untimed opening conversation. Retrospective time corrections remain attached to the preceding passage; relative end-of-video suggestions stay separate from general feedback.
 
-Apple and Codex return concise titles and bodies plus supporting source IDs through `cutnotes.local.draft.v1` or an equivalent Codex schema. Python rejects invalid grounding IDs and selected semantic contradictions, repairs empty titles, and renders validated timestamps itself. Editorial relevance is not determined by a finite vocabulary or scene-specific templates. The original transcript remains the preservation artifact.
+Apple handles small classification and copyediting requests through
+`cutnotes.local.editorial.v1`. Shared Python prompts and policy keep individual
+usable statements unchanged, group passages, and check proposed edits for
+selected changes in meaning. A rejected edit retains the source wording. These
+bounded checks are not a proof of semantic correctness. CutNotes owns timestamps,
+source IDs, rendering, and local audit records. Codex retains its explicit
+optional draft schema and grounding checks; the older native draft/plan helper
+contracts remain supported.
+
+When record/import supplies exact Parakeet alignment, Python measures relative
+speech levels on an unnormalized temporary PCM copy. Sustained utterances at
+least 18 dB below the recording reference may be excluded from the formatting
+input. The full audio and transcript remain untouched; a local review sidecar
+retains every exclusion. Quiet speech is evidence, not speaker identification.
+Missing or stale alignment preserves all speech, and text-only formatting does
+not guess an audio source. Jev and optional independent verifiers run only in
+development, never in this runtime path.
 
 Apple receives the core-owned task instructions in a separate `--instructions` file, passed to `LanguageModelSession.instructions`; its prompt contains only source observations and spelling context. The native helper generates the body before supporting IDs and title while retaining the existing response schema. Apple requests use alphabetic source-ID aliases so observation numbers cannot be confused with video times. Python maps them back before grounding validation. Temporary request files are removed on success and failure. See Apple's [prompting guidance](https://developer.apple.com/documentation/foundationmodels/prompting-an-on-device-foundation-model).
 

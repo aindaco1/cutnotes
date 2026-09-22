@@ -79,7 +79,7 @@ def main() -> int:
         "fixtures_sha256": hashlib.sha256(args.fixtures.read_bytes()).hexdigest(),
         "checker_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "core_sha256": {name: hashlib.sha256((ROOT / "cutnotes_core" / name).read_bytes()).hexdigest()
-                        for name in ("providers.py", "formatting.py")},
+                        for name in ("providers.py", "formatting.py", "formatter_candidate.py", "apple_editorial.py", "editorial_edits.py", "speech_levels.py")},
         "jev_requested": not args.skip_jev,
         "passed": False,
         "cases": [],

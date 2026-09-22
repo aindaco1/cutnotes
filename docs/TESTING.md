@@ -50,10 +50,21 @@ For 1.0.0 there is no earlier Sparkle-enabled public version, so the real previo
 
 ## Formatting and optional-provider regressions
 
-The development-only [source-preserving formatter experiment](FORMATTER_RESET_EXPERIMENT.md)
-compares smaller Apple tasks and a relative-volume background-speech proposal.
-It remains outside the app pipeline because native/Jev acceptance is failing;
-its unit tests run in the standard suite.
+The reviewed source-preserving formatter is shared by the Apple provider and
+[development experiments](EVIDENCE_EDITING_EXPERIMENT.md). Prompts and bounded
+revision policy live in `cutnotes_core/apple_editorial.py`; transport lives in
+the provider/helper. The additive `cutnotes.local.editorial.v1` contract supports
+Boolean decisions, plain-text relevance, and guided passage edits. Older helper
+contracts remain available, but the new formatter requires its matching helper;
+it never silently switches back to an older formatter or another provider.
+
+Record/import may use exact Parakeet alignment to measure relative speech levels.
+Standalone text never guesses which audio belongs to it. Missing/stale acoustic
+evidence preserves the complete transcript. A unique `*.formatting-review-*.json`
+file beside the Markdown records source/output hashes, rejected revisions,
+background exclusions, and context/guardrail limits. These local review files may
+contain private source text and must never be sent to Jev. A retained original
+passage is not proof of polished prose or of semantic correctness.
 
 The 1.0.5 tests cover mouth and facial-animation observations without keyword gating; generated source IDs used as titles; malformed and unknown grounding IDs; adjacent spoken ranges; conversational second markers; natural general-note transitions; opening conversation followed by actual feedback; bounded long single edit moments; and context-limit retries. Both full and detected partial formatting failure must preserve the source and prior output and return an error. A separate missing passage at a timestamp already covered by another note must also fail, without disclosing source text in errors.
 
@@ -204,7 +215,7 @@ billing cap. The standard suite runs calibration and native evaluation as separa
 batches. Exit status is 0 for success (or explicit dry run), 1 for completed checks
 needing review, and 2 for evaluator errors.
 
-The native development corpus has 12 cases, plus eight historical cases in
+The native development corpus has 16 cases, plus eight historical cases in
 `apple-formatting-holdout.json`. Those eight have already been inspected and are
 regressions, not a fresh holdout. A combined pass never replaces native review of
 the supplied recording or other release gates; reports retain `release_accepted:
@@ -217,7 +228,7 @@ A hosted runner without a ready model does not establish native output quality.
 The release hold requires successful native content acceptance on the available
 macOS 27 host; do not equate passing cross-version builds with that acceptance.
 Keep the macOS 15 app deployment target, the macOS 26 Foundation Models availability
-checks, and the existing `cutnotes.local.draft.v1` contract. Do not introduce a
+checks, and the legacy helper contracts alongside the additive editorial-v1 contract. Do not introduce a
 macOS 27-only formatter path without an independently tested macOS 26 path.
 
 ## Cleaner human speech controls
@@ -230,8 +241,8 @@ A successful import must not be reported as a content-quality pass.
 
 ## Evidence editing and readability experiments
 
-The [experiment record](EVIDENCE_EDITING_EXPERIMENT.md) distinguishes the new
-development candidate from the app's current formatter. Compile the existing
+The [experiment record](EVIDENCE_EDITING_EXPERIMENT.md) records the reviewed
+policy now shared with the app and the remaining development-only comparisons. Compile the existing
 `AppleFormatterProbe.swift` for macOS 26 as described in
 [the baseline experiment](FORMATTER_RESET_EXPERIMENT.md), then run:
 

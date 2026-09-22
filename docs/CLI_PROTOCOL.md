@@ -55,8 +55,29 @@ into the complete recording and saves `<transcript-stem>.evidence.json` with
 digests of the exact saved transcript and source audio. This file is installed
 atomically without replacing an existing artifact. Missing or invalid optional
 evidence does not invalidate a usable transcript. The result/progress contracts
-are unchanged. Evidence is currently retained for diagnosis; the formatter does
-not use it to change recognized words or choose a different provider.
+are unchanged. The Apple formatter may use this exact alignment with known source audio to
+exclude sustained very quiet utterances from its input, retaining an audit of
+those decisions. The saved transcript is never changed; evidence does not select
+another provider. Standalone text formatting does not infer an audio source.
+
+## Apple editorial generation
+
+`CutNotesLocal generate` accepts `--mode editorial-decision`, `editorial-text`,
+or `editorial-edit`, along with UTF-8 `--prompt`, `--instructions`, and `--output`
+paths. Instructions are separate from untrusted source/context at the model
+boundary. Each response is `{"schema_version":"cutnotes.local.editorial.v1",
+"result":{...}}`, with Boolean `answer` for decisions or nonempty string `text`
+for the other modes. Both languages test the payload types. Invalid envelopes,
+missing values, unavailable models, and timeouts fail explicitly; only bounded
+context/guardrail refusals retain source wording for review. The matching helper
+ships with the app. No silent old-helper or provider fallback is allowed.
+The existing plan/draft contracts and outer CLI result/error schemas are unchanged.
+
+Each successful Apple formatting run saves a unique local
+`<notes-stem>.formatting-review-<id>.json` beside the Markdown. It includes the
+source transcript/output hashes, source sentences, rejected revisions, relevance
+exclusions, and available acoustic evidence. It contains private text and is not
+telemetry or an input to remote development evaluation.
 
 ## Compatibility rule
 

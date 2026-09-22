@@ -3,6 +3,21 @@ import XCTest
 @testable import CutNotesLocal
 
 final class EditorialDraftTests: XCTestCase {
+    func testEditorialResultsRoundTripFalseAndText() throws {
+        for result in [EditorialResultPayload(answer: false), EditorialResultPayload(text: "The light is warm.")] {
+            let data = try JSONEncoder().encode(EditorialResultEnvelope(result: result))
+            let json = try XCTUnwrap(JSONSerialization.jsonObject(with: data) as? [String: Any])
+            XCTAssertEqual(json["schema_version"] as? String, "cutnotes.local.editorial.v1")
+            let decoded = try JSONDecoder().decode(EditorialResultPayload.self,
+                from: JSONSerialization.data(withJSONObject: XCTUnwrap(json["result"])))
+            XCTAssertEqual(decoded.answer, result.answer)
+            XCTAssertEqual(decoded.text, result.text)
+        }
+    }
+
+    func testEditorialResultRejectsStringInsteadOfBoolean() {
+        XCTAssertThrowsError(try JSONDecoder().decode(EditorialResultPayload.self, from: Data(#"{"answer":"false"}"#.utf8)))
+    }
     func testCompatiblePromptRemovesOnlyDuplicatedInstructions() {
         let instructions = "Preserve the feedback."
         let source = "<source>Private transcript</source>"

@@ -668,7 +668,7 @@ output.write_text(json.dumps(draft), encoding="utf-8")
             self.assertIn("**00:05**", output.read_text(encoding="utf-8"))
             self.assertIn("Shorten the shot.", output.read_text(encoding="utf-8"))
 
-    def test_apple_format_batches_long_transcript_for_local_context_window(self) -> None:
+    def test_apple_format_preserves_long_transcript_on_context_and_guardrail_limits(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:
             temp = Path(temporary_directory)
             transcript = temp / "transcript.txt"
@@ -708,19 +708,9 @@ if len(prompt) > 2_500:
     )
     raise SystemExit(1)
 output = pathlib.Path(args[args.index("--output") + 1])
-import re
-source_ids = list(dict.fromkeys(re.findall(r"obs_[a-z]+", prompt)))
-output.write_text(json.dumps({
-    "schema_version": "cutnotes.local.draft.v1",
-    "draft": {
-        "notes": ([{
-            "title": "Preserve the requested change",
-            "body": "Preserve the distinct requested editorial change.",
-            "source_ids": [source_ids[0]],
-            "location": "general", "timecodes": [], "approximate": False,
-        }] if source_ids else []),
-    },
-}), encoding="utf-8")
+mode = args[args.index("--mode") + 1]
+result = {"answer": False} if mode == "editorial-decision" else {"text": "YES"}
+output.write_text(json.dumps({"schema_version": "cutnotes.local.editorial.v1", "result": result}), encoding="utf-8")
 """,
             )
             environment = os.environ.copy()
@@ -749,7 +739,10 @@ output.write_text(json.dumps({
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue(output.is_file())
             self.assertIn("## General feedback", output.read_text(encoding="utf-8"))
-            self.assertIn("Preserve the distinct requested editorial change.", output.read_text(encoding="utf-8"))
+            markdown = output.read_text(encoding="utf-8")
+            self.assertIn("SENSITIVE_MARKER", markdown)
+            for index in range(1, 81):
+                self.assertIn(f"Editorial observation {index} ", markdown)
             self.assertIn("SENSITIVE_MARKER", transcript.read_text(encoding="utf-8"))
 
     def test_format_rejects_non_utf8_transcript_with_machine_error(self) -> None:

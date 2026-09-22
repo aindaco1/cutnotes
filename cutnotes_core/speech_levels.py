@@ -1,17 +1,29 @@
 """Local, reviewable background-speech candidates from exact ASR word alignment.
 
-This experiment is not a production transcription filter. Relative loudness is
-evidence of distance/background, not speaker identity or editorial relevance.
+Relative loudness is evidence of distance/background, not speaker identity or
+editorial relevance. Formatting may use the proposal; ASR remains unchanged.
 """
 from __future__ import annotations
 
 import array
 import math
 from pathlib import Path
+import subprocess
 import sys
+import tempfile
 import wave
 
 from .transcription import EVIDENCE_SCHEMA, _number, audio_digest, text_digest
+
+
+def analyze_recording(*, transcript: str, evidence: dict, source_audio: Path, ffmpeg: str) -> dict:
+    """Measure a temporary PCM copy without gain normalization or source changes."""
+    with tempfile.TemporaryDirectory(prefix="cutnotes-speech-levels-") as temporary:
+        pcm = Path(temporary) / "measurement.wav"
+        subprocess.run([ffmpeg, "-nostdin", "-n", "-v", "error", "-i", str(source_audio.resolve()),
+                        "-map", "0:a:0", "-ac", "1", "-ar", "16000", "-c:a", "pcm_s16le", str(pcm)],
+                       check=True, capture_output=True, timeout=300)
+        return analyze_speech_levels(transcript=transcript, evidence=evidence, source_audio=source_audio, pcm_audio=pcm)
 
 
 def _percentile(values: list[float], fraction: float) -> float:

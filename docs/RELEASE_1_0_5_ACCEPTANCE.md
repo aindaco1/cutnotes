@@ -1,5 +1,38 @@
 # 1.0.5 acceptance status
 
+## Current release decision — September 22, 2026
+
+The user accepted the reviewed representative output and explicitly requested a
+new release. The manual content hold is lifted. The reviewed v4 prompts and
+bounded editing policy now run in the production Apple provider through the
+additive `cutnotes.local.editorial.v1` helper contract. The experiment and app
+share those prompts and policy. Single observations stay source-preserving;
+invalid proposed edits retain source wording. Local review records retain
+relevance decisions, exclusions, rejected edits, and original/output hashes.
+Record/import uses the measured quiet-speech proposal only with exact audio,
+transcript, and word alignment; standalone text does not infer audio evidence.
+
+The reviewed input included user-confirmed transcription corrections. Fresh raw
+Parakeet output remains a separate gate and is not claimed to reproduce those
+corrections automatically. Jev and MiniCheck remain development tools; neither is
+included in app execution. Frozen synthetic test failures remain failures and
+are recorded separately from the user's manual acceptance. No thresholds changed.
+Native macOS 26 and Core Advanced output cannot be tested on this M1 Max/macOS 27
+host; macOS 26 SDK/build/contracts remain required in CI.
+
+Initial production-integration checks: 175 Python and 23 Swift tests pass. A real
+Apple run through the production CLI produced byte-for-byte identical Markdown
+to the user-reviewed v4 output. MacWhisper provider-isolation tests pass.
+
+Release validation evidence is collected in ignored
+`build/diagnostics/release-1.0.5/`. Signing, notarization, installation, and the
+previous-version Sparkle update must be verified separately below.
+
+## Historical investigation and earlier release holds
+
+The following entries describe earlier candidates and decisions, not the current
+manual acceptance status.
+
 **Release held for the user to review and manually accept cleaner-audio output.**
 
 Acceptance means useful, faithful feedback comparable to prior working releases. It does not require the exact wording or polish of a Codex-authored reference.
