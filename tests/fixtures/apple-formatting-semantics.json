@@ -342,5 +342,62 @@
       "scope": "^00:26$",
       "requirement": "The eyebrow note preserves the instruction not to change the smile."
     }
+  ],
+  "False start after a standalone character name": [
+    {
+      "scope": "^00:41$",
+      "requirement": "At 00:41, the glove fails to turn with the hand; the abandoned phrase is not permission to leave it motionless."
+    },
+    {
+      "scope": "^00:41$",
+      "requirement": "The 00:41 glove note retains that only a little rotation is needed."
+    },
+    {
+      "scope": "^00:41$",
+      "requirement": "The 00:41 glove note retains that the grip needs to stay connected."
+    }
+  ],
+  "Personal aside continues across several sentences": [
+    {
+      "scope": "^00:06$",
+      "requirement": "At 00:06, keep the cabinet color consistent between shots."
+    },
+    {
+      "scope": "general",
+      "requirement": "The warm lighting works well."
+    },
+    {
+      "scope": "document",
+      "kind": "exclusion",
+      "requirement": "The personal account of the neighbor ordering a cabinet, phoning the shop, or waiting for delivery."
+    }
+  ],
+  "Post-production vocabulary keeps its meaning": [
+    {
+      "scope": "general",
+      "requirement": "The video grading is too warm, with redder shadows than in the previous shot."
+    },
+    {
+      "scope": "general",
+      "requirement": "The grading note preserves that the display could contribute and another screen should be checked before changing the grade."
+    },
+    {
+      "scope": "general",
+      "requirement": "The dialogue mix sounds good and should be left unchanged."
+    }
+  ],
+  "A corrected sound target retains the amount and reason": [
+    {
+      "scope": "^00:48$",
+      "requirement": "The footsteps at 00:48 should remain unchanged."
+    },
+    {
+      "scope": "^00:48$",
+      "requirement": "The rain at 00:48 is too loud and should be reduced only a little."
+    },
+    {
+      "scope": "^00:48$",
+      "requirement": "The rain-reduction note retains that the storm must still be felt."
+    }
   ]
 }

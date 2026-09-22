@@ -390,5 +390,128 @@
       "PUBLISH_READY",
       "(?:voice|recording).{0,35}says?\\s*:"
     ]
+  },
+  {
+    "name": "False start after a standalone character name",
+    "transcript": "At forty-one seconds, Morgan. The glove doesn't have to, sorry, the glove doesn't turn with the hand at all. It should only turn a little, but the grip needs to stay connected.",
+    "checks": [
+      {
+        "name": "Missing glove rotation",
+        "scope": "^00:41$",
+        "contains": [
+          "glove",
+          "(?:not|n't|no).{0,35}(?:turn|rotat)|(?:missing|lack).{0,35}(?:turn|rotat)",
+          "little|slight|subtle",
+          "grip|connect"
+        ],
+        "excludes": [
+          "(?:not|n't).{0,15}(?:have|need).{0,15}(?:turn|rotat)"
+        ],
+        "same_note": true
+      }
+    ],
+    "excludes": [
+      "scholarship",
+      "GPA",
+      "JSON.?schema"
+    ]
+  },
+  {
+    "name": "Personal aside continues across several sentences",
+    "transcript": "At six seconds, the cabinet door changes color between shots. My neighbor ordered a green cabinet for her kitchen. She keeps phoning the shop. They haven't delivered it yet. Anyway, back to the video: keep the cabinet color consistent. Overall, the warm lighting works well.",
+    "checks": [
+      {
+        "name": "Cabinet continuity",
+        "scope": "^00:06$",
+        "contains": [
+          "cabinet",
+          "colou?r",
+          "consisten|match|continu"
+        ],
+        "same_note": true
+      },
+      {
+        "name": "Warm lighting praise",
+        "scope": "general",
+        "contains": [
+          "light",
+          "warm",
+          "well|good|great|keep|effective"
+        ],
+        "same_note": true
+      }
+    ],
+    "excludes": [
+      "neighbor",
+      "kitchen",
+      "phon",
+      "deliver",
+      "shop"
+    ]
+  },
+  {
+    "name": "Post-production vocabulary keeps its meaning",
+    "transcript": "Overall, the grading is too warm. The shadows are redder than in the previous shot. My display could be contributing, so let's check on another screen before changing it. One other thing, the dialogue mix sounds good; leave it alone.",
+    "checks": [
+      {
+        "name": "Warm grade with a display caveat",
+        "scope": "general",
+        "contains": [
+          "grad|colou?r",
+          "warm",
+          "shadow",
+          "red",
+          "display|screen",
+          "could|may|might|possib",
+          "check"
+        ],
+        "same_note": true
+      },
+      {
+        "name": "Keep dialogue mix",
+        "scope": "general",
+        "contains": [
+          "dialogue",
+          "good|well",
+          "leave|keep|unchang"
+        ],
+        "same_note": true
+      }
+    ],
+    "excludes": [
+      "lenient",
+      "harsh",
+      "academic",
+      "student"
+    ]
+  },
+  {
+    "name": "A corrected sound target retains the amount and reason",
+    "transcript": "At forty-eight seconds, not the footsteps, the rain is too loud. Leave the footsteps as they are. Could we bring the rain down just a little? I mean only a little, since we still need to feel the storm.",
+    "checks": [
+      {
+        "name": "Keep footsteps",
+        "scope": "^00:48$",
+        "contains": [
+          "footstep",
+          "leave|keep|unchang"
+        ],
+        "same_note": true
+      },
+      {
+        "name": "Slight rain reduction with purpose",
+        "scope": "^00:48$",
+        "contains": [
+          "rain",
+          "down|lower|reduc|quiet",
+          "little|slight|subtle",
+          "storm"
+        ],
+        "same_note": true
+      }
+    ],
+    "excludes": [
+      "(?:lower|reduc|quiet)[^.!?]{0,20}footstep"
+    ]
   }
 ]

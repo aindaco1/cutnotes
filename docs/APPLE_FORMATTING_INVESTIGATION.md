@@ -342,3 +342,65 @@ Once native content passes, run the existing signing, notarization, stapling,
 DMG install/launch and Sparkle validation gates, deploy the combined release, then
 complete recoverable cleanup. Until then, retain the installed public release,
 source, active branch, development runtime and relevant diagnostic evidence.
+
+## September 22: sentence preservation and disfluent regressions
+
+This follow-up kept the production formatter unchanged. The diagnostic reused the
+core's passage grouping, source IDs, location binding and renderer. Apple first
+answered a narrow Boolean relevance question for each source sentence, then
+copyedited retained sentences independently. Jev evaluated public synthetic output
+only, with the existing question protocol and calibrated review policy unchanged.
+
+| Diagnostic | Exact checks | Combined exact and Jev | Decision |
+| --- | ---: | ---: | --- |
+| Structured sentence edits, original development set | 12/12 | 10/12 | Reject: private input still loses meaning, retains background speech and triggers a guardrail on a fictional impact |
+| Plain-text sentence edits, same development set | 12/12 | 9/12 | Reject: qualifications survive, but private fragments can produce unrelated completions |
+| Same plain-text procedure, eight broader regressions | 7/8 | 3/8 | Reject: an edit changes warm grading to lenient grading; other cases need readability review |
+
+The full plain-text corpus therefore scores **19/20 exact and 12/20 combined**.
+These are fresh prototype outputs, not an improvement in the app's formatter or
+a release-completion percentage. The complex public review does preserve the
+reaction limitation, optional treatment, two end actions, purpose and possible
+dialogue adjustment on our end. That local success does not generalize to the
+supplied recording. Readability flags also include the renderer's existing empty
+summary notice, so they should not all be described as lost meaning.
+
+Three additional controls failed to establish a deployable repair:
+
+- Editing whole passages removes the isolated-name completion but again drops
+  qualifications or misinterprets the damaged mouth observation.
+- Adding nearby context to the relevance question discards valid mouth feedback
+  along with personal conversation. It is not a safe deletion gate.
+- Explicit film context and source delimiters keep a bare name unchanged, but
+  introduce markup and still misinterpret grading terminology. Do not fix this
+  by installing content-specific replacements or a word-overlap deletion gate.
+
+Four newly authored public fixtures now run in the default development suite:
+a name followed by a false start, a personal aside with pronoun continuations,
+post-production terminology with a display caveat, and a corrected sound target
+with a small requested adjustment and a reason. None copies the private source.
+The development corpus now has 16 cases; the separate eight-case regression
+corpus is unchanged. Existing Jev questions, calibration labels and thresholds
+were not relaxed. The new cases have their own atomic requirements.
+
+The full workflow passed **116 Python tests, 21 Swift tests, the helper build,
+and all 42 labeled Jev calibration/validation examples**. Native quality still
+failed. Manual review corrected one new exact-check false alarm: "effective"
+is a faithful paraphrase of lighting that "works well". A fresh four-case run
+with that correction passes **2/4 exact and 1/4 combined**. The remaining findings
+are an omitted missing-motion observation, an omitted display caveat, and two
+notes repeating the rain-volume request. These are now reproducible regression
+targets; no runtime fix for them is claimed.
+
+Evidence is preserved under
+`build/diagnostics/release-1.0.5/preserved-editing/`: `prototype-evidence/`,
+`text-evidence/`, `holdout/`, their `jev-*` reviews, `passage.jsonl`,
+`context.jsonl`, `domain.jsonl`, `default-stress-verified/` and `stress-confirmed/`.
+The full default run predates the corrected lighting synonym; keep that report
+intact and use the subsequent four-case report for the corrected checks.
+`supplied-current/report.json` records a fresh production-path check of the
+original private transcript: `formatter_incomplete`, with the source hash
+unchanged. It did not invoke Jev.
+Private prompts and outputs remain local. No formatter strategy, runtime API,
+dependency or release artifact was changed by this round. The macOS 26 native
+quality and Core Advanced hardware checks remain outstanding.

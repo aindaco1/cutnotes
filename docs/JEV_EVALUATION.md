@@ -3,6 +3,11 @@
 22 September 2026. Jev 1.13.0 through Cloudflare; Apple AFM 3 Core on an M1 Max
 running macOS 27. No formatter implementation change in this evaluation.
 
+The subsequent [sentence-preservation investigation](APPLE_FORMATTING_INVESTIGATION.md#september-22-sentence-preservation-and-disfluent-regressions)
+adds four public disfluent regression cases to the default corpus. It records
+prototype comparisons separately from the original 12/20-case results below;
+the existing judge questions and calibrated policy remain unchanged.
+
 ## Default workflow
 
 `python3 scripts/test.py` now runs Python and Swift tests, live Jev calibration,

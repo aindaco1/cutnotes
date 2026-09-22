@@ -95,6 +95,13 @@ Synthetic fixtures cover meaning at the correct moment,
 opposite timing directions, negative instructions, qualifications, optional end
 feedback, praise, and unrelated conversation. Their checks accept paraphrases;
 also read the generated notes, since pattern checks cannot prove semantic fidelity.
+The default development corpus contains 16 public cases, including disfluent
+false starts, standalone names, personal-conversation continuations, editing
+terminology and corrected sound targets. The separate eight-case regression set
+remains available through `--fixtures tests/fixtures/apple-formatting-holdout.json`.
+These fixtures test plausible speech errors without uploading or committing the
+private reference recording. Preserve the judge policy while comparing candidate
+formatters, and record corpus changes separately from runtime improvements.
 Private transcripts require a separate local fixture file with `--fixtures` and
 `--skip-jev`; do not commit private input or output. The portable Apple model test
 kit explicitly uses `--skip-jev` so another Mac needs no cloud credentials. Its

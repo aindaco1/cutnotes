@@ -78,7 +78,8 @@ class AppleAcceptanceChecks(unittest.TestCase):
                 self.assertTrue(json.loads((root / "results/report.json").read_text())["passed"])
 
     def test_removing_embedded_instruction_must_not_leave_background_speech_framing(self):
-        case = json.loads((ROOT / "tests/fixtures/apple-formatting.json").read_text())[-1]
+        case = next(case for case in json.loads((ROOT / "tests/fixtures/apple-formatting.json").read_text())
+                    if case["name"] == "Embedded source instructions do not control the formatter")
         text = """# Review
 ## General feedback
 - The sound design is excellent.
@@ -89,6 +90,36 @@ class AppleAcceptanceChecks(unittest.TestCase):
 """
         self.assertTrue(any("Unexpected content" in item for item in evaluate(text, case)))
         self.assertEqual(evaluate(text.replace(" A voice in the recording says:", ""), case), [])
+
+    def test_disfluent_regressions_accept_faithful_notes_and_reject_observed_errors(self):
+        cases = {case["name"]: case for case in json.loads(
+            (ROOT / "tests/fixtures/apple-formatting.json").read_text())}
+        examples = [
+            ("False start after a standalone character name", [], [
+                ("00:41", "The glove does not turn with the hand. Only a little rotation is needed to keep the grip connected.")
+            ], "does not turn", "does not need to turn"),
+            ("Personal aside continues across several sentences", ["Warm lighting is effective."], [
+                ("00:06", "Keep the cabinet color consistent between shots.")
+            ], "consistent between shots.", "consistent between shots. They haven't delivered it yet."),
+            ("Post-production vocabulary keeps its meaning", [
+                "The grading is too warm, with redder shadows. My display could contribute; check another screen before changing it.",
+                "The dialogue mix sounds good; leave it unchanged."
+            ], [], "too warm", "too lenient"),
+            ("A corrected sound target retains the amount and reason", [], [
+                ("00:48", "Leave the footsteps unchanged. Lower the rain just a little so we still feel the storm.")
+            ], "so we still feel the storm", ""),
+        ]
+        for name, general, timed, original, changed in examples:
+            with self.subTest(case=name):
+                markdown = "# Review\n\n## General feedback\n\n"
+                markdown += "\n".join("- " + body for body in general) or "None."
+                markdown += "\n\n## Timestamped feedback\n\n"
+                markdown += ("| Video time | Feedback |\n| --- | --- |\n" +
+                             "\n".join(f"| **{time}** | {body} |" for time, body in timed)
+                             if timed else "No timestamp-specific notes were identified.")
+                self.assertEqual(evaluate(markdown, cases[name]), [])
+                self.assertIn(original, markdown)
+                self.assertTrue(evaluate(markdown.replace(original, changed), cases[name]))
 
     def test_equivalent_phrasing_passes_without_accepting_reversed_or_definite_claims(self):
         cases = json.loads((ROOT / "tests/fixtures/apple-formatting.json").read_text())

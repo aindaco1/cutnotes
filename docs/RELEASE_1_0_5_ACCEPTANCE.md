@@ -12,13 +12,13 @@ The 1.0.5 work fixes unselected MacWhisper CLI probes and deterministic formatti
 
 | Gate | Status |
 | --- | --- |
-| Python regressions | 100 passed locally, including legacy/current model status, model-specific acceptance prerequisites, rejection of leaked schema prose, and development-only Jev evaluator isolation/error handling |
+| Python regressions | 116 passed locally, including disfluent acceptance checks, legacy/current contracts, provider isolation and development-only Jev evaluation |
 | Swift contracts/app support | 21 passed locally, including native transcription evidence and optional model metadata |
 | CI on macOS 26 and Xcode 27 | Both lanes are required for the candidate; see the current [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks) |
 | Local release build | Passed |
 | Developer ID candidate signing | Earlier candidate passed; subsequent source changes require rebuilding and re-signing; not notarized |
 | Real Parakeet transcription | Passed on the supplied recording during diagnosis |
-| Native Apple formatting | Fresh September 21 run: 16/20 synthetic cases pass; the supplied review still fails content acceptance |
+| Native Apple formatting | September 22: 9/12 original development cases and 1/4 new stress cases pass combined checks; fresh supplied-transcript run returns `formatter_incomplete` |
 | App/DMG notarization and stapling | Held |
 | Public DMG mount/install/launch | Held |
 | Public Sparkle signature/feed and previous-version update | Held |
@@ -149,3 +149,20 @@ Native Apple passed 10/12 exact and 9/12 combined checks. The standard suite
 correctly fails on outstanding quality findings. See [Jev evaluation](JEV_EVALUATION.md)
 for scoped questions, repeatability and unchanged-output comparisons. The app
 remains fully local; these testing changes do not lift the 1.0.5 release hold.
+
+## Disfluent regression follow-up (September 22)
+
+The next sentence-preservation experiment retained the complex public example's
+qualifications but failed to generalize: the plain-text prototype passes 19/20
+exact checks and only 12/20 combined checks. It also retains unrelated speech and
+misreads the supplied review. It was not integrated into the runtime.
+
+Four newly authored public stress cases now run by default, with fixed Jev
+question/policy behavior and explicit semantic requirements. The corrected
+four-case native run passes 2/4 exact and 1/4 combined; omitted observations,
+qualifications and duplicated requests remain. The full workflow passes 116
+Python tests, 21 Swift tests, the helper build and all 42 labeled judge examples,
+but correctly fails content acceptance. See the
+[investigation](APPLE_FORMATTING_INVESTIGATION.md#september-22-sentence-preservation-and-disfluent-regressions)
+for original reports, the corrected lighting-synonym false alarm, and the fresh
+private-transcript check. No release or post-release cleanup was performed.
