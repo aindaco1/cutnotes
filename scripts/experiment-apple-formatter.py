@@ -16,7 +16,7 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 from cutnotes_core.formatter_candidate import format_candidate
-from cutnotes_core.editorial_edits import evidence_for, relevance_review, revision_review
+from cutnotes_core.editorial_edits import evidence_for, relevance_review, revision_review, statements
 
 INSTRUCTIONS = (
     "The sentences are from someone reviewing a movie. Other conversation may also have been captured. "
@@ -71,10 +71,15 @@ class NativeQuestions:
         return self.generate("edit", {"instructions": EDIT_INSTRUCTIONS, "prompt": source, "mode": "edit"}).get("text")
 
     def revise(self, source):
+        # A single source statement does not need synthesis. Preserving it also
+        # avoids asking the model to reinterpret domain terms in usable prose.
+        # Mechanical filler/word-repeat cleanup has already happened in core.
+        if len(statements(source)) == 1:
+            return dict(revision_review(source, source), strategy="single_statement_preserved")
         response = self.generate("evidence_edit", {
             "mode": "edit", "instructions": EVIDENCE_EDIT_INSTRUCTIONS,
             "prompt": json.dumps({"source": source, "evidence": evidence_for(source)}, ensure_ascii=False)})
-        return revision_review(source, response.get("text"))
+        return dict(revision_review(source, response.get("text")), strategy="apple_passage_edit")
 
     def classify_passage(self, source):
         def answer(kind, instructions):

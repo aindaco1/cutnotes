@@ -1,10 +1,23 @@
 import unittest
+from pathlib import Path
+import runpy
+from unittest.mock import Mock
 
 from cutnotes_core.editorial_edits import evidence_for, relevance_review, revision_issues, revision_review, validate_extracted_facts
 from cutnotes_core.formatter_candidate import format_candidate
 
 
 class EditorialEditsTests(unittest.TestCase):
+    def test_single_statement_needs_no_model_reinterpretation(self):
+        runner = runpy.run_path(str(Path(__file__).resolve().parents[1] / "scripts/experiment-apple-formatter.py"))
+        native = object.__new__(runner["NativeQuestions"])
+        native.generate = Mock(side_effect=AssertionError("Single statements must stay local source text"))
+        for source in ("The grading feels too cool.", "The rim light is too soft.", "Keep the current timing."):
+            result = native.revise(source)
+            self.assertEqual(result["proposed"], source)
+            self.assertEqual(result["strategy"], "single_statement_preserved")
+        native.generate.assert_not_called()
+
     def test_evidence_preserves_every_sentence_without_inventing_a_request(self):
         source = "The lamp is off. It looks odd. It would be nice if it were on."
         rows = evidence_for(source)

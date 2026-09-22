@@ -53,6 +53,7 @@ The existing Jev questions, model policy, and 0.10 margin remain unchanged.
 | Evidence edit v1 | 10/16 | Incomplete: Cloudflare HTTP 401 |
 | Evidence edit v2 | 14/16 | 9/16 |
 | Evidence edit v3 | 15/16 | 11/16 |
+| Evidence edit v4: preserve single statements | 15/16 | 10/16 |
 
 The first v3 Jev attempt stopped after a transport/response error. A separately
 saved evaluation of the **same, unchanged output** completed; it did not regenerate
@@ -60,7 +61,7 @@ Apple output, change questions, or alter thresholds. The failed attempt remains
 available. These are development comparisons, not independent repeated trials
 of an identical formatter version.
 
-The v3 remaining fixed-check failure retains a quoted background command as a
+The v3/v4 remaining fixed-check failure retains a quoted background command as a
 note. It does not execute the command. Frozen Jev also flags readability in an
 optional ending, borderline prose in the false-start and corrected-sound cases,
 and duplication/readability in the extended-aside case. Retaining source text
@@ -78,7 +79,22 @@ bounded revision checks miss it. This is a promotion blocker, not a harmless
 wording difference. These are existing stored fixtures, not a newly collected
 independent human evaluation.
 
-All 166 Python tests pass, including 29 new tests beyond the prior 137-test
+The next refinement, v4, skips model editing for a single source statement after
+the existing mechanical filler/repeated-word cleanup. A single statement needs
+no synthesis. This preserves already usable domain language without a synonym
+whitelist or another model check, while retaining the multi-statement editing
+that helped the representative recording. It can also preserve a rough single
+statement; that tradeoff remains visible rather than inventing a smoother meaning.
+Its fresh run passes all eight stored holdout fixed checks, including the grading
+case, and 6/8 combined frozen Jev checks. On the main public suite, four frozen
+Jev readability decisions remain
+borderline; retained background-command content and duplicate/rough wording in
+an aside case account for the other failures. This lower combined count than v3
+is reported rather than selecting the best-looking run. It does not justify
+promoting either version or interpreting a one-case difference as a reliable
+ranking of model quality.
+
+All 167 Python tests pass, including 30 new tests beyond the prior 137-test
 baseline. The 21 Swift tests and native-helper build pass. The frozen Jev
 calibration passed 26/26 calibration and 16/16 validation examples. These gates
 are distinct from the failed native content gate; none authorizes release.
@@ -89,6 +105,9 @@ six in the older protected run. The repeated closed-eye observation is condensed
 without becoming a request; the uncertain audio diagnosis remains uncertain;
 the final-frame comment remains praise. General praise is still repetitive.
 Successful checks and a readable draft do not substitute for the user's review.
+The final v4 private rerun produced identical prose to v3 and again passed all
+seven fact checks. Its static review packet is under `review-v4/` in the local
+evidence directory; older review artifacts are preserved separately.
 
 Local evidence is in the ignored
 `build/diagnostics/release-1.0.5/evidence-editing-20260922/` directory. Native runs
