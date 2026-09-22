@@ -1,12 +1,25 @@
 # Testing
 
-Run the fast gates first:
+Run the standard development suite:
 
 ```bash
-python3 -m unittest discover -s tests -v
-swift test --package-path macos
+python3 scripts/test.py
 ./script/build_and_run.sh --verify
 ```
+
+The suite runs Python and Swift tests, Jev calibration, builds the current native
+helper, and runs Apple formatting followed by Jev review. Results get a new
+`build/diagnostics/development-*` directory. `--engine /path/to/CutNotesLocal`
+uses a specific helper; `--output-dir` chooses a new evidence directory.
+A completed quality failure does not prevent collecting the later native result,
+but the suite fails overall. Authentication/API errors stop remote evaluation.
+
+For fast contract tests without live inference, use `python3 scripts/test.py
+--offline`, or invoke `python3 -m unittest discover -s tests -v` and
+`swift test --package-path macos` directly. The offline report explicitly lists
+omitted quality gates. Hosted CI uses this subset and separately builds the app;
+it has no ready Apple model or configured Jev credential. This is not a full
+content-quality pass.
 
 After an OS upgrade, Apple Intelligence can report `modelNotReady` while its
 models prepare. A failed Apple formatting request must report
@@ -82,92 +95,108 @@ Synthetic fixtures cover meaning at the correct moment,
 opposite timing directions, negative instructions, qualifications, optional end
 feedback, praise, and unrelated conversation. Their checks accept paraphrases;
 also read the generated notes, since pattern checks cannot prove semantic fidelity.
-Private transcripts can use a separate local fixture file with `--fixtures`; do
-not commit private input or output.
+Private transcripts require a separate local fixture file with `--fixtures` and
+`--skip-jev`; do not commit private input or output. The portable Apple model test
+kit explicitly uses `--skip-jev` so another Mac needs no cloud credentials. Its
+saved public outputs can be evaluated with Jev back in the development checkout.
 
-## Optional Jev development evaluation
+## Default Jev development evaluation
 
-Jev evaluates saved synthetic test outputs during development. It is not a
-CutNotes formatter provider, is not bundled with the app, and is never invoked
-by recording, transcription, formatting, or ordinary unit tests. Use it as an
-additional diagnostic when changing Apple prompts or processing policy.
+Jev is part of standard development testing. It is not a CutNotes formatter
+provider, is not bundled with the app, and is never invoked by user recording,
+transcription or formatting. Individual unit tests use mocks and make no calls.
+Cloudflare routes the synthetic test requests to TypeSafe's hosted Jev model.
 
-First run the native suite above. Inspect the proposed remote requests locally:
+Configure `CLOUDFLARE_ACCOUNT_ID` in your environment, or save only its account
+ID in the ignored local `.cutnotes-development.json`:
+
+```json
+{"cloudflare_account_id": "YOUR_CLOUDFLARE_ACCOUNT_ID"}
+```
+
+Authentication uses `CLOUDFLARE_API_TOKEN` when set, otherwise an existing Wrangler
+login. `--wrangler-auth` forces that login. Wrangler 4.136.2 uses its existing npx
+cache; no Worker or Node app dependency is needed. Never put tokens in command
+arguments, config files, committed files or diagnostic output. Missing credentials
+are an error, never a silent skip. This workstation's existing account is configured.
+
+Evaluate saved public native output (live by default):
 
 ```bash
 python3 scripts/jev_evaluation.py \
   --evidence-dir build/diagnostics/apple-acceptance-new-run \
-  --output-dir build/diagnostics/apple-jev-preview
+  --output-dir build/diagnostics/apple-jev-results
 ```
 
-The default is a dry run with no authentication or network calls. It accepts
-only the two built-in public synthetic corpora, verifies each saved transcript
-against the exact fixture and native source hash, and verifies output hashes
-when available. Private/custom fixtures are rejected before authentication.
-Review generated request JSON before opting into remote evaluation. Only the
-synthetic source, saved generated notes, and rubric questions are transmitted;
-local paths, native metadata, credentials, and the private reference recording
-are excluded. Cloudflare routes these requests to TypeSafe's hosted Jev model.
+Add `--dry-run` for a local request preview without authentication or network.
+The native Apple checker also runs Jev by default, preserving the local report
+and writing `jev/report.json` and `jev/review.md`. `--skip-jev` explicitly opts
+out. The historical `--live` / `--jev-live` flags remain accepted for scripts.
 
-To evaluate the saved outputs, set `CLOUDFLARE_ACCOUNT_ID` locally and use either
-`CLOUDFLARE_API_TOKEN` or an existing Wrangler login. Do not put tokens in command
-arguments, committed files, or diagnostic output. Wrangler 4.136.2 can be used
-from its existing npx cache; no Worker deployment or Node app dependency is needed.
+Before authentication, the evaluator checks every transcript against the exact
+built-in public fixture and native source hash, and checks saved output hashes
+when available. Private/custom fixtures are rejected. Only public synthetic
+content and questions are transmitted; paths, native metadata and the private
+reference recording are excluded. Prior evidence is never overwritten.
+
+`apple-formatting-semantics.json` binds each fact to a general, timed or document
+scope. Coverage requests receive only the matching candidate notes; they cannot
+credit information found only in the source. Exclusion questions separately check
+for absence, so correctly removed conversation is not counted as missing feedback. Qualifiers must belong to the correct
+observation. Separate document checks assess grounding, relevance, duplication
+and readability. Duplication respects timestamps and distinct issues. Both exact
+and semantic checks reuse the same Markdown parser.
+
+### Calibration and comparison
+
+`jev-calibration.json` has thirteen labeled pairs for calibration and eight pairs with
+different sources for validation: faithful concise versions and single-defect
+versions. They cover qualifications, purpose, ownership, optionality, polarity,
+timing, background speech, explicit exclusion checks, duplication, grounding and attachment. Labels are
+source-based engineering judgments, not independent human ratings.
+
+The standard suite checks all 42 examples against the frozen policy. It reports
+false passes, false failures and review counts, including per-category results.
+Once repeatedly inspected, these examples are regression tests rather than an
+unseen final holdout. Add a fresh validation set when tuning questions again.
 
 ```bash
-python3 scripts/jev_evaluation.py \
-  --evidence-dir build/diagnostics/apple-acceptance-new-run \
-  --output-dir build/diagnostics/apple-jev-results \
-  --live --wrangler-auth
+python3 scripts/calibrate-jev.py --output-dir build/diagnostics/jev-calibration
 ```
 
-For a new native run followed by evaluation, add `--jev-live
---jev-wrangler-auth` to `check-apple-formatting.py`. Its original local report
-remains intact; the separate Jev report is written to `jev/report.json` inside
-the run directory. Custom/private fixtures remain local and cannot enter this
-remote step. Hosted CI continues running mocked/local tests only; actual Apple
-inference requires a Mac with a ready model.
+The initial policy uses a 0.10 minimum probability margin, selected from a
+predeclared grid using only calibration labels, then checked on the separate
+validation split. A near tie or unseen Jev model becomes `review`, never pass.
+This small set does not prove probabilities are calibrated for every transcript.
+`--split calibration --propose-policy` writes a candidate policy without installing
+it. Review that candidate, then use `--split validation` before adopting it.
+Prompt/parser or calibration-fixture changes invalidate the committed policy.
 
-`tests/fixtures/apple-formatting-semantics.json` stores narrow, source-grounded
-requirements. Common grounding, relevance, duplication and readability checks
-are shared in the evaluator. Preserve wording flexibility; do not turn one
-preferred reference into an exact prose match. The source and output are data,
-not instructions to the judge.
+Freeze questions, policy and fixtures before comparing Apple changes. Add
+`--compare path/to/previous/jev/report.json` to compare two complete v2 runs with
+matching evaluator hashes; reports also expose model-version differences.
+Re-evaluating identical saved notes measures judge changes, not formatter gains.
+Repeat native runs for stability and measure Apple latency separately from Jev.
 
-Reports retain requests, raw answers, returned model version, fixture/rubric/code
-hashes, individual failures, uncertainty, latency and token usage. Any failed or
-uncertain requirement prevents a combined pass; Jev cannot override native
-formatting errors or deterministic failures. Missing output, malformed answers,
-authentication/API failure and partial runs cannot pass. There are no automatic
-retries, model fallbacks, purchases, or automatic credit top-ups. Exit status is
-0 for a dry run or a combined pass, 1 for a completed evaluation needing review,
-and 2 for an invalid or interrupted evaluation.
+Reports preserve requests, raw probabilities, resolved model, evidence/code hashes,
+usage and timing. `review.md` pairs flagged requirements with the actual scoped
+candidate text; it does not invent explanations from Jev. Failed or review answers
+prevent a combined pass. Jev cannot override native or deterministic failures.
+Missing output, malformed answers, API failure and partial runs cannot pass.
 
-`--max-estimated-usd` defaults to $0.25 and cannot exceed $1 per run. Preflight
-reserves a conservative full 32k input context per question using the dated
-2026-09-22 input rate of $0.042/million tokens. This is a client-side estimate,
-not a Cloudflare billing cap. Verify current pricing before larger experiments.
+There are no automatic retries, provider fallbacks, purchases or credit top-ups.
+Each evaluation reserves a conservative 32k input context per question at the
+2026-09-22 input estimate of $0.042/million tokens. The default estimate limit is
+$0.25 per evaluation, with a hard client maximum of $1. This is not a provider
+billing cap. The standard suite runs calibration and native evaluation as separate
+batches. Exit status is 0 for success (or explicit dry run), 1 for completed checks
+needing review, and 2 for evaluator errors.
 
-Add `--compare path/to/previous/jev/report.json` to a saved-output evaluation to
-report which shared cases improved or regressed. The evaluator/fixtures must
-match, and model versions and cases absent from either run remain visible.
-Do not attribute differences to code when only the Apple or judge model changed.
-Repeat native runs when checking stability, and measure formatter latency
-separately from judge latency.
-
-The initial judge calibration used two faithful controls and eleven intentional
-mutations of one synthetic review. Jev 1.13.0 caught ten mutations; exact checks
-caught the timestamp error it missed. This small pilot supports further use as
-a diagnostic, not an autonomous release gate. Review disagreements manually,
-broaden calibration, and keep a fresh set out of prompt tuning. A combined pass
-does not replace native quality review of the supplied recording or any release
-gate. The evaluator always records `release_accepted: false`.
-
-The development corpus contains 12 cases. Evaluate finalists separately against
-the eight cases in `tests/fixtures/apple-formatting-holdout.json`. Checks can
-require a minimum number of distinct notes and require a qualification to occur
-in the same note as the observation it qualifies. This prevents aggregate keyword
-matches from accepting misplaced caveats. Manual semantic review is still required.
+The native development corpus has 12 cases, plus eight historical cases in
+`apple-formatting-holdout.json`. Those eight have already been inspected and are
+regressions, not a fresh holdout. A combined pass never replaces native review of
+the supplied recording or other release gates; reports retain `release_accepted:
+false`.
 
 Run this native gate on macOS 26 and macOS 27 wherever a ready model is available.
 The user currently has no macOS 26 Mac available: record that native quality on

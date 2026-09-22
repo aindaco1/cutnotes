@@ -103,10 +103,11 @@ Parakeet transcription and Apple formatting run on the Mac. CutNotes has no tele
 Requirements: Apple Silicon, Xcode 26, Swift 6, Homebrew Python 3.14.7, and standard macOS build tools.
 
 ```bash
-python3 -m unittest discover -s tests -v
-swift test --package-path macos
+python3 scripts/test.py
 ./script/build_and_run.sh --verify
 ```
+
+The default development suite runs Python/Swift tests, live Jev calibration on public synthetic examples, and native Apple formatting followed by Jev review. Configure the development Cloudflare account as described in [Testing](docs/TESTING.md#default-jev-development-evaluation). Use `python3 scripts/test.py --offline` for the contract-test subset without live inference. Jev is never called by the user app or CLI pipeline.
 
 The canonical desktop Run action is `./script/build_and_run.sh`. Release details are in [docs/RELEASE.md](docs/RELEASE.md); the architecture and machine contracts are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/CLI_PROTOCOL.md](docs/CLI_PROTOCOL.md).
 

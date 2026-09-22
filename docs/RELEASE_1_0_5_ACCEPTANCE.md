@@ -138,3 +138,14 @@ manual review found both useful semantic omissions and judge false alarms/misses
 These diagnostic scores do not replace the content acceptance gate. No runtime
 formatter, private-transcript upload, additional user dependency, or release was
 introduced by this test integration.
+
+## Default Jev development gate (September 22)
+
+The standard `python3 scripts/test.py` workflow now includes Jev calibration and
+native Apple plus Jev evaluation by default. The latest run passed 115 Python
+and 21 Swift tests. Of 42 labeled judge examples, 41 received correct confident
+decisions and one required review; none received a confident wrong decision.
+Native Apple passed 10/12 exact and 9/12 combined checks. The standard suite
+correctly fails on outstanding quality findings. See [Jev evaluation](JEV_EVALUATION.md)
+for scoped questions, repeatability and unchanged-output comparisons. The app
+remains fully local; these testing changes do not lift the 1.0.5 release hold.

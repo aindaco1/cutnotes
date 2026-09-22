@@ -19,7 +19,7 @@ fi
 /bin/mkdir "$kit_dir"
 /usr/bin/ditto --norsrc --noextattr "$app_bundle" "$kit_dir/CutNotes.app"
 /bin/mkdir -p "$kit_dir/scripts" "$kit_dir/tests/fixtures"
-/bin/cp "$root_dir/scripts/check-apple-formatting.py" "$kit_dir/scripts/"
+/bin/cp "$root_dir/scripts/check-apple-formatting.py" "$root_dir/scripts/apple_test_support.py" "$kit_dir/scripts/"
 /bin/cp "$root_dir/scripts/macos/run-apple-test-kit.command" "$kit_dir/Run Apple checks.command"
 /bin/chmod 0755 "$kit_dir/Run Apple checks.command"
 /bin/cp "$root_dir/docs/APPLE_MODEL_TEST_KIT.md" "$kit_dir/README.md"
@@ -43,7 +43,7 @@ manifest = {
     "fixtures_sha256": hashes,
     "cases": len(fixtures),
     "files_sha256": {str(p.relative_to(kit)): hashlib.sha256(p.read_bytes()).hexdigest() for p in (
-        kit / "scripts/check-apple-formatting.py", kit / "Run Apple checks.command",
+        kit / "scripts/check-apple-formatting.py", kit / "scripts/apple_test_support.py", kit / "Run Apple checks.command",
         kit / "CutNotes.app/Contents/Resources/Helpers/CutNotesLocal",
         kit / "cutnotes_core/providers.py", kit / "cutnotes_core/formatting.py")},
 }

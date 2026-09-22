@@ -20,4 +20,4 @@ export PYTHONDONTWRITEBYTECODE=1
 "$resources/Runtime/Python.framework/Versions/3.14/bin/python3" \
   "$kit_dir/scripts/check-apple-formatting.py" \
   --engine "$resources/Helpers/CutNotesLocal" \
-  --output-dir "$results/acceptance" "$@"
+  --output-dir "$results/acceptance" --skip-jev "$@"

@@ -18,7 +18,9 @@ failed prerequisite, never a successful Advanced test. The requirement checks
 the OS-selected model; it cannot choose or force one. The same arm64 app supports
 older Apple Silicon Macs and macOS 26, where new model metadata is optional.
 
-The benchmark runs 20 public synthetic reviews locally. Results appear in a new
+The benchmark runs 20 public synthetic reviews locally. It explicitly skips Jev
+and needs no cloud credentials. Evaluate these saved public outputs with Jev from
+the development checkout afterward. Results appear in a new
 `CutNotes-Apple-Check.*` folder on the Desktop. `acceptance/report.json` records
 the actual model, OS, hashes and content failures. Each case includes its input
 and generated Markdown when formatting succeeds. Keep this entire results folder

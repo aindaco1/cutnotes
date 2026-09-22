@@ -47,7 +47,7 @@ class AppleAcceptanceChecks(unittest.TestCase):
                     apple["model"] = {"name": required}
                 status = subprocess.CompletedProcess([], 0, json.dumps({"apple": apple}))
                 args = ["check", "--engine", str(engine), "--fixtures", str(fixtures),
-                        "--output-dir", str(root / "results")]
+                        "--output-dir", str(root / "results"), "--skip-jev"]
                 if required:
                     args += ["--require-model", required]
                 def format_fixture(**kwargs):
@@ -58,6 +58,24 @@ class AppleAcceptanceChecks(unittest.TestCase):
                 report = json.loads((root / "results/report.json").read_text())
                 self.assertTrue(report["passed"])
                 self.assertEqual(len(report["cases"]), 1)
+
+    def test_jev_runs_by_default_and_failure_affects_exit(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            engine = root / "engine"
+            engine.write_text("helper")
+            fixture = root / "fixtures.json"
+            fixture.write_text(json.dumps([{"name": "Simple", "transcript": "Looks great.", "checks": []}]))
+            def format_fixture(**kwargs):
+                kwargs["output_path"].write_text("# Review\n## General feedback\n- Great.\n## Timestamped feedback\nNone.\n")
+            status = subprocess.CompletedProcess([], 0, json.dumps({"apple": {"state": "ready"}}))
+            with patch("sys.argv", ["check", "--engine", str(engine), "--fixtures", str(fixture), "--output-dir", str(root / "results")]), \
+                    patch("subprocess.run", return_value=status), \
+                    patch.dict(checker["main"].__globals__, format_with_apple=format_fixture), \
+                    patch("scripts.jev_evaluation.review", return_value={"combined_passed": False}) as judge:
+                self.assertEqual(checker["main"](), 1)
+                self.assertTrue(judge.call_args.kwargs["live"])
+                self.assertTrue(json.loads((root / "results/report.json").read_text())["passed"])
 
     def test_removing_embedded_instruction_must_not_leave_background_speech_framing(self):
         case = json.loads((ROOT / "tests/fixtures/apple-formatting.json").read_text())[-1]

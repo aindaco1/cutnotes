@@ -15,6 +15,8 @@ import time
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
+from scripts.apple_test_support import parse_notes, scoped_notes
+
 from cutnotes_core.contracts import CutNotesError, ProgressReporter
 from cutnotes_core.formatting import validate_markdown, validate_timecodes
 from cutnotes_core.providers import format_with_apple
@@ -26,20 +28,11 @@ def evaluate(markdown: str, case: dict) -> list[str]:
     invented, omitted = validate_timecodes(markdown, case["transcript"])
     failures.extend(f"Invented time: {value}" for value in invented)
     failures.extend(f"Missing time: {value}" for value in omitted)
-    general, _, timed = markdown.partition("## Timestamped feedback")
-    general_notes = [line[2:].strip() for line in general.splitlines() if line.startswith("- ")]
-    rows = []
-    for line in timed.splitlines():
-        cells = re.split(r"(?<!\\)\|", line.strip())
-        if len(cells) == 4:
-            rows.append((cells[1].strip(" *"), cells[2].strip()))
+    notes = parse_notes(markdown)
     if "Formatting incomplete" in markdown:
         failures.append("Incomplete formatting")
     for check in case["checks"]:
-        if check["scope"] == "general":
-            candidates = general_notes
-        else:
-            candidates = [body for label, body in rows if re.search(check["scope"], label)]
+        candidates = [note["text"] for note in scoped_notes(notes, check["scope"])]
         if len(candidates) < check.get("minimum_notes", 0):
             failures.append(f"{check['name']}: missing distinct notes")
         if check.get("same_note"):
@@ -71,8 +64,10 @@ def main() -> int:
     parser.add_argument("--fixtures", type=Path, default=ROOT / "tests/fixtures/apple-formatting.json")
     parser.add_argument("--require-model", help="Exact reported Apple model name required before inference; does not select a model")
     parser.add_argument("--output-dir", type=Path, required=True, help="New local evidence directory")
-    parser.add_argument("--jev-live", action="store_true", help="After local tests, explicitly send public synthetic fixtures and saved outputs to the development Jev evaluator")
-    parser.add_argument("--jev-wrangler-auth", action="store_true", help="Use the existing Wrangler login for --jev-live")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--skip-jev", action="store_true", help="Explicitly run local checks only; remote semantic testing is incomplete")
+    mode.add_argument("--jev-live", action="store_true", help=argparse.SUPPRESS)
+    parser.add_argument("--jev-wrangler-auth", action="store_true", help="Use the existing Wrangler login even if an API token is configured")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=False)
     report = {
@@ -85,6 +80,7 @@ def main() -> int:
         "checker_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         "core_sha256": {name: hashlib.sha256((ROOT / "cutnotes_core" / name).read_bytes()).hexdigest()
                         for name in ("providers.py", "formatting.py")},
+        "jev_requested": not args.skip_jev,
         "passed": False,
         "cases": [],
     }
@@ -128,7 +124,7 @@ def main() -> int:
         report["error"] = str(error)
     (args.output_dir / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"Native Apple acceptance {'passed' if report['passed'] else 'FAILED'}: {args.output_dir / 'report.json'}")
-    if args.jev_live:
+    if not args.skip_jev and not report.get("error"):
         from scripts.jev_evaluation import review
         try:
             judged = review(args.output_dir, args.output_dir / "jev", live=True, wrangler_auth=args.jev_wrangler_auth)
