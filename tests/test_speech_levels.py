@@ -68,6 +68,31 @@ class SpeechLevelTests(unittest.TestCase):
             args = self.fixture(Path(directory), [[.2] * 5, [.07] * 5, [.12] * 5])
             self.assertEqual(analyze_speech_levels(**args)["proposed_foreground_transcript"], args["transcript"])
 
+    def test_relative_proposals_are_stable_across_twelve_gain_variants(self):
+        # Synthetic tones test measurement invariance, not speaker recognition.
+        for background in (.002, .004, .01):
+            for gain in (.1, .25, .5, 1):
+                with self.subTest(background=background, gain=gain), tempfile.TemporaryDirectory() as directory:
+                    levels = [[.2 * gain] * 5, [background * gain] * 5, [.18 * gain] * 5]
+                    report = analyze_speech_levels(**self.fixture(Path(directory), levels))
+                    self.assertEqual([r["background_candidate"] for r in report["utterances"]], [False, True, False])
+
+    def test_compressed_and_equal_level_background_cannot_be_identified_by_volume(self):
+        for background in (.08, .2):
+            with self.subTest(background=background), tempfile.TemporaryDirectory() as directory:
+                args = self.fixture(Path(directory), [[.2] * 5, [background] * 5, [.2] * 5])
+                self.assertEqual(analyze_speech_levels(**args)["proposed_foreground_transcript"], args["transcript"])
+
+    def test_a_deliberate_whisper_remains_an_unresolved_review_proposal(self):
+        # A user's whisper and distant speech can have the same level evidence.
+        # Never describe this measurement as a validated deletion or speaker ID.
+        with tempfile.TemporaryDirectory() as directory:
+            args = self.fixture(Path(directory), [[.2] * 5, [.004] * 5, [.2] * 5])
+            report = analyze_speech_levels(**args)
+            self.assertTrue(report["utterances"][1]["background_candidate"])
+            self.assertTrue(report["requires_review"])
+            self.assertIn("group1word0", report["utterances"][1]["text"])
+
     def test_mismatched_or_incomplete_alignment_is_rejected(self):
         with tempfile.TemporaryDirectory() as directory:
             args = self.fixture(Path(directory), [[.2] * 5] * 3)

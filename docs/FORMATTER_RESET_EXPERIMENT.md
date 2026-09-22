@@ -1,5 +1,9 @@
 # Source-preserving formatter experiment
 
+See the later [evidence editing experiment](EVIDENCE_EDITING_EXPERIMENT.md) for
+the revised edit checks, passage relevance, and separately calibrated readability
+results. The measurements below describe the original protected-copyedit baseline.
+
 This development experiment has **not passed acceptance** and is not connected
 to the app or CLI formatter. The installed release and normal provider selection
 remain unchanged. Publication still requires review of actual generated output.

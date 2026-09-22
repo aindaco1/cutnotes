@@ -227,3 +227,82 @@ about script planning, editing and film criticism, their hash-bound source manif
 and the manual transcript/output review workflow. These opt-in audio controls use
 the bundled local pipeline and do not enter Jev's public-synthetic allowlist.
 A successful import must not be reported as a content-quality pass.
+
+## Evidence editing and readability experiments
+
+The [experiment record](EVIDENCE_EDITING_EXPERIMENT.md) distinguishes the new
+development candidate from the app's current formatter. Compile the existing
+`AppleFormatterProbe.swift` for macOS 26 as described in
+[the baseline experiment](FORMATTER_RESET_EXPERIMENT.md), then run:
+
+```bash
+python3 scripts/experiment-apple-formatter.py \
+  --engine build/experiments/AppleFormatterProbe \
+  --evidence-edit --passage-relevance \
+  --output-dir build/diagnostics/evidence-edit-public
+
+python3 scripts/readability_evaluation.py \
+  --output-dir build/diagnostics/readability-v2-calibration
+
+python3 scripts/readability_evaluation.py \
+  --evidence-dir build/diagnostics/evidence-edit-public \
+  --policy build/diagnostics/readability-v2-calibration/proposed-policy.json \
+  --output-dir build/diagnostics/readability-v2-candidate
+```
+
+Use a new output directory for every run. Add `--wrangler-auth` to readability
+commands, or `--jev-wrangler-auth` to the formatter command, to use the existing
+Wrangler login. The new rubric is diagnostic and does not replace the frozen
+default Jev gate. Calibration and validation labels are separate; a borderline
+result stays a review. Applied decisions are saved in `readability.json`.
+Private formatting with `--transcript` stays local and cannot be evaluated by
+either Jev rubric. No benchmark should commit private source or output artifacts.
+
+## Optional independent local support verifier
+
+This is a development-only download, not an app dependency or a user setup step.
+The MiniCheck model card declares MIT licensing; its model is 770M parameters and
+the pinned weight file is about 3.13 GB. Its support scores do not measure omitted
+facts, prose quality, or editorial relevance. Do not promote it to an acceptance
+gate without calibration on editorial instructions.
+
+Create an isolated Python 3.12 environment and install
+`scripts/requirements-local-verifier.txt`. Download the public weights separately,
+without loading remote repository code:
+
+```bash
+uv venv --python 3.12 build/development/minicheck-venv
+uv pip install --python build/development/minicheck-venv/bin/python \
+  -r scripts/requirements-local-verifier.txt
+
+HF_HUB_DISABLE_TELEMETRY=1 HF_HUB_DISABLE_XET=1 \
+build/development/minicheck-venv/bin/python - <<'PY'
+from huggingface_hub import snapshot_download
+snapshot_download(
+    repo_id="lytang/MiniCheck-Flan-T5-Large",
+    revision="96eafd01cee2d16cf81aaa2fb226b14f422a37b3",
+    local_dir="build/development/models/minicheck-flan-t5-large",
+    allow_patterns=["*.json", "spiece.model", "pytorch_model.bin", "README.md"],
+    token=False,
+)
+PY
+
+build/development/minicheck-venv/bin/python scripts/local_verifier.py \
+  --model-dir build/development/models/minicheck-flan-t5-large \
+  --device mps --output-dir build/diagnostics/local-support-benchmark
+```
+
+The runner checks the pinned weights' SHA-256 before loading, disables network
+model loading and remote code, and explicitly uses restricted weight loading.
+It rejects overlong input rather than truncating evidence. `--device cpu` is also
+available. Its 80 labeled synthetic source/claim cases have separate development
+and validation splits, including supported omissions to demonstrate why support
+and completeness are different. These are engineering labels, not an independent
+human study. Reports record model/runtime/input hashes and false support
+separately from false rejection. Completion never means release acceptance.
+
+The runner follows the author's Flan-T5 support-token protocol:
+[model card](https://huggingface.co/lytang/MiniCheck-Flan-T5-Large),
+[reference implementation](https://github.com/Liyan06/MiniCheck/blob/main/minicheck/inference.py).
+Keep weights, environments and reports under ignored development/build paths;
+none belongs in source control or the application bundle.

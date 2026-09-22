@@ -1,5 +1,9 @@
 **Local formatter research — September 22, 2026**
 
+Follow-up implementation and measured outcomes are recorded in the
+[evidence editing experiment](EVIDENCE_EDITING_EXPERIMENT.md). The research below
+describes the hypotheses and evidence available before that implementation.
+
 Recommendation: retain Parakeet and Apple's on-device model for the user workflow.
 Improve how source meaning is represented, which edits are permitted, and how
 quality is measured. Keep Jev as a public-fixture development evaluator. An

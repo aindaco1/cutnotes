@@ -103,8 +103,12 @@ class Passage:
 
 
 def format_candidate(*, transcript: str, title: str, review_date: str,
-                     ask: Question, edit: Callable[[str], str] | None = None) -> tuple[str, dict]:
+                     ask: Question, edit: Callable[[str], str] | None = None,
+                     revise: Callable[[str], dict] | None = None,
+                     classify_passage: Callable[[str], dict] | None = None) -> tuple[str, dict]:
     """Create an explicitly reviewable source-preserving draft and an audit trail."""
+    if edit is not None and revise is not None:
+        raise ValueError("Choose one editing strategy")
     raw = [s.strip() for s in re.split(r'''(?<=[.!?])\s+|(?<=[.!?]["'’”])\s+|\n+''', transcript.strip()) if s.strip()]
     passages: list[Passage] = []
     trace: list[dict] = []
@@ -224,12 +228,36 @@ def format_candidate(*, transcript: str, title: str, review_date: str,
             passage.texts.append(text)
         previous_source, previous_was_cue = original, False
 
-    general, timed, revisions = [], [], []
+    general, timed, revisions, relevance = [], [], [], []
+    rendered_ids = []
     for passage in passages:
         if not passage.texts:
             continue
         source_body = " ".join(passage.texts)
+        if classify_passage:
+            classification = classify_passage(source_body)
+            if classification.get("disposition") not in {"keep", "background", "review"}:
+                raise ValueError("Invalid passage relevance decision")
+            explicit_cut_cue = any(unit.timecodes for unit in units if unit.id in passage.source_ids)
+            if classification["disposition"] == "background" and (GENERAL.search(source_body) or explicit_cut_cue):
+                classification = dict(classification, disposition="review", protected_editorial_cue=True)
+            relevance.append({"source_ids": passage.source_ids, "source": source_body, **classification})
+            if classification["disposition"] == "background":
+                warnings.append(" / ".join(passage.source_ids) + ": proposed background exclusion; original retained in audit for review.")
+                continue
+            if classification["disposition"] == "review":
+                warnings.append(" / ".join(passage.source_ids) + ": uncertain relevance; retained for review.")
         body = edit(source_body) if edit else source_body
+        if revise:
+            revision = revise(source_body)
+            body = revision.get("proposed")
+            if not isinstance(body, str) or not body.strip() or not isinstance(revision.get("issues"), list):
+                raise ValueError("Invalid evidence-based revision")
+            revisions.append({"source_ids": passage.source_ids, "source": source_body, **revision,
+                              "accepted": not revision["issues"]})
+            if revision["issues"]:
+                body = source_body
+                warnings.append(" / ".join(passage.source_ids) + ": revision needs review; source wording retained.")
         if not isinstance(body, str) or not body.strip():
             raise ValueError("Native Apple editing returned no text")
         if edit:
@@ -244,11 +272,12 @@ def format_candidate(*, transcript: str, title: str, review_date: str,
                          location=passage.location, timecodes=passage.times,
                          approximate=passage.approximate)
         (general if passage.location == "general" else timed).append(note)
+        rendered_ids.extend(passage.source_ids)
     markdown = render_editorial_draft(title=title, review_date=review_date,
                                      general_notes=general, timestamped_notes=timed, units=units)
     audit = {"schema_version": "cutnotes.formatter.candidate.v1", "requires_review": True,
              "warnings": warnings, "sentences": trace,
-             "revisions": revisions,
-             "rendered_source_ids": [i for p in passages for i in p.source_ids],
+             "revisions": revisions, "relevance": relevance,
+             "rendered_source_ids": rendered_ids,
              "unassigned_timing_ids": pending_ids}
     return markdown, audit
