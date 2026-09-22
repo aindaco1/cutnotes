@@ -1,29 +1,36 @@
 # 1.0.5 acceptance status
 
-**Release held: native Apple formatting has not passed content acceptance.**
+**Release held for the user to review and manually accept cleaner-audio output.**
 
 Acceptance means useful, faithful feedback comparable to prior working releases. It does not require the exact wording or polish of a Codex-authored reference.
 
-The user explicitly chose to hold the combined release until Apple formatting
-passes and requires macOS 26 compatibility. Do not split out and publish the
-MacWhisper change while this hold is in effect.
+On September 22, the user revised the acceptance process: test cleaner audio,
+show its raw transcript and Apple-formatted notes, and publish only after the
+user manually accepts the output. They requested public-domain recordings relevant
+to someone discussing a screenplay or film cut. Keep the original noisy recording
+as a stress test; it is no longer the sole release-blocking example. macOS 26
+compatibility remains required. Do not split out and publish the MacWhisper change
+while this hold is in effect. Quiet-recording guidance is not evidence of fidelity.
+
+The historical findings below remain valid diagnostics. Neither process success
+nor a passing unit test substitutes for the new manual review gate.
 
 The 1.0.5 work fixes unselected MacWhisper CLI probes and deterministic formatting defects. Source changes and mocked tests are insufficient evidence for publication. Real Apple inference on macOS 27.0 (26A428) still introduces unrelated background material, changes an observation's meaning, omits qualifications, and leaves a missing edit note. The system-model availability check reports ready; that does not establish output quality. The user reports the last good output was on macOS 26. Apple documents a model change in macOS 27. A separate invocation of the installed 1.0.4 helper on a short synthetic transcript produced 65 empty-mask errors and 66 empty-token-set errors from the OS guided-generation service. This reproduces a runtime problem independently of the candidate source changes; it does not establish that every content failure has that same cause.
 
 | Gate | Status |
 | --- | --- |
-| Python regressions | 116 passed locally, including disfluent acceptance checks, legacy/current contracts, provider isolation and development-only Jev evaluation |
+| Python regressions | 117 passed locally, including inline source-citation cleanup, disfluent acceptance checks, legacy/current contracts, provider isolation and development-only Jev evaluation |
 | Swift contracts/app support | 21 passed locally, including native transcription evidence and optional model metadata |
 | CI on macOS 26 and Xcode 27 | Both lanes are required for the candidate; see the current [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks) |
 | Local release build | Passed |
 | Developer ID candidate signing | Earlier candidate passed; subsequent source changes require rebuilding and re-signing; not notarized |
 | Real Parakeet transcription | Passed on the supplied recording during diagnosis |
-| Native Apple formatting | September 22: 9/12 original development cases and 1/4 new stress cases pass combined checks; fresh supplied-transcript run returns `formatter_incomplete` |
+| Native Apple formatting | Latest September 22 run: 12/16 exact and 10/16 combined checks; three public audio controls complete but still require manual content review |
 | App/DMG notarization and stapling | Held |
 | Public DMG mount/install/launch | Held |
 | Public Sparkle signature/feed and previous-version update | Held |
 
-Private native prompts, responses, output and acceptance notes remain in ignored `build/diagnostics/release-1.0.5/`. Do not commit them. The installed public 1.0.4 remains unchanged. No 1.0.5 tag or public release should be created until the native formatting gate passes.
+Private native prompts, responses, output and acceptance notes remain in ignored `build/diagnostics/release-1.0.5/`. Do not commit them. The installed public 1.0.4 remains unchanged. No 1.0.5 tag or public release should be created until the user manually accepts the reviewed cleaner-audio output and the remaining release gates pass.
 
 `scripts/check-apple-formatting.py` now provides repeatable native content checks
 using synthetic fixtures. Its baseline on this macOS 27 host still finds missing
@@ -166,3 +173,33 @@ but correctly fails content acceptance. See the
 [investigation](APPLE_FORMATTING_INVESTIGATION.md#september-22-sentence-preservation-and-disfluent-regressions)
 for original reports, the corrected lighting-synonym false alarm, and the fresh
 private-transcript check. No release or post-release cleanup was performed.
+
+## Cleaner public-audio review (September 22)
+
+The [public-audio review](PUBLIC_AUDIO_REVIEW.md) adds three traceable human-speech
+controls about script planning, editing/color and film criticism. All three fresh
+runs through the rebuilt bundled CLI complete with Parakeet and Apple; their audio
+hashes remain unchanged. Success does not establish faithful output: script notes
+attach the primary-grade context to the separate cell-visualization example, the
+editing summary compresses a specific color caveat, and the film critique
+overgeneralizes a statement about romance and detective plots. The audiobook
+transcript also contains omissions relative to its published text and an unfinished
+ending that needs audio review. No dictated cut timestamps are present.
+
+The initial editing result exposed a citation-cleanup defect, now fixed in the
+shared decoder and regression-tested without removing meaningful parentheses.
+Quiet-place/headphone guidance is present in Record/Import, the guided CLI and
+README. The app rebuild, strict signature verification and process launch pass;
+visual guidance inspection could not complete because the computer-use native
+connection closed on both attempts. This is a development build, not a notarized
+release.
+
+The standard suite passes 117 Python and 21 Swift tests and all 42 labeled Jev
+calibration examples. Native Apple passes 12/16 exact checks. The subsequent Jev
+request stopped on HTTP 401; an explicit existing-Wrangler-auth recheck of the
+unchanged saved outputs completed at 10/16 combined. The failed original suite
+report remains unchanged. No native generation was repeated to improve that score.
+
+The review packet retains original and fresh results under the ignored
+`clean-audio-review-20260922/` diagnostic folder. The user has not accepted this
+output. Keep the PR draft and defer publication and post-release cleanup.

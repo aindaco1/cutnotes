@@ -491,7 +491,8 @@ def draft_notes_from_payload(payload: object, allowed_ids: set[str]) -> list[Dra
             rf"(?i),?\s*(?:according to|as suggested by|as noted by|which is noted by|"
             rf"as acknowledged by|which is acknowledged by)\s+"
             rf"(?:sources?,?\s*)?(?:including\s+)?{source_list}",
-            rf"\s*\({source_list}\)\s*$",
+            rf"\s*\(\s*{source_list}\s*\)",
+            rf"\s*\[\s*{source_list}\s*\]",
         ):
             title = re.sub(pattern, "", title).strip()
             body = re.sub(pattern, "", body).strip()

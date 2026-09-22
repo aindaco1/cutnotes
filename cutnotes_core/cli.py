@@ -264,6 +264,7 @@ def run_interactive(_: argparse.Namespace) -> int:
         )
     title = prompt_for_project_name()
     print("\nHow to give notes:")
+    print("  • Record in a quiet place for best results.")
     print('  • Say the CUT timecode first: "Timestamp 12 minutes 34 seconds."')
     print("  • Pause briefly, then give your feedback.")
     print('  • Say "General note" for feedback without a timecode.')

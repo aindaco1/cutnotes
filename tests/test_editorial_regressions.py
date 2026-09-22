@@ -50,6 +50,19 @@ class EditorialRegressionTests(unittest.TestCase):
                 note = f.DraftNote("Overall", body, ("N0001",))
                 self.assertEqual(p._select_general_notes([note]), [note])
 
+    def test_inline_source_citations_leave_no_empty_punctuation(self):
+        notes = f.draft_notes_from_payload({"notes": [{
+            "title": "Editing (N0001, N0002)",
+            "body": "Keep smooth progression (N0001, N0002). Add sound [N0002]. "
+                    "Color helps (only for seasonal changes). Keep the music (if possible).",
+            "source_ids": ["N0001", "N0002"],
+        }]}, {"N0001", "N0002"})
+        self.assertEqual(notes, [f.DraftNote(
+            "Editing", "Keep smooth progression. Add sound. "
+            "Color helps (only for seasonal changes). Keep the music (if possible).",
+            ("N0001", "N0002"),
+        )])
+
     def test_similar_words_do_not_merge_distinct_or_opposite_feedback(self):
         notes = [f.DraftNote("Feedback", body, (f"N{index:04d}",)) for index, body in enumerate((
             "The background music is too quiet.",

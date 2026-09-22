@@ -34,8 +34,8 @@ Release acceptance is deliberately split into separate claims:
 1. Python unit/integration tests pass.
 2. Swift command/contract tests pass.
 3. The app bundle builds arm64 with the pinned runtime and no non-system absolute load paths.
-4. A generated speech fixture transcribes through the bundled CLI and installed Parakeet model.
-5. Apple formatting succeeds when the system model reports ready.
+4. Real speech transcribes through the bundled CLI and installed Parakeet model; retain the audio and unedited transcript for comparison.
+5. Apple formatting succeeds when the system model reports ready, and its actual output passes content review. For 1.0.5, the user must manually accept the cleaner-audio review before publication.
 6. Optional MacWhisper and Codex selections either work or return provider-specific errors without fallback.
 7. Developer ID signatures verify under strict/deep validation.
 8. Apple separately accepts the app and DMG notarization submissions, and both tickets staple and validate.
@@ -214,3 +214,11 @@ macOS 27 host; do not equate passing cross-version builds with that acceptance.
 Keep the macOS 15 app deployment target, the macOS 26 Foundation Models availability
 checks, and the existing `cutnotes.local.draft.v1` contract. Do not introduce a
 macOS 27-only formatter path without an independently tested macOS 26 path.
+
+## Cleaner human speech controls
+
+See [Public audio review](PUBLIC_AUDIO_REVIEW.md) for three public-domain excerpts
+about script planning, editing and film criticism, their hash-bound source manifest,
+and the manual transcript/output review workflow. These opt-in audio controls use
+the bundled local pipeline and do not enter Jev's public-synthetic allowlist.
+A successful import must not be reported as a content-quality pass.

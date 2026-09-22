@@ -1,0 +1,48 @@
+{
+  "schema_version": 1,
+  "scope": "Opt-in local audio review controls. These human recordings are not modern dictated cut reviews and contain no spoken cut timestamps. No Jev upload.",
+  "clips": [
+    {
+      "id": "editing-and-color",
+      "title": "Editing flow and purposeful color",
+      "source_url": "https://archive.org/details/MakingFi1954",
+      "license_url": "http://creativecommons.org/licenses/publicdomain/",
+      "source": "MakingFi1954.mp3",
+      "source_sha256": "8864bd3ee80242871c3ed3ceb5450b0b226133ae7ff27fe0c2b04fc5370baf16",
+      "start": 845.7,
+      "end": 935.85,
+      "purpose": "Editorial discussion: smooth progression, sound, and whether color helps this scene. Archival multi-speaker control; no spoken cut timestamps.",
+      "processing": "Contiguous excerpt; mono 16 kHz PCM. No denoising, normalization, speech synthesis, or splicing.",
+      "download_url": "https://archive.org/download/MakingFi1954/MakingFi1954.mp3",
+      "clip_sha256": "f2e743c5344cdb55da60da70b115ced7e71f701e9e51c85036e5aeee8bfd67e5"
+    },
+    {
+      "id": "action-film-critique",
+      "title": "Film critique: pacing and visual rhythm",
+      "source_url": "https://librivox.org/the-art-of-the-moving-picture-by-vachel-lindsay/",
+      "license_url": "https://librivox.org/pages/public-domain/",
+      "source": "artofthemovingpicture_03_lindsay.mp3",
+      "source_sha256": "ae15257dc416c2db5d3a6853d0b811b64a1d3f5949fe916e14546f918719a958",
+      "start": 290.65,
+      "end": 426.1,
+      "purpose": "A single human narrator reads a critique of The Spoilers: visual strengths, chase pacing, romance, and visual transitions. Modern recording of historical criticism; no dictated cut timecodes.",
+      "processing": "Contiguous excerpt; mono 16 kHz PCM. No denoising, normalization, speech synthesis, or splicing.",
+      "download_url": "https://archive.org/download/artmovingpicture_1206_librivox/artofthemovingpicture_03_lindsay.mp3",
+      "clip_sha256": "51e57570f6c6087cb982282fd5ae420be083276a67474ccf51a4750503a55472"
+    },
+    {
+      "id": "script-planning-complete",
+      "title": "Script planning and visual explanation",
+      "source_url": "https://archive.org/details/MakingFi1954",
+      "license_url": "http://creativecommons.org/licenses/publicdomain/",
+      "source": "MakingFi1954.mp3",
+      "source_sha256": "8864bd3ee80242871c3ed3ceb5450b0b226133ae7ff27fe0c2b04fc5370baf16",
+      "start": 251.05,
+      "end": 332.3,
+      "purpose": "Relevant production discussion: accurate material, age-appropriate clarity, visual explanation, and a script shaped by its purpose. Archival multi-speaker control; not a modern dictated cut review.",
+      "processing": "Contiguous excerpt; mono 16 kHz PCM. No denoising, normalization, speech synthesis, or splicing.",
+      "download_url": "https://archive.org/download/MakingFi1954/MakingFi1954.mp3",
+      "clip_sha256": "fb2952fc3e60ec7eb238aa1eda7a8ef8b15df183511a58260dca8803b0606296"
+    }
+  ]
+}

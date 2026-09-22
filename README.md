@@ -17,6 +17,11 @@ CutNotes is free, open-source software under the MIT License.
 
 The maximum recording or imported-media duration is four hours. Recording warns at 3 hours 45 minutes of captured audio and stops at 4 hours; paused time does not count. Imports longer than four hours are rejected before transcription.
 
+For best results, record in a quiet place and use headphones to keep video playback
+out of your microphone. Speak clearly and start each specific note with the cut
+timecode. Background conversations and other competing audio can affect the
+transcript and the resulting notes. Review both before sharing your feedback.
+
 ## Import format, in plain language
 
 There are two kinds of import:
