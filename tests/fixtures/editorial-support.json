@@ -1,0 +1,642 @@
+[
+  {
+    "id": "pair-01-supported",
+    "split": "development",
+    "category": "negation",
+    "source": "The window is open. Do not close it.",
+    "claim": "Keep the window open.",
+    "supported": true
+  },
+  {
+    "id": "pair-01-unsupported",
+    "split": "development",
+    "category": "negation",
+    "source": "The window is open. Do not close it.",
+    "claim": "Close the window.",
+    "supported": false
+  },
+  {
+    "id": "pair-02-supported",
+    "split": "development",
+    "category": "negation",
+    "source": "The mouth is moving after the line ends.",
+    "claim": "The mouth continues moving after the dialogue.",
+    "supported": true
+  },
+  {
+    "id": "pair-02-unsupported",
+    "split": "development",
+    "category": "negation",
+    "source": "The mouth is moving after the line ends.",
+    "claim": "The mouth stops moving when the dialogue ends.",
+    "supported": false
+  },
+  {
+    "id": "pair-03-supported",
+    "split": "development",
+    "category": "observation-request",
+    "source": "The coat is blue. It looks unusual.",
+    "claim": "The blue coat looks unusual.",
+    "supported": true
+  },
+  {
+    "id": "pair-03-unsupported",
+    "split": "development",
+    "category": "observation-request",
+    "source": "The coat is blue. It looks unusual.",
+    "claim": "Make the coat blue.",
+    "supported": false
+  },
+  {
+    "id": "pair-04-supported",
+    "split": "development",
+    "category": "observation-request",
+    "source": "The lamp is off. It looks odd.",
+    "claim": "The lamp is off and looks odd.",
+    "supported": true
+  },
+  {
+    "id": "pair-04-unsupported",
+    "split": "development",
+    "category": "observation-request",
+    "source": "The lamp is off. It looks odd.",
+    "claim": "Turn the lamp on.",
+    "supported": false
+  },
+  {
+    "id": "pair-05-supported",
+    "split": "development",
+    "category": "direction",
+    "source": "The crash happens early. Move it later.",
+    "claim": "Delay the crash sound.",
+    "supported": true
+  },
+  {
+    "id": "pair-05-unsupported",
+    "split": "development",
+    "category": "direction",
+    "source": "The crash happens early. Move it later.",
+    "claim": "Move the crash sound earlier.",
+    "supported": false
+  },
+  {
+    "id": "pair-06-supported",
+    "split": "development",
+    "category": "direction",
+    "source": "The reply comes late. Bring it forward.",
+    "claim": "Make the reply begin earlier.",
+    "supported": true
+  },
+  {
+    "id": "pair-06-unsupported",
+    "split": "development",
+    "category": "direction",
+    "source": "The reply comes late. Bring it forward.",
+    "claim": "Delay the reply.",
+    "supported": false
+  },
+  {
+    "id": "pair-07-supported",
+    "split": "development",
+    "category": "condition",
+    "source": "If there is time, add a dissolve.",
+    "claim": "Add a dissolve if time permits.",
+    "supported": true
+  },
+  {
+    "id": "pair-07-unsupported",
+    "split": "development",
+    "category": "condition",
+    "source": "If there is time, add a dissolve.",
+    "claim": "A dissolve is required regardless of available time.",
+    "supported": false
+  },
+  {
+    "id": "pair-08-supported",
+    "split": "development",
+    "category": "condition",
+    "source": "Keep this shot unless a better take is found.",
+    "claim": "Keep the shot if no better take is found.",
+    "supported": true
+  },
+  {
+    "id": "pair-08-unsupported",
+    "split": "development",
+    "category": "condition",
+    "source": "Keep this shot unless a better take is found.",
+    "claim": "Remove this shot even if no better take is found.",
+    "supported": false
+  },
+  {
+    "id": "pair-09-supported",
+    "split": "development",
+    "category": "certainty",
+    "source": "Maybe two clips overlap.",
+    "claim": "The clips might overlap.",
+    "supported": true
+  },
+  {
+    "id": "pair-09-unsupported",
+    "split": "development",
+    "category": "certainty",
+    "source": "Maybe two clips overlap.",
+    "claim": "The clips definitely overlap.",
+    "supported": false
+  },
+  {
+    "id": "pair-10-supported",
+    "split": "development",
+    "category": "certainty",
+    "source": "The transition definitely flashes.",
+    "claim": "The transition flashes.",
+    "supported": true
+  },
+  {
+    "id": "pair-10-unsupported",
+    "split": "development",
+    "category": "certainty",
+    "source": "The transition definitely flashes.",
+    "claim": "The transition is seamless.",
+    "supported": false
+  },
+  {
+    "id": "pair-11-supported",
+    "split": "development",
+    "category": "degree",
+    "source": "Lower the music only slightly.",
+    "claim": "Reduce the music a little.",
+    "supported": true
+  },
+  {
+    "id": "pair-11-unsupported",
+    "split": "development",
+    "category": "degree",
+    "source": "Lower the music only slightly.",
+    "claim": "Reduce the music substantially.",
+    "supported": false
+  },
+  {
+    "id": "pair-12-supported",
+    "split": "development",
+    "category": "degree",
+    "source": "The actor only needs a small turn.",
+    "claim": "A slight turn is needed.",
+    "supported": true
+  },
+  {
+    "id": "pair-12-unsupported",
+    "split": "development",
+    "category": "degree",
+    "source": "The actor only needs a small turn.",
+    "claim": "The actor needs to turn all the way around.",
+    "supported": false
+  },
+  {
+    "id": "pair-13-supported",
+    "split": "development",
+    "category": "subject",
+    "source": "Keep the lamp dark and the wall bright.",
+    "claim": "The lamp should stay dark.",
+    "supported": true
+  },
+  {
+    "id": "pair-13-unsupported",
+    "split": "development",
+    "category": "subject",
+    "source": "Keep the lamp dark and the wall bright.",
+    "claim": "The lamp should be bright.",
+    "supported": false
+  },
+  {
+    "id": "pair-14-supported",
+    "split": "development",
+    "category": "subject",
+    "source": "Nora answers while Eli listens.",
+    "claim": "Eli is listening to Nora.",
+    "supported": true
+  },
+  {
+    "id": "pair-14-unsupported",
+    "split": "development",
+    "category": "subject",
+    "source": "Nora answers while Eli listens.",
+    "claim": "Eli is answering Nora.",
+    "supported": false
+  },
+  {
+    "id": "pair-15-supported",
+    "split": "development",
+    "category": "time",
+    "source": "At 00:18, the face is blurred.",
+    "claim": "The face is blurred at 00:18.",
+    "supported": true
+  },
+  {
+    "id": "pair-15-unsupported",
+    "split": "development",
+    "category": "time",
+    "source": "At 00:18, the face is blurred.",
+    "claim": "The face is blurred at 00:28.",
+    "supported": false
+  },
+  {
+    "id": "pair-16-supported",
+    "split": "development",
+    "category": "duration",
+    "source": "Hold the shot for 3 frames.",
+    "claim": "The shot needs a three-frame hold.",
+    "supported": true
+  },
+  {
+    "id": "pair-16-unsupported",
+    "split": "development",
+    "category": "duration",
+    "source": "Hold the shot for 3 frames.",
+    "claim": "The shot needs a thirty-frame hold.",
+    "supported": false
+  },
+  {
+    "id": "pair-17-supported",
+    "split": "development",
+    "category": "reason",
+    "source": "Keep the shadow because it reveals the visitor.",
+    "claim": "The shadow reveals the visitor.",
+    "supported": true
+  },
+  {
+    "id": "pair-17-unsupported",
+    "split": "development",
+    "category": "reason",
+    "source": "Keep the shadow because it reveals the visitor.",
+    "claim": "The shadow hides the visitor.",
+    "supported": false
+  },
+  {
+    "id": "pair-18-supported",
+    "split": "development",
+    "category": "quotation",
+    "source": "Pause after the line \"Where are you?\"",
+    "claim": "Add a pause after \"Where are you?\"",
+    "supported": true
+  },
+  {
+    "id": "pair-18-unsupported",
+    "split": "development",
+    "category": "quotation",
+    "source": "Pause after the line \"Where are you?\"",
+    "claim": "Add a pause before \"Where are you?\"",
+    "supported": false
+  },
+  {
+    "id": "pair-19-supported",
+    "split": "development",
+    "category": "support-not-coverage",
+    "source": "The glove does not turn. It should turn a little.",
+    "claim": "The glove should turn a little.",
+    "supported": true
+  },
+  {
+    "id": "pair-19-unsupported",
+    "split": "development",
+    "category": "support-not-coverage",
+    "source": "The glove does not turn. It should turn a little.",
+    "claim": "The glove already turns correctly.",
+    "supported": false
+  },
+  {
+    "id": "pair-20-supported",
+    "split": "development",
+    "category": "synonym",
+    "source": "The picture is too dark.",
+    "claim": "The image is too dark.",
+    "supported": true
+  },
+  {
+    "id": "pair-20-unsupported",
+    "split": "development",
+    "category": "synonym",
+    "source": "The picture is too dark.",
+    "claim": "The image is too bright.",
+    "supported": false
+  },
+  {
+    "id": "pair-21-supported",
+    "split": "validation",
+    "category": "negation",
+    "source": "Do not remove the footsteps.",
+    "claim": "Keep the footsteps.",
+    "supported": true
+  },
+  {
+    "id": "pair-21-unsupported",
+    "split": "validation",
+    "category": "negation",
+    "source": "Do not remove the footsteps.",
+    "claim": "Remove the footsteps.",
+    "supported": false
+  },
+  {
+    "id": "pair-22-supported",
+    "split": "validation",
+    "category": "negation",
+    "source": "The lips are still while the character speaks.",
+    "claim": "The character speaks without moving her lips.",
+    "supported": true
+  },
+  {
+    "id": "pair-22-unsupported",
+    "split": "validation",
+    "category": "negation",
+    "source": "The lips are still while the character speaks.",
+    "claim": "The lips move in time with the speech.",
+    "supported": false
+  },
+  {
+    "id": "pair-23-supported",
+    "split": "validation",
+    "category": "observation-request",
+    "source": "The curtain is closed and looks strange.",
+    "claim": "The closed curtain looks strange.",
+    "supported": true
+  },
+  {
+    "id": "pair-23-unsupported",
+    "split": "validation",
+    "category": "observation-request",
+    "source": "The curtain is closed and looks strange.",
+    "claim": "Open the curtain.",
+    "supported": false
+  },
+  {
+    "id": "pair-24-supported",
+    "split": "validation",
+    "category": "observation-request",
+    "source": "His eyes are closed. It is a little odd.",
+    "claim": "His closed eyes look a little odd.",
+    "supported": true
+  },
+  {
+    "id": "pair-24-unsupported",
+    "split": "validation",
+    "category": "observation-request",
+    "source": "His eyes are closed. It is a little odd.",
+    "claim": "Keep his eyes closed.",
+    "supported": false
+  },
+  {
+    "id": "pair-25-supported",
+    "split": "validation",
+    "category": "direction",
+    "source": "The bell rings too late. Move it earlier.",
+    "claim": "Bring the bell sound forward.",
+    "supported": true
+  },
+  {
+    "id": "pair-25-unsupported",
+    "split": "validation",
+    "category": "direction",
+    "source": "The bell rings too late. Move it earlier.",
+    "claim": "Delay the bell sound.",
+    "supported": false
+  },
+  {
+    "id": "pair-26-supported",
+    "split": "validation",
+    "category": "direction",
+    "source": "The cut happens too soon. Hold it longer.",
+    "claim": "Delay the cut.",
+    "supported": true
+  },
+  {
+    "id": "pair-26-unsupported",
+    "split": "validation",
+    "category": "direction",
+    "source": "The cut happens too soon. Hold it longer.",
+    "claim": "Make the cut sooner.",
+    "supported": false
+  },
+  {
+    "id": "pair-27-supported",
+    "split": "validation",
+    "category": "condition",
+    "source": "Stylize the final frame only if time allows.",
+    "claim": "If there is time, stylize the final frame.",
+    "supported": true
+  },
+  {
+    "id": "pair-27-unsupported",
+    "split": "validation",
+    "category": "condition",
+    "source": "Stylize the final frame only if time allows.",
+    "claim": "Stylizing the final frame is mandatory.",
+    "supported": false
+  },
+  {
+    "id": "pair-28-supported",
+    "split": "validation",
+    "category": "condition",
+    "source": "Use the close-up only when the wide shot is unavailable.",
+    "claim": "Use the close-up if the wide shot is unavailable.",
+    "supported": true
+  },
+  {
+    "id": "pair-28-unsupported",
+    "split": "validation",
+    "category": "condition",
+    "source": "Use the close-up only when the wide shot is unavailable.",
+    "claim": "Use the close-up even when the wide shot is available.",
+    "supported": false
+  },
+  {
+    "id": "pair-29-supported",
+    "split": "validation",
+    "category": "certainty",
+    "source": "The noise might be from my speakers.",
+    "claim": "My speakers may be causing the noise.",
+    "supported": true
+  },
+  {
+    "id": "pair-29-unsupported",
+    "split": "validation",
+    "category": "certainty",
+    "source": "The noise might be from my speakers.",
+    "claim": "My speakers definitely cause the noise.",
+    "supported": false
+  },
+  {
+    "id": "pair-30-supported",
+    "split": "validation",
+    "category": "certainty",
+    "source": "I am not sure whether the sleeve jumps.",
+    "claim": "The sleeve might jump.",
+    "supported": true
+  },
+  {
+    "id": "pair-30-unsupported",
+    "split": "validation",
+    "category": "certainty",
+    "source": "I am not sure whether the sleeve jumps.",
+    "claim": "The sleeve certainly jumps.",
+    "supported": false
+  },
+  {
+    "id": "pair-31-supported",
+    "split": "validation",
+    "category": "degree",
+    "source": "Increase the pause a tiny bit.",
+    "claim": "Lengthen the pause slightly.",
+    "supported": true
+  },
+  {
+    "id": "pair-31-unsupported",
+    "split": "validation",
+    "category": "degree",
+    "source": "Increase the pause a tiny bit.",
+    "claim": "Lengthen the pause dramatically.",
+    "supported": false
+  },
+  {
+    "id": "pair-32-supported",
+    "split": "validation",
+    "category": "degree",
+    "source": "Only subtle eyebrow motion is needed.",
+    "claim": "The eyebrow needs slight movement.",
+    "supported": true
+  },
+  {
+    "id": "pair-32-unsupported",
+    "split": "validation",
+    "category": "degree",
+    "source": "Only subtle eyebrow motion is needed.",
+    "claim": "The eyebrow needs exaggerated movement.",
+    "supported": false
+  },
+  {
+    "id": "pair-33-supported",
+    "split": "validation",
+    "category": "subject",
+    "source": "The jacket should be red and the hat black.",
+    "claim": "Make the hat black.",
+    "supported": true
+  },
+  {
+    "id": "pair-33-unsupported",
+    "split": "validation",
+    "category": "subject",
+    "source": "The jacket should be red and the hat black.",
+    "claim": "Make the hat red.",
+    "supported": false
+  },
+  {
+    "id": "pair-34-supported",
+    "split": "validation",
+    "category": "subject",
+    "source": "Jules speaks before Dana replies.",
+    "claim": "Dana replies after Jules speaks.",
+    "supported": true
+  },
+  {
+    "id": "pair-34-unsupported",
+    "split": "validation",
+    "category": "subject",
+    "source": "Jules speaks before Dana replies.",
+    "claim": "Jules replies after Dana speaks.",
+    "supported": false
+  },
+  {
+    "id": "pair-35-supported",
+    "split": "validation",
+    "category": "time",
+    "source": "At 00:31, the prop disappears.",
+    "claim": "The prop disappears at 00:31.",
+    "supported": true
+  },
+  {
+    "id": "pair-35-unsupported",
+    "split": "validation",
+    "category": "time",
+    "source": "At 00:31, the prop disappears.",
+    "claim": "The prop disappears at 01:31.",
+    "supported": false
+  },
+  {
+    "id": "pair-36-supported",
+    "split": "validation",
+    "category": "duration",
+    "source": "Trim 2 frames from the end.",
+    "claim": "Remove two frames at the end.",
+    "supported": true
+  },
+  {
+    "id": "pair-36-unsupported",
+    "split": "validation",
+    "category": "duration",
+    "source": "Trim 2 frames from the end.",
+    "claim": "Remove twenty frames at the end.",
+    "supported": false
+  },
+  {
+    "id": "pair-37-supported",
+    "split": "validation",
+    "category": "reason",
+    "source": "Keep the reflection because it shows the approaching car.",
+    "claim": "The reflection shows an approaching car.",
+    "supported": true
+  },
+  {
+    "id": "pair-37-unsupported",
+    "split": "validation",
+    "category": "reason",
+    "source": "Keep the reflection because it shows the approaching car.",
+    "claim": "The reflection conceals the approaching car.",
+    "supported": false
+  },
+  {
+    "id": "pair-38-supported",
+    "split": "validation",
+    "category": "quotation",
+    "source": "Add space between \"Was that yours?\" and the reply.",
+    "claim": "Pause after \"Was that yours?\" before the reply.",
+    "supported": true
+  },
+  {
+    "id": "pair-38-unsupported",
+    "split": "validation",
+    "category": "quotation",
+    "source": "Add space between \"Was that yours?\" and the reply.",
+    "claim": "Pause before \"Was that yours?\" instead of before the reply.",
+    "supported": false
+  },
+  {
+    "id": "pair-39-supported",
+    "split": "validation",
+    "category": "support-not-coverage",
+    "source": "The hand does not follow the arm. It should follow slightly.",
+    "claim": "The hand should follow slightly.",
+    "supported": true
+  },
+  {
+    "id": "pair-39-unsupported",
+    "split": "validation",
+    "category": "support-not-coverage",
+    "source": "The hand does not follow the arm. It should follow slightly.",
+    "claim": "The hand already follows the arm correctly.",
+    "supported": false
+  },
+  {
+    "id": "pair-40-supported",
+    "split": "validation",
+    "category": "synonym",
+    "source": "The dialogue is too quiet.",
+    "claim": "The dialogue is too soft.",
+    "supported": true
+  },
+  {
+    "id": "pair-40-unsupported",
+    "split": "validation",
+    "category": "synonym",
+    "source": "The dialogue is too quiet.",
+    "claim": "The dialogue is too loud.",
+    "supported": false
+  }
+]

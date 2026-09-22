@@ -1,0 +1,6 @@
+# Optional development benchmark only. Not part of the application runtime.
+# Verified with Python 3.12 on Apple silicon; weights are acquired separately.
+torch==2.14.0
+transformers==4.57.6
+sentencepiece==0.2.2
+protobuf==7.36.2

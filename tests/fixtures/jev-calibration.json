@@ -1,0 +1,280 @@
+[
+  {
+    "name": "Silhouette limitation",
+    "category": "qualification",
+    "split": "calibration",
+    "source": "At twenty-three seconds, the silhouette is difficult to read. There may be limited room to fix it, but a clearer shape would help.",
+    "scope": "^00:23$",
+    "requirement": "The silhouette note preserves that there may be limited room to improve it.",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:23** | The silhouette is hard to read. A clearer shape would help, though there may be little room to improve it. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:23** | The silhouette is difficult to read; a clearer shape may help. |\n"
+    }
+  },
+  {
+    "name": "Quieter ending reason",
+    "category": "purpose",
+    "split": "calibration",
+    "source": "If time allows, at the end desaturate the last frame and dissolve to black. It would make the ending feel quieter.",
+    "scope": "^End of video",
+    "requirement": "The end note explicitly preserves the purpose of making the ending feel quieter.",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **End of video** | If time allows, desaturate the last frame and dissolve to black for a quieter ending. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **End of video** | Desaturate the last frame and dissolve to black if time allows. |\n"
+    }
+  },
+  {
+    "name": "Dialogue ownership",
+    "category": "ownership",
+    "split": "calibration",
+    "source": "Overall, the dialogue is quiet. Maybe we can adjust it on our end.",
+    "scope": "general",
+    "requirement": "The dialogue note preserves that we may adjust it on our end, as a possibility rather than a commitment or assignment to someone else.",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\n- Dialogue is quiet; we may be able to adjust it on our end.\n\n## Timestamped feedback\n\nNo timestamp-specific notes were identified.\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\n- Dialogue is quiet; the editor will adjust it.\n\n## Timestamped feedback\n\nNo timestamp-specific notes were identified.\n"
+    }
+  },
+  {
+    "name": "Optional room still",
+    "category": "optionality",
+    "split": "calibration",
+    "source": "If there is time, at the end add a still of the empty room. This is optional and would give the audience a moment to absorb the departure.",
+    "scope": "^End of video",
+    "requirement": "The empty-room still remains optional and conditional on available time.",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **End of video** | If time permits, optionally hold on the empty room to let the departure sink in. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **End of video** | Add an empty-room still to let the departure sink in. |\n"
+    }
+  },
+  {
+    "name": "Required shadow",
+    "category": "polarity",
+    "split": "calibration",
+    "source": "At sixteen seconds, do not remove the shadow. Keeping it is essential because it reveals the approaching visitor.",
+    "scope": "^00:16$",
+    "requirement": "The note requires keeping the shadow; removing it is forbidden.",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:16** | Retain the shadow: it is essential to reveal the approaching visitor. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:16** | Remove the shadow to reveal the approaching visitor. |\n"
+    }
+  },
+  {
+    "name": "Bicycle conversation",
+    "category": "background",
+    "split": "calibration",
+    "source": "At nine seconds, the bicycle chase is too dark. My cousin bought a bicycle yesterday.",
+    "scope": "document",
+    "requirement": "",
+    "check": "relevance",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The bicycle chase is too dark. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The bicycle chase is too dark. My cousin bought a bicycle yesterday. |\n"
+    }
+  },
+  {
+    "name": "Different red lights",
+    "category": "duplicates",
+    "split": "calibration",
+    "source": "At thirteen seconds, leave the red light on. At twenty-one seconds, do not leave the red light on; it gives away the surprise.",
+    "scope": "document",
+    "requirement": "",
+    "check": "duplicates",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:13** | Leave the red light on. |\n| **00:21** | Remove the red light; it reveals the surprise. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:13** | Leave the red light on. |\n| **00:13** | Keep the red light on. |\n| **00:21** | Remove the red light; it reveals the surprise. |\n"
+    }
+  },
+  {
+    "name": "Short faithful praise",
+    "category": "grounding",
+    "split": "calibration",
+    "source": "Overall, looks great. One other thing, keep the music exactly as it is.",
+    "scope": "document",
+    "requirement": "",
+    "check": "grounding",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\n- Looks great.\n- Keep the music exactly as it is.\n\n## Timestamped feedback\n\nNo timestamp-specific notes were identified.\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\n- Looks great.\n- Keep the music exactly as it is, but re-record the dialogue.\n\n## Timestamped feedback\n\nNo timestamp-specific notes were identified.\n"
+    }
+  },
+  {
+    "name": "Late brake direction",
+    "category": "timing",
+    "split": "calibration",
+    "source": "At seventeen seconds, the bus brake squeal comes too late. Move it earlier so it starts as the wheel stops.",
+    "scope": "^00:17$",
+    "requirement": "The late brake squeal should move earlier to begin when the wheel stops.",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:17** | Bring the late brake squeal forward to match the wheel stopping. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:17** | Move the late brake squeal later to match the wheel stopping. |\n"
+    }
+  },
+  {
+    "name": "Display caveat attachment",
+    "category": "attachment",
+    "split": "calibration",
+    "source": "Overall, the sky is too bright, though this could be my display. The dialogue is quiet.",
+    "scope": "general",
+    "requirement": "The possibility that the display is responsible qualifies the bright sky, not the quiet dialogue.",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\n- Sky is too bright, possibly because of my display.\n- Dialogue is quiet.\n\n## Timestamped feedback\n\nNo timestamp-specific notes were identified.\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\n- Sky is too bright.\n- Dialogue is quiet, possibly because of my display.\n\n## Timestamped feedback\n\nNo timestamp-specific notes were identified.\n"
+    }
+  },
+  {
+    "name": "Window reflection limitation",
+    "category": "qualification",
+    "split": "validation",
+    "source": "At forty-one seconds, the window reflection hides the face. We might not be able to recover much detail, but reducing the glare could help.",
+    "scope": "^00:41$",
+    "requirement": "The reflection note retains the limitation that little facial detail may be recoverable.",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:41** | The reflection obscures the face. Reduce glare if possible, though we may recover little detail. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:41** | The reflection obscures the face; reducing glare may help. |\n"
+    }
+  },
+  {
+    "name": "Clock insert reason",
+    "category": "purpose",
+    "split": "validation",
+    "source": "At the end, if there is time, hold on the stopped clock. That would make the long wait clear.",
+    "scope": "^End of video",
+    "requirement": "The clock note explicitly retains the purpose of making the long wait clear.",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **End of video** | If time allows, hold on the stopped clock to convey the long wait. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **End of video** | If time allows, hold on the stopped clock. |\n"
+    }
+  },
+  {
+    "name": "Color ownership",
+    "category": "ownership",
+    "split": "validation",
+    "source": "Overall, the hallway is too green. Perhaps our team can correct it locally.",
+    "scope": "general",
+    "requirement": "The green hallway note preserves that our team might correct it, without promising the fix or assigning it elsewhere.",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\n- Hallway looks too green; our team may be able to correct it locally.\n\n## Timestamped feedback\n\nNo timestamp-specific notes were identified.\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\n- Hallway looks too green; the vendor must correct it.\n\n## Timestamped feedback\n\nNo timestamp-specific notes were identified.\n"
+    }
+  },
+  {
+    "name": "Essential train sound",
+    "category": "polarity",
+    "split": "validation",
+    "source": "At forty-four seconds, keep the train horn. It must remain because it signals the arrival.",
+    "scope": "^00:44$",
+    "requirement": "Keeping the train horn is required, not optional.",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:44** | Keep the train horn; it is essential to signal the arrival. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:44** | Optionally keep the train horn if time allows; it signals the arrival. |\n"
+    }
+  },
+  {
+    "name": "Different camera moments",
+    "category": "duplicates",
+    "split": "validation",
+    "source": "At thirty-six seconds, stay on the wide shot. At fifty-two seconds, leave the wide shot for a close-up.",
+    "scope": "document",
+    "requirement": "",
+    "check": "duplicates",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:36** | Stay wide. |\n| **00:52** | Cut from the wide shot to a close-up. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:36** | Stay wide. |\n| **00:36** | Keep the wide shot. |\n| **00:52** | Cut to a close-up. |\n"
+    }
+  },
+  {
+    "name": "Soup sound and dinner chatter",
+    "category": "background",
+    "split": "validation",
+    "source": "At twenty-four seconds, the soup slurping is too loud. My friend made soup for dinner last night.",
+    "scope": "document",
+    "requirement": "",
+    "check": "relevance",
+    "candidates": {
+      "pass": "# Synthetic review\n\n## General feedback\n\nNone.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:24** | Lower the soup slurping sound. |\n",
+      "fail": "# Synthetic review\n\n## General feedback\n\n- My friend made soup for dinner last night.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:24** | Lower the soup slurping sound. |\n"
+    }
+  },
+  {
+    "name": "Exclude the cousin purchase",
+    "split": "calibration",
+    "category": "exclusion",
+    "source": "At nine seconds, the bicycle chase is too dark. My cousin bought a bicycle yesterday.",
+    "scope": "document",
+    "requirement": "The cousin's bicycle purchase or when it happened.",
+    "kind": "exclusion",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Review\n## General feedback\nNone.\n## Timestamped feedback\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The bicycle chase is too dark. |\n",
+      "fail": "# Review\n## General feedback\nNone.\n## Timestamped feedback\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The bicycle chase is too dark. My cousin bought a bicycle yesterday. |\n"
+    }
+  },
+  {
+    "name": "Exclude personal tennis",
+    "split": "calibration",
+    "category": "exclusion",
+    "source": "At eleven seconds, delay the racket sound until contact. My sister played tennis last Sunday.",
+    "scope": "document",
+    "requirement": "The sister's personal tennis activity or when it happened.",
+    "kind": "exclusion",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Review\n## General feedback\nNone.\n## Timestamped feedback\n| Video time | Feedback |\n| --- | --- |\n| **00:11** | Delay the racket sound until contact. |\n",
+      "fail": "# Review\n## General feedback\nNone.\n## Timestamped feedback\n| Video time | Feedback |\n| --- | --- |\n| **00:11** | Delay the racket sound until contact. My sister played tennis last Sunday. |\n"
+    }
+  },
+  {
+    "name": "Empty section is not an invented edit",
+    "split": "calibration",
+    "category": "grounding",
+    "source": "At four seconds, the title is too small.",
+    "scope": "document",
+    "requirement": "",
+    "kind": "coverage",
+    "check": "grounding",
+    "candidates": {
+      "pass": "# Review\n## General feedback\n- No general summary was generated.\n## Timestamped feedback\n| Video time | Feedback |\n| --- | --- |\n| **00:04** | Title is too small. |\n",
+      "fail": "# Review\n## General feedback\n- No general summary was generated.\n## Timestamped feedback\n| Video time | Feedback |\n| --- | --- |\n| **00:04** | Title is too small. Replace the soundtrack. |\n"
+    }
+  },
+  {
+    "name": "Exclude personal airport ride",
+    "split": "validation",
+    "category": "exclusion",
+    "source": "At fifty-five seconds, the airport announcement is too loud. My aunt drove to the airport yesterday.",
+    "scope": "document",
+    "requirement": "The aunt's personal trip to the airport or when it happened.",
+    "kind": "exclusion",
+    "check": "fact_01",
+    "candidates": {
+      "pass": "# Review\n## General feedback\nNone.\n## Timestamped feedback\n| Video time | Feedback |\n| --- | --- |\n| **00:55** | Lower the airport announcement. |\n",
+      "fail": "# Review\n## General feedback\nNone.\n## Timestamped feedback\n| Video time | Feedback |\n| --- | --- |\n| **00:55** | Lower the airport announcement. My aunt drove to the airport yesterday. |\n"
+    }
+  },
+  {
+    "name": "Empty summary and valid curtain note",
+    "split": "validation",
+    "category": "grounding",
+    "source": "At forty-seven seconds, the curtain blocks the actor.",
+    "scope": "document",
+    "requirement": "",
+    "kind": "coverage",
+    "check": "grounding",
+    "candidates": {
+      "pass": "# Review\n## General feedback\n- No general summary was generated.\n## Timestamped feedback\n| Video time | Feedback |\n| --- | --- |\n| **00:47** | The curtain obscures the actor. |\n",
+      "fail": "# Review\n## General feedback\n- No general summary was generated.\n## Timestamped feedback\n| Video time | Feedback |\n| --- | --- |\n| **00:47** | The curtain obscures the actor. Replace the actor. |\n"
+    }
+  }
+]

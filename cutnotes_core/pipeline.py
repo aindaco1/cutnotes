@@ -522,11 +522,15 @@ def _format(
     markdown_path: Path,
     reporter: ProgressReporter,
     quiet: bool,
+    audio_path: Path | None = None,
+    ffmpeg: str | None = None,
 ) -> None:
     reporter.stage("formatting", f"Formatting notes with {args.formatter}")
     if args.formatter == "apple":
         format_with_apple(
             engine=provider_tool,
+            audio_path=audio_path,
+            ffmpeg=ffmpeg,
             transcript_path=transcript_path,
             output_path=markdown_path,
             title=args.title,
@@ -629,6 +633,8 @@ def run_record(args) -> dict:
             _format(
                 args,
                 provider_tool=formatter_tool,
+                audio_path=audio,
+                ffmpeg=ffmpeg,
                 transcript_path=transcript,
                 markdown_path=markdown,
                 reporter=reporter,
@@ -710,6 +716,8 @@ def run_import(args) -> dict:
             _format(
                 args,
                 provider_tool=formatter_tool,
+                audio_path=audio,
+                ffmpeg=ffmpeg,
                 transcript_path=transcript,
                 markdown_path=markdown,
                 reporter=reporter,

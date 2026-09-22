@@ -20,11 +20,10 @@ jobs:
           test "$(uname -m)" = arm64
           sw_vers
           xcodebuild -version
-      - name: Test Python CLI
-        run: python3 -m unittest discover -s tests -v
-      - name: Test Swift contracts and app build
+      - name: Test offline development subset (no model or cloud credentials)
+        run: python3 scripts/test.py --offline
+      - name: Build app and helper
         run: |
-          swift test --package-path macos
           swift build --package-path macos -c release --arch arm64
           binary_root="$(swift build --package-path macos -c release --arch arm64 --show-bin-path)"
           test -x "$binary_root/CutNotes"

@@ -117,11 +117,14 @@ struct ContentView: View {
                             Text(microphone.name).tag(Optional(microphone.index))
                         }
                     }
-                    Text("Use headphones. Start each note with the cut timecode. CutNotes warns at 3 hours 45 minutes and stops at 4 hours.")
+                    Text("Start each note with the cut timecode. CutNotes warns at 3 hours 45 minutes and stops at 4 hours.")
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
                 if store.workflow != .format {
+                    Text("For best results, record in a quiet place. Use headphones to keep video playback out of your microphone.")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
                     LabeledContent("Save projects to") {
                         HStack {
                             Text(store.outputRootPath).lineLimit(1).truncationMode(.middle)

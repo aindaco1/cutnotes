@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.0.5 — 2026-09-22
+
+- Fix MacWhisper opening unexpectedly. CutNotes invokes its transcription CLI only when MacWhisper is selected; setup and other providers do not probe it.
+- Rework Apple Intelligence formatting around short, source-backed passages. Keep usable observations as written, combine repeated feedback, and preserve conditions, uncertainty, and positive notes. When a proposed edit fails the meaning checks, retain the original wording for review.
+- Improve spoken cut timestamps, adjacent ranges, retrospective timing corrections, general feedback, and end-of-video notes.
+- Use local word alignment and relative audio levels to exclude very quiet background speech from formatted notes when exact evidence is available. Preserve the complete original audio and transcript, plus a local review record of excluded speech and proposed edits.
+- Add quiet-place and headphone guidance to recording and import. Apple Intelligence formatting remains on-device and requires no additional model download beyond Parakeet for transcription.
+- Expand regression coverage for source preservation, meaning changes, provider isolation, helper contracts, audio evidence, and malformed or incomplete results. Jev remains a development-only evaluator of public synthetic fixtures.
+- Retain macOS 26 compatibility and report the system-selected Apple model on macOS 27. Output quality still depends on the recording, transcription, and available Apple model; review your notes before sharing.
+
 ## 1.0.4 — 2026-09-15
 
 - Retain grounded general feedback about dialogue, beginnings, and endings through the final editorial-note filter.

@@ -27,3 +27,11 @@
 - Run Python tests, Swift tests, app bundle validation, real Parakeet transcription, Apple formatting where available, Developer ID signing, notarization, stapling, DMG mount/install/launch, and Sparkle signature/feed checks as distinct gates.
 - Do not publish an unsigned or unnotarized public release.
 - Never commit signing certificates, notarization keys, Sparkle private keys, or model weights.
+
+## Development testing
+
+- `python3 scripts/test.py` is the standard development test entrypoint. It runs Python and Swift tests, live Jev calibration on public synthetic examples, then native Apple formatting plus Jev review.
+- Jev is a default development evaluator, never a user formatter provider. Keep its code, fixtures, credentials, and network requests outside the app and CLI pipeline.
+- Use `--offline` explicitly for the Python/Swift subset. Hosted CI uses this subset because it has no ready Apple model or Jev credential; it does not establish native content acceptance.
+- Native `check-apple-formatting.py` and saved-output `jev_evaluation.py` use Jev by default. Use `--skip-jev` for private/custom native fixtures and `--dry-run` for an offline Jev request preview. Never upload private recordings or transcripts.
+- Preserve fixed calibration questions/policy while comparing formatter changes. Model changes and borderline answers require review; Jev never overrides deterministic or native errors.

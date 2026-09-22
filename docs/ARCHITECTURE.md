@@ -24,17 +24,41 @@ The app does not ship model weights. The CLI installs a single pinned Parakeet v
 
 Media is normalized by bundled FFmpeg into mono 16 kHz WAV chunks no longer than 15 minutes. `CutNotesLocal` uses Record/FluidAudio offline APIs and Core ML. Chunk transcripts are joined in order.
 
+Optional native word/token timing and confidence are validated and merged by the
+core into a companion evidence file bound to the transcript and original audio
+by SHA-256. These recording offsets never become video timecodes. The raw text
+is preserved; no confidence-based word deletion or automatic audio repair is
+enabled. See the [evidence contract](CLI_PROTOCOL.md#optional-transcription-evidence).
+
 The Python `doctor` contract exposes the model's supported language codes and native display names. Swift renders that capability list rather than maintaining a second language table.
 
 ## Formatting
 
-Python normalizes clear spoken and compact CUT timecodes before provider use, then separates general observations from timestamped edit moments. Repeated observations at one edit point share a synthetic source ID, and adjacent markers can form a range when the surrounding note is continuous. Apple and Codex return concise titles and bodies plus the source IDs that ground them through `cutnotes.local.draft.v1` or an equivalent Codex schema. Python rejects unknown IDs, cross-time grouping, selected semantic contradictions, and generic model-added rationale; common explicit rough-cut patterns are rendered locally. The final Markdown always uses the same Notion-style summary and chronological timestamp structure regardless of provider.
+Python normalizes clear spoken and compact CUT timecodes before provider use, then groups coherent passages at timestamp and natural topic boundaries. Natural general-feedback transitions clear the active timestamp. Adjacent markers can form a range when the surrounding note is continuous. All passages remain eligible for formatting, including feedback after untimed opening conversation. Retrospective time corrections remain attached to the preceding passage; relative end-of-video suggestions stay separate from general feedback.
 
-The original transcript remains the preservation artifact. The Markdown is intentionally an editorial synthesis: filler, background lyrics, false starts, and exact repetition are excluded. A detected timecode is never silently dropped; an unintelligible moment is rendered as an explicit “No clear actionable note captured” entry. Invented or omitted CUT times reject the document before atomic replacement.
+Apple handles small classification and copyediting requests through
+`cutnotes.local.editorial.v1`. Shared Python prompts and policy keep individual
+usable statements unchanged, group passages, and check proposed edits for
+selected changes in meaning. A rejected edit retains the source wording. These
+bounded checks are not a proof of semantic correctness. CutNotes owns timestamps,
+source IDs, rendering, and local audit records. Codex retains its explicit
+optional draft schema and grounding checks; the older native draft/plan helper
+contracts remain supported.
 
-Apple requests use context-safe source batches and split again when Foundation Models reports a context or guardrail rejection. Clear timestamped requests are handled deterministically when possible, so ordinary edit directions do not pay for unnecessary model calls. If an isolated source observation still triggers Apple's guardrail, the original transcript remains preserved and any validated timestamp receives a grounded local entry. The progress channel reports the omission without echoing source text.
+When record/import supplies exact Parakeet alignment, Python measures relative
+speech levels on an unnormalized temporary PCM copy. Sustained utterances at
+least 18 dB below the recording reference may be excluded from the formatting
+input. The full audio and transcript remain untouched; a local review sidecar
+retains every exclusion. Quiet speech is evidence, not speaker identification.
+Missing or stale alignment preserves all speech, and text-only formatting does
+not guess an audio source. Jev and optional independent verifiers run only in
+development, never in this runtime path.
 
-There is no automatic provider fallback. A requested provider either succeeds or returns an actionable stable error while preserving earlier artifacts.
+Apple receives the core-owned task instructions in a separate `--instructions` file, passed to `LanguageModelSession.instructions`; its prompt contains only source observations and spelling context. The native helper generates the body before supporting IDs and title while retaining the existing response schema. Apple requests use alphabetic source-ID aliases so observation numbers cannot be confused with video times. Python maps them back before grounding validation. Temporary request files are removed on success and failure. See Apple's [prompting guidance](https://developer.apple.com/documentation/foundationmodels/prompting-an-on-device-foundation-model).
+
+The renderer emits two sections: general feedback bullets and a chronological video-time table. Distinct issues can share a timestamp. Both general and timestamped requests use bounded source batches. Long single observations can be split again after context or guardrail rejection. A timed source passage with no accepted rewrite returns `formatter_incomplete`, even if another note covers its timestamp. No incomplete document replaces existing notes or reports success. CutNotes never substitutes a raw transcript dump or canned scene advice. If no usable notes remain, formatting returns `formatter_contract_failed` and preserves the transcript. Invented or omitted detected CUT times still reject the document before atomic replacement. These structural checks do not establish semantic completeness; native content acceptance remains a separate gate.
+
+There is no automatic provider fallback. MacWhisper is passively discovered during setup and invoked through `mw transcribe` only when explicitly selected; setup does not query its version or models.
 
 ## Packaging
 

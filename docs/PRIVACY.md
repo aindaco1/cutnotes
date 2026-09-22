@@ -14,3 +14,16 @@ CutNotes is designed for local editorial work.
 MacWhisper and Codex CLI are separately installed, optional tools. Selecting one delegates that stage to the tool under its own settings and privacy behavior. CutNotes never silently switches to either provider.
 
 The Parakeet setup performs one explicit HTTPS download from the pinned Hugging Face model repository. Model weights are verified locally and remain in Application Support.
+
+Repository development testing includes Jev by default. The standard development
+suite and native Apple test runner send only verified public synthetic fixtures
+and their generated notes through Cloudflare to TypeSafe. Private/custom inputs
+are rejected before authentication; use `--skip-jev` for a private native check.
+`python3 scripts/test.py --offline` runs only the Python/Swift contract tests,
+and the saved-output evaluator offers an explicit `--dry-run` preview.
+
+Jev is excluded from the app bundle and user transcription/formatting paths.
+Credentials stay in the developer's environment or existing Wrangler login;
+the ignored `.cutnotes-development.json` stores only a Cloudflare account ID,
+never a token. Individual unit tests and the explicit offline CI subset make no
+Jev requests. No private reference recording was included in the Jev benchmarks.

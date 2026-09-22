@@ -64,7 +64,9 @@ def doctor_payload() -> tuple[dict, bool]:
         "apple_formatter": engine_status["apple"],
         "macwhisper": {
             "path": macwhisper,
-            "version": command_version([macwhisper, "version"]) if macwhisper else None,
+            # Even informational mw commands can launch MacWhisper. Setup only
+            # discovers the CLI; execute it solely for selected transcription.
+            "version": None,
             "optional": True,
             "models": [],
         },
@@ -75,22 +77,6 @@ def doctor_payload() -> tuple[dict, bool]:
         },
         "microphones": microphones,
     }
-    if macwhisper:
-        try:
-            import subprocess
-
-            models = subprocess.run(
-                [macwhisper, "models"],
-                check=False,
-                capture_output=True,
-                text=True,
-                timeout=30,
-            )
-            payload["macwhisper"]["models"] = [
-                line.rstrip() for line in models.stdout.splitlines() if line.strip()
-            ]
-        except (OSError, subprocess.TimeoutExpired):
-            pass
     return payload, core_healthy
 
 
@@ -104,9 +90,12 @@ def print_doctor_report(payload: dict, *, compact: bool = False) -> None:
     print(f"{mark(parakeet['state'] == 'ready')} Parakeet v3 model: {parakeet['state']}")
     apple = payload["apple_formatter"]
     print(f"{mark(apple.get('state') == 'ready')} Apple on-device formatter: {apple.get('state', 'unavailable')}")
+    macwhisper = payload["macwhisper"]
+    macwhisper_detail = macwhisper["version"] or (
+        "installed (not queried)" if macwhisper["path"] else "not found"
+    )
     print(
-        f"{mark(payload['macwhisper']['path'])} MacWhisper (optional): "
-        f"{payload['macwhisper']['version'] or 'not found'}"
+        f"{mark(macwhisper['path'])} MacWhisper (optional): {macwhisper_detail}"
     )
     print(
         f"{mark(payload['codex']['path'])} Codex CLI (optional): "
@@ -127,6 +116,8 @@ def print_doctor_report(payload: dict, *, compact: bool = False) -> None:
     if models:
         for model in models:
             print(f"  {model}")
+    elif payload["macwhisper"]["path"]:
+        print("  Not queried; MacWhisper runs only when selected for transcription.")
     else:
         print("  None reported")
 
@@ -273,6 +264,7 @@ def run_interactive(_: argparse.Namespace) -> int:
         )
     title = prompt_for_project_name()
     print("\nHow to give notes:")
+    print("  • Record in a quiet place for best results.")
     print('  • Say the CUT timecode first: "Timestamp 12 minutes 34 seconds."')
     print("  • Pause briefly, then give your feedback.")
     print('  • Say "General note" for feedback without a timecode.')

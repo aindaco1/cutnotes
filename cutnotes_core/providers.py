@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import replace
 import datetime as dt
 import json
 import os
@@ -23,7 +24,10 @@ from .contracts import (
     ProgressReporter,
 )
 from .filesystem import write_json
+from .apple_editorial import EditorialQuestions
+from .formatter_candidate import format_candidate
 from .formatting import (
+    BRACKETED_TIMECODE,
     DraftNote,
     SourceUnit,
     draft_notes_from_payload,
@@ -32,11 +36,12 @@ from .formatting import (
     parse_markdown_envelope,
     render_editorial_draft,
     source_units,
-    timestamp_draft_prompt,
     validate_timecodes,
     validate_markdown,
 )
 from .models import default_model_directory, validate_model
+from .speech_levels import analyze_recording
+from .transcription import audio_digest, decode_local_evidence, evidence_path, merge_evidence, text_digest
 
 
 MACWHISPER_CANDIDATES = (
@@ -127,10 +132,11 @@ def local_engine_status(engine: str | None = None) -> dict:
     }
 
 
-def _run_checked(command: list[str], *, failure: str, code: str, exit_code: int) -> subprocess.CompletedProcess[str]:
+def _run_checked(command: list[str], *, failure: str, code: str, exit_code: int,
+                 timeout: float | None = None) -> subprocess.CompletedProcess[str]:
     try:
-        result = subprocess.run(command, check=False, capture_output=True, text=True)
-    except OSError as error:
+        result = subprocess.run(command, check=False, capture_output=True, text=True, timeout=timeout)
+    except (OSError, subprocess.TimeoutExpired) as error:
         raise CutNotesError(
             failure,
             exit_code,
@@ -268,12 +274,20 @@ def transcribe_with_parakeet(
     validate_model(model)
     transcript_path.parent.mkdir(parents=True, exist_ok=True)
     reporter.stage("transcribing", "Transcribing locally with Parakeet v3")
+    try:
+        source_digest = audio_digest(audio_path)
+    except OSError:
+        # The transcription adapter reports its own stable input error. Optional
+        # evidence must not replace that error or prevent a usable transcript.
+        source_digest = None
     with tempfile.TemporaryDirectory(prefix="cutnotes-audio-") as temporary:
         temporary_directory = Path(temporary)
         chunks = _create_audio_chunks(ffmpeg, audio_path, temporary_directory)
         texts: list[str] = []
+        evidence: list[dict] = []
         for index, chunk in enumerate(chunks, start=1):
             result_path = temporary_directory / f"result-{index:04d}.json"
+            evidence_result = temporary_directory / f"evidence-{index:04d}.json"
             _run_checked(
                 [
                     engine,
@@ -284,6 +298,8 @@ def transcribe_with_parakeet(
                     str(model),
                     "--output",
                     str(result_path),
+                    "--evidence-output",
+                    str(evidence_result),
                 ],
                 failure="Parakeet local transcription failed",
                 code="parakeet_failed",
@@ -302,6 +318,12 @@ def transcribe_with_parakeet(
                 ) from error
             if text:
                 texts.append(text)
+            if evidence_result.is_file():
+                try:
+                    evidence.append(decode_local_evidence(
+                        json.loads(evidence_result.read_text(encoding="utf-8")), text=text))
+                except (OSError, ValueError, TypeError):
+                    reporter.warning("transcribing", "Word timing data was invalid; the transcript was retained unchanged")
             reporter.progress(
                 "transcribing",
                 index / len(chunks),
@@ -319,6 +341,15 @@ def transcribe_with_parakeet(
     temporary_transcript = transcript_path.with_name(f".{transcript_path.name}.tmp")
     temporary_transcript.write_text(transcript + "\n", encoding="utf-8")
     temporary_transcript.replace(transcript_path)
+    # Older transcript-v1 helpers may ignore the optional evidence argument.
+    # Incomplete metadata is not used, and an existing artifact is never replaced.
+    companion = evidence_path(transcript_path)
+    if source_digest and len(evidence) == len(chunks) and not companion.exists():
+        try:
+            write_json(companion, merge_evidence(evidence, transcript + "\n", source_digest),
+                       overwrite=False)
+        except OSError:
+            reporter.warning("transcribing", "Word timing data could not be saved; the transcript was retained unchanged")
 
 
 def _generate_with_apple(
@@ -329,13 +360,23 @@ def _generate_with_apple(
     mode: str,
     schema_version: str,
     payload_key: str,
+    instructions: str | None = None,
 ) -> object:
     work_directory.mkdir(parents=True, exist_ok=True)
     token = uuid.uuid4().hex
     prompt_path = work_directory / f".cutnotes-{mode}-prompt-{token}.txt"
     response_path = work_directory / f".cutnotes-{mode}-response-{token}.json"
-    prompt_path.write_text(prompt, encoding="utf-8")
+    instructions_path = work_directory / f".cutnotes-{mode}-instructions-{token}.txt"
+    # Draft-v1 helpers before 1.0.5 ignore --instructions. Keep a complete request
+    # in their existing prompt file; newer helpers remove this exact prefix before
+    # sending the source to the model with separate session instructions.
+    compatible_prompt = f"{instructions.strip()}\n\n{prompt}" if instructions else prompt
+    prompt_path.write_text(compatible_prompt, encoding="utf-8")
     try:
+        instruction_arguments: list[str] = []
+        if instructions is not None:
+            instructions_path.write_text(instructions, encoding="utf-8")
+            instruction_arguments = ["--instructions", str(instructions_path)]
         try:
             _run_checked(
                 [
@@ -347,10 +388,12 @@ def _generate_with_apple(
                     str(response_path),
                     "--mode",
                     mode,
+                    *instruction_arguments,
                 ],
                 failure="Apple on-device classification failed",
                 code="apple_formatting_failed",
                 exit_code=EXIT_FORMATTING,
+                timeout=60,
             )
         except CutNotesError as error:
             detail = str(error)
@@ -381,7 +424,7 @@ def _generate_with_apple(
                     "Apple on-device formatting declined to classify a sensitive transcript section.",
                     EXIT_FORMATTING,
                     code="apple_guardrail",
-                    recovery="CutNotes will isolate the section and preserve it through deterministic local formatting.",
+                    recovery="CutNotes will retry smaller passages; if rewriting still fails, the transcript remains preserved.",
                     preserved=PreservedArtifacts(transcript=True),
                 ) from error
             raise CutNotesError(
@@ -401,7 +444,7 @@ def _generate_with_apple(
         return payload[payload_key]
     except (OSError, json.JSONDecodeError, ValueError) as error:
         raise CutNotesError(
-            "Apple on-device formatting returned an unreadable source plan.",
+            "Apple on-device formatting returned an unreadable response.",
             EXIT_FORMATTING,
             code="apple_formatting_invalid_result",
             recovery="Retry or explicitly choose Codex; the transcript was preserved.",
@@ -410,6 +453,7 @@ def _generate_with_apple(
     finally:
         prompt_path.unlink(missing_ok=True)
         response_path.unlink(missing_ok=True)
+        instructions_path.unlink(missing_ok=True)
 
 
 def _draft_with_apple(
@@ -419,16 +463,34 @@ def _draft_with_apple(
     allowed_ids: set[str],
     work_directory: Path,
 ) -> list[DraftNote]:
+    # Numeric observation labels are easily mistaken for video timestamps by the
+    # on-device model. Use alphabetic request-local aliases on this boundary.
+    def alphabetic(index: int) -> str:
+        result = ""
+        while index >= 0:
+            result = chr(97 + index % 26) + result
+            index = index // 26 - 1
+        return "obs_" + result
+
+    aliases = {source_id: alphabetic(index) for index, source_id in enumerate(sorted(allowed_ids))}
+    reverse_aliases = {alias: source_id for source_id, alias in aliases.items()}
+    prompt = re.sub(r"\b[NT]\d{4}\b", lambda match: aliases.get(match.group(), match.group()), prompt)
+    instructions, marker, source = prompt.partition("<source-observations>")
+    if not marker:
+        raise ValueError("Editorial draft request is missing source observations")
     payload = _generate_with_apple(
         engine=engine,
-        prompt=prompt,
+        prompt=marker + source,
+        instructions=instructions.strip(),
         work_directory=work_directory,
         mode="draft",
         schema_version="cutnotes.local.draft.v1",
         payload_key="draft",
     )
-    notes = draft_notes_from_payload(payload, allowed_ids)
-    if not isinstance(payload, dict):
+    if not isinstance(payload, dict) or not isinstance(payload.get("notes"), list) or any(
+        not isinstance(note, dict) or not {"body", "title", "source_ids"} <= note.keys()
+        for note in payload.get("notes", [])
+    ):
         raise CutNotesError(
             "Apple on-device formatting returned an unreadable editorial draft.",
             EXIT_FORMATTING,
@@ -436,7 +498,14 @@ def _draft_with_apple(
             recovery="Retry or explicitly choose Codex; the transcript was preserved.",
             preserved=PreservedArtifacts(transcript=True),
         )
-    return notes
+    for note in payload["notes"]:
+        for field in ("title", "body"):
+            if isinstance(note.get(field), str):
+                note[field] = re.sub(r"\bobs_[a-z]+\b", lambda match: reverse_aliases.get(match.group(), ""), note[field])
+        if isinstance(note.get("source_ids"), list):
+            note["source_ids"] = [reverse_aliases.get(source_id, source_id) if isinstance(source_id, str)
+                                  else source_id for source_id in note["source_ids"]]
+    return draft_notes_from_payload(payload, allowed_ids)
 
 
 def _structured_with_codex(
@@ -555,12 +624,27 @@ def _draft_with_codex(
     return draft_notes_from_payload(payload, allowed_ids)
 
 
+def _split_source_unit(unit: SourceUnit, limit: int) -> list[SourceUnit]:
+    chunks: list[SourceUnit] = []
+    remaining = unit.text.strip()
+    while len(remaining) > limit:
+        boundary = remaining.rfind(" ", 0, limit + 1)
+        if boundary <= 0:
+            boundary = limit
+        chunks.append(SourceUnit(unit.id, remaining[:boundary], unit.timecodes))
+        remaining = remaining[boundary:].lstrip()
+    if remaining:
+        chunks.append(SourceUnit(unit.id, remaining, unit.timecodes))
+    return chunks
+
+
 def _unit_batches(units: list[SourceUnit], limit: int = 16_000) -> list[list[SourceUnit]]:
     batches: list[list[SourceUnit]] = []
     current: list[SourceUnit] = []
     length = 0
-    for unit in units:
-        size = len(unit.id) + len(unit.text) + 4
+    for unit in (chunk for source in units for chunk in _split_source_unit(source, max(100, limit - 80))):
+        # Account for IDs repeated in the instruction and source lists, plus times.
+        size = 2 * len(unit.id) + len(unit.text) + sum(len(t) + 3 for t in unit.timecodes) + 64
         if current and length + size > limit:
             batches.append(current)
             current = []
@@ -572,16 +656,9 @@ def _unit_batches(units: list[SourceUnit], limit: int = 16_000) -> list[list[Sou
     return batches
 
 
-APPLE_BATCH_SOURCE_CHARACTER_LIMIT = 2_400
+APPLE_BATCH_SOURCE_CHARACTER_LIMIT = 4_800
 
 DraftGenerator = Callable[[str, set[str]], list[DraftNote]]
-
-EDITORIAL_LANGUAGE = re.compile(
-    r"(?i)\b(cut|shot|edit|scene|sequence|audio|music|sound|crop|frame|"
-    r"reaction|pacing|continuity|opening|beginning|ending|dialogue|strong|works?|better|worse|long|short|"
-    r"add|remove|change|preserve|trim|shorten|lengthen|"
-    r"obvious|beat|camera|transition|outro)\b"
-)
 
 
 def _draft_batch_with_retries(
@@ -616,6 +693,15 @@ def _draft_batch_with_retries(
                 generate=generate,
                 reporter=reporter,
             )
+        if len(units[0].text) > 200:
+            return [
+                note
+                for fragment in _split_source_unit(units[0], len(units[0].text) // 2)
+                for note in _draft_batch_with_retries(
+                    units=[fragment], context=context, purpose=purpose,
+                    generate=generate, reporter=reporter,
+                )
+            ]
         if error.code == "apple_guardrail":
             reporter.warning(
                 "formatting",
@@ -625,133 +711,9 @@ def _draft_batch_with_retries(
         raise
 
 
-def _fallback_timestamp_note(timecode: str, units: list[SourceUnit]) -> DraftNote:
-    source_ids = tuple(unit.id for unit in units)
-    cleaned: list[str] = []
-    for unit in units:
-        text = re.sub(r"\[\d{2,3}:\d{2}(?:[–-]\d{2,3}:\d{2})?\]", "", unit.text)
-        text = " ".join(text.split()).strip(" ,.-")
-        text = re.sub(
-            r"(?i)^(?:(?:okay|yeah|um|uh|just|at)\b[\s,]*)+",
-            "",
-            text,
-        ).strip(" ,.-")
-        text = re.sub(r"\.{2,}", ".", text)
-        if text and text not in cleaned:
-            cleaned.append(text)
-    body = " ".join(cleaned)[:1_200].strip()
-    lowered = body.casefold()
-    if not body or not EDITORIAL_LANGUAGE.search(body):
-        return DraftNote(
-            "No clear actionable note captured",
-            "The transcript includes this timestamp, but the surrounding speech is not clear enough to identify a specific edit.",
-            source_ids,
-        )
-    if "song edit" in lowered and "jagged" in lowered:
-        return DraftNote(
-            "Smooth the song edit",
-            "The song edit is noticeable and feels too jagged. Smooth the transition so the cut is effectively invisible.",
-            source_ids,
-        )
-    if "audio edit" in lowered and ("weird" in lowered or "awkward" in lowered):
-        return DraftNote(
-            "Smooth the audio edit",
-            "The audio edit is noticeable and feels awkward. Make it land cleanly on the rhythm without cutting off a lyric.",
-            source_ids,
-        )
-    if (
-        ("bra" in lowered or "panties" in lowered)
-        and "center" in lowered
-        and "frame" in lowered
-    ):
-        return DraftNote(
-            "Improve the framing of the falling clothing",
-            "A shot where the bra or panties lands closer to the center of the frame would read better. Cropping the existing shot may help.",
-            source_ids,
-        )
-    if (
-        ("quick cuts" in lowered or "two cuts" in lowered)
-        and ("standing up" in lowered or "stood up" in lowered)
-    ):
-        return DraftNote(
-            "Add the missing standing position",
-            "The quick sequence jumps from lying flat to crouching without clearly showing the character standing. Add the standing position from the original shot so the progression better motivates the next cut.",
-            source_ids,
-        )
-    if "overlay" in lowered and "noodle" in lowered and "short" in lowered:
-        return DraftNote(
-            "Preserve the stronger bathroom sequence",
-            "Keep the noodle overlay, but let this strong section run longer and sell the panic. Favor the previous bathroom-scene iteration over the newer choppier changes.",
-            source_ids,
-        )
-    if "running to the bathroom" in lowered or "runs to the bathroom" in lowered:
-        return DraftNote(
-            "Clarify why he runs to the bathroom",
-            "The cut does not clearly communicate the scripted reason for his sudden exit. Available reactions, closer crops, and possibly a sound effect could help sell the realization and motivate the run.",
-            source_ids,
-        )
-    if "noodle shot" in lowered and "fumbling" in lowered:
-        return DraftNote(
-            "Add a transition before the noodle shot",
-            "Add another shot of him fumbling before the noodle shot to create a cleaner transition. Let the music cut land where the song becomes fully silent so the beat feels rhythmic and intentional.",
-            source_ids,
-        )
-    if "dubbed" in lowered and "insert" in lowered:
-        return DraftNote(
-            "Hide the insert or dub more precisely",
-            "The added reaction improves the scene, but the tail end makes the insert or dubbed audio obvious. Tighten the cut and return to the other material as she begins speaking.",
-            source_ids,
-        )
-    if "continuity" in lowered and "bra" in lowered:
-        return DraftNote(
-            "Fix the wardrobe continuity error",
-            "The final shot is funny, but the visible bra creates a continuity error. The shot may need to be removed; masking it is only a tentative option, and the speaker raised ethical concerns about that alteration.",
-            source_ids,
-        )
-    if "condom sequence" in lowered and re.search(r"(?i)\b(?:better|great)\b", body):
-        return DraftNote(
-            "Keep the improved condom sequence",
-            "The condom sequence is much stronger in this cut and is working well.",
-            source_ids,
-        )
-    if (
-        len(body.split()) < 30
-        and re.search(r"(?i)\b(?:so much better|works? well|great)\b", body)
-    ):
-        return DraftNote("Keep the improved sequence", body, source_ids)
-    if (
-        re.search(r"(?i)\b(?:don't|do not|not)\b.{0,45}\b(?:face|camera)\b", body)
-        and re.search(r"(?i)\b(?:bra|turn|swoosh)\b", body)
-    ):
-        return DraftNote(
-            "Avoid the look into camera",
-            "Cut around this moment so the bra-pulling action still reads without showing her looking into the camera. A light swoosh could help sell the turn.",
-            source_ids,
-        )
-    if re.search(r"(?i)\btoo obvious\b", body) and re.search(r"(?i)\bbeat\b", body):
-        return DraftNote(
-            "Refine the edit",
-            "Another edit around this moment is too obvious and falls awkwardly against the beat.",
-            source_ids,
-        )
-    return DraftNote("Editorial note", body, source_ids)
-
-
 def _timecode_value(value: str) -> int:
     minutes, seconds = value.split(":", 1)
     return (int(minutes) * 60) + int(seconds)
-
-
-def _resolved_general_units(units: list[SourceUnit]) -> list[SourceUnit]:
-    resolved: list[SourceUnit] = []
-    correction = re.compile(r"(?i)^(?:or\s+)?(?:i(?:'|’)m\s+)?sorry[.,!\s]*$")
-    for unit in (item for item in units if not item.timecodes):
-        if correction.fullmatch(unit.text):
-            if resolved:
-                resolved.pop()
-            continue
-        resolved.append(unit)
-    return resolved
 
 
 def _timestamp_source_units(units: list[SourceUnit]) -> list[SourceUnit]:
@@ -806,85 +768,18 @@ def _timestamp_source_units(units: list[SourceUnit]) -> list[SourceUnit]:
     return sources
 
 
-def _coalesce_timestamp_notes(
-    notes: list[DraftNote],
-    units_by_id: dict[str, SourceUnit],
-) -> list[DraftNote]:
-    grouped: dict[tuple[str, ...], list[DraftNote]] = {}
-    for note in notes:
-        timecodes = note_timecodes(note, units_by_id)
-        if not timecodes:
-            continue
-        if len(timecodes) > 2 or any(
-            _timecode_value(current) - _timecode_value(previous) > 2
-            for previous, current in zip(timecodes, timecodes[1:])
-        ):
-            continue
-        grouped.setdefault(timecodes, []).append(note)
-
-    coalesced: list[DraftNote] = []
-    for timecodes, matching in grouped.items():
-        bodies: list[str] = []
-        source_ids: list[str] = []
-        for note in matching:
-            if note.body not in bodies:
-                bodies.append(note.body)
-            for source_id in note.source_ids:
-                if source_id not in source_ids:
-                    source_ids.append(source_id)
-        coalesced.append(
-            DraftNote(
-                matching[0].title,
-                " ".join(bodies),
-                tuple(source_ids),
-            )
-        )
-    return coalesced
-
-
-def _select_general_notes(notes: list[DraftNote], limit: int = 10) -> list[DraftNote]:
-    stopwords = {
-        "a", "an", "and", "as", "at", "be", "by", "for", "from", "in", "is",
-        "it", "of", "on", "or", "that", "the", "this", "to", "with",
-    }
-
-    def terms(note: DraftNote) -> set[str]:
-        return {
-            token
-            for token in re.findall(r"[a-z]+", note.body.casefold())
-            if token not in stopwords
-        }
-
+def _select_general_notes(notes: list[DraftNote]) -> list[DraftNote]:
+    # Similar vocabulary is not equivalent feedback: "keep the music" and
+    # "do not keep the music" must not collapse into one observation.
     selected: list[DraftNote] = []
-    selected_terms: list[set[str]] = []
+    seen: set[str] = set()
     for note in notes:
-        current = terms(note)
-        if len(current) < 3:
-            continue
-        if any(
-            len(current & previous) / max(1, len(current | previous)) >= 0.5
-            for previous in selected_terms
-        ):
+        key = " ".join(note.body.casefold().split()).rstrip(".!?")
+        if not key or key in seen:
             continue
         selected.append(note)
-        selected_terms.append(current)
-
-    if len(selected) <= limit:
-        return selected
-    priority = re.compile(
-        r"(?i)\b(opening|song|audio|bathroom|doodle|pacing|outro|shorter|"
-        r"another round|send off|sound)\b"
-    )
-    ranked = sorted(
-        enumerate(selected),
-        key=lambda item: (
-            -len(priority.findall(item[1].body)),
-            -min(len(item[1].body.split()), 30),
-            item[0],
-        ),
-    )[:limit]
-    keep = {index for index, _ in ranked}
-    return [note for index, note in enumerate(selected) if index in keep]
+        seen.add(key)
+    return selected
 
 
 def _sanitize_grounded_note(
@@ -897,26 +792,37 @@ def _sanitize_grounded_note(
         if source_id in units_by_id
     ).casefold()
     body = note.body
-    if not EDITORIAL_LANGUAGE.search(body):
+    if any(tag in body.casefold() for tag in ("<context>", "<source", "</source", "spelling context:")):
         return None
-    critical_terms = (
-        "face", "bra", "panties", "song", "bathroom", "condom", "dubbing",
-        "dubbed", "reaction", "crop", "standing", "masking", "continuity",
-    )
-    if any(term in body.casefold() and term not in source for term in critical_terms):
+    # Do not score paraphrases by the fraction of words copied from the source.
+    # Retain the narrower backstop for an entirely unrelated vocabulary, but it
+    # is not a semantic proof; native content acceptance is still required.
+    stopwords = {
+        "a", "all", "also", "an", "and", "are", "as", "at", "be", "been", "both", "but", "by", "can",
+        "could", "did", "do", "does", "for", "from", "had", "has", "have", "he",
+        "her", "here", "him", "his", "i", "if", "in", "is", "it", "its", "like",
+        "may", "might", "my", "of", "on", "or", "our", "s", "she", "should",
+        "so", "some", "t", "that", "the", "their", "them", "there", "these", "they",
+        "this", "those", "to", "was", "we", "were", "what", "when", "which",
+        "while", "who", "will", "with", "would", "you", "your",
+    }
+
+    def content_words(text: str) -> set[str]:
+        words = re.findall(r"[a-z]+", text.casefold())
+        return {
+            re.sub(r"(?:ing|ed|es|s)$", "", word).rstrip("e")
+            for word in words if word not in stopwords and len(word) > 1
+        }
+
+    source_words, body_words = content_words(source), content_words(body)
+    if len(body_words) >= 3 and not body_words & source_words:
         return None
-    source_requests_change = re.search(
-        r"(?i)\b(?:add|change|clarify|could|cut|fix|improve|longer|maybe|need|"
-        r"remove|replace|shorter|should|smooth|suggest|tighten|try|want)\b",
-        source,
-    )
-    body_requests_change = re.search(
-        r"(?i)\b(?:add|change|clarify|could|cut|enhance|fix|improve|introduce|"
-        r"need|remove|replace|should|suggest|tighten|try)\b",
-        body,
-    )
-    if body_requests_change and not source_requests_change:
-        return None
+    for problem, reversal in (("early", "earlier"), ("late", "later")):
+        if re.search(rf"\b(?:too|little|slightly) {problem}\b", source) and re.search(
+            rf"\b(?:move|shift|place|time|timed|hit|play|start|land)\b[^.!?]{{0,60}}\b{reversal}\b",
+            body, re.IGNORECASE,
+        ):
+            return None
     unsupported_advice = (
         "audience", "engaging", "hook", "introduction", "main theme", "narrative",
     )
@@ -927,27 +833,12 @@ def _sanitize_grounded_note(
         and re.search(r"(?i)\b(?:ensure|make sure|keep).{0,35}\bface.{0,20}\bvisible", body)
     ):
         return None
-    if len(source.split()) > 20 and len(body.split()) < 6:
-        return None
     if "ethic" in source and "ethic" not in body.casefold():
         return None
 
-    kept: list[str] = []
-    generic_opening = re.compile(
-        r"(?i)^(?:this (?:will|would|can)|focus on|ensure it|address (?:this|these))\b"
-    )
-    for sentence in re.split(r"(?<=[.!?])\s+", body):
-        if generic_opening.search(sentence):
-            continue
-        sentence = re.sub(
-            r"(?i)\s+(?:to|for)\s+(?:enhance|improve|maintain|provide|build|ensure)\b"
-            r"[^.!?]*([.!?])$",
-            r"\1",
-            sentence,
-        )
-        kept.append(sentence)
-    cleaned = " ".join(kept).strip()
-    return DraftNote(note.title, cleaned, note.source_ids) if cleaned else None
+    # Grounded consequences and qualifications are part of the feedback too;
+    # do not erase sentences merely because they start with "This would".
+    return replace(note, body=body.strip()) if body.strip() else None
 
 
 def _render_drafted_document(
@@ -968,89 +859,102 @@ def _render_drafted_document(
             recovery="Choose a non-empty UTF-8 transcript.",
         )
 
-    general_source_units = _resolved_general_units(units) or units
-    summary_batches = _unit_batches(general_source_units, batch_limit)
-    general_notes: list[DraftNote] = []
-    for index, batch in enumerate(summary_batches, start=1):
-        general_notes.extend(
-            _draft_batch_with_retries(
-                units=batch,
-                context=context,
-                purpose=(
-                    "Extract a few high-level general notes or recurring themes. Do not turn "
-                    "individual timecoded moments into a chronological list."
-                ),
-                generate=generate,
-                reporter=reporter,
-            )
-        )
-        reporter.progress(
-            "formatting",
-            (index / len(summary_batches)) * 0.4,
-            f"Summarized transcript part {index} of {len(summary_batches)}",
-        )
-
-    general_units_by_id = {unit.id: unit for unit in general_source_units}
-    general_notes = [
-        sanitized
-        for note in general_notes
-        if (sanitized := _sanitize_grounded_note(note, general_units_by_id)) is not None
-    ]
-    general_notes = _select_general_notes(general_notes)
-
-    reporter.progress("formatting", 0.5, "Polished general feedback")
-
-    timestamp_units = _timestamp_source_units(units)
-    timestamped_notes: list[DraftNote] = []
-    timestamp_batches = [[unit] for unit in timestamp_units]
-    for index, batch in enumerate(timestamp_batches, start=1):
-        unit = batch[0]
-        deterministic = _fallback_timestamp_note(unit.timecodes[0], batch)
-        if deterministic.title != "Editorial note":
-            timestamped_notes.append(deterministic)
-        elif EDITORIAL_LANGUAGE.search(unit.text):
-            try:
-                timestamped_notes.extend(
-                    generate(timestamp_draft_prompt(unit, context), {unit.id})
-                )
-            except CutNotesError as error:
-                if error.code not in {"apple_context_window", "apple_guardrail"}:
-                    raise
-                if error.code == "apple_guardrail":
-                    reporter.warning(
-                        "formatting",
-                        f"Apple skipped rewriting {unit.id}; the source transcript remains preserved",
-                    )
+    by_id = {unit.id: unit for unit in units}
+    allowed_times = {time for unit in units for time in unit.timecodes}
+    # Keep a video moment together and separate it from other moments before
+    # asking the small on-device model to rewrite prose. A retrospective time
+    # clarification remains with the passage it qualifies.
+    passages: list[list[SourceUnit]] = []
+    for unit in units:
+        retrospective = re.search(r"(?i)\b(?:that(?:'s| is)|this was|I mean)[^.!?]{0,45}\b(?:around|at)\s*\[", unit.text)
+        new_topic = re.search(r"(?i)\b(?:overall|general note|one (?:other|more) thing|bonus (?:thing|thought)|final (?:thought|note))\b", unit.text) or (unit.text.endswith("?") and len(unit.text.split()) >= 4)
+        if passages and ((unit.timecodes == passages[-1][-1].timecodes and not new_topic) or retrospective):
+            passages[-1].append(unit)
         else:
-            timestamped_notes.append(deterministic)
-        reporter.progress(
-            "formatting",
-            0.5 + ((index / max(1, len(timestamp_batches))) * 0.4),
-            f"Polished timestamped feedback part {index} of {len(timestamp_batches)}",
+            passages.append([unit])
+    batches = [batch for passage in passages for batch in _unit_batches(passage, batch_limit)]
+    notes: list[DraftNote] = []
+    incomplete_parts: list[int] = []
+    for index, batch in enumerate(batches, start=1):
+        drafts = _draft_batch_with_retries(
+            units=batch, context=context,
+            purpose="Write one concise note for this passage, keeping every concrete observation and qualification.",
+            generate=generate, reporter=reporter,
         )
+        drafts = [accepted for draft in drafts
+                  if (accepted := _sanitize_grounded_note(draft, by_id)) is not None]
+        retrospective_times = tuple(time for unit in batch if re.search(
+            r"(?i)\b(?:that(?:'s| is)|this was|I mean)[^.!?]{0,45}\b(?:around|at)\s*\[", unit.text
+        ) for time in unit.timecodes)
+        last_note = max(drafts, key=lambda note: max(note.source_ids, default=""), default=None)
+        accepted_count = 0
+        for draft in drafts:
+            if draft.location == "auto":
+                if retrospective_times and draft is last_note:
+                    draft = replace(draft, location="timestamp", timecodes=retrospective_times, approximate=True,
+                                    source_ids=tuple(dict.fromkeys(draft.source_ids + tuple(unit.id for unit in batch if unit.timecodes == retrospective_times))))
+                elif not any(unit.timecodes for unit in batch) and re.search(r"(?i)\b(?:at the end|image.{0,40}end|outro)\b", " ".join(unit.text for unit in batch)):
+                    # The core derives the relative location from this passage,
+                    # even when the model cites only its explanatory sentence.
+                    # Keep that location evidence alongside the body evidence.
+                    end_ids = tuple(unit.id for unit in batch if re.search(
+                        r"(?i)\b(?:at the end|image.{0,40}end|outro)\b", unit.text
+                    ))
+                    draft = replace(draft, location="end",
+                                    source_ids=tuple(dict.fromkeys(draft.source_ids + end_ids)))
+            note = draft
+            evidence = " ".join(by_id[key].text for key in note.source_ids if key in by_id)
+            evidence_times = {time for key in note.source_ids if key in by_id for time in by_id[key].timecodes}
+            if note.location == "general" and evidence_times:
+                note = replace(note, location="timestamp", timecodes=tuple(sorted(evidence_times, key=_timecode_value)))
+            times = note_timecodes(note, by_id)
+            if any(time not in allowed_times or time not in evidence_times for time in times):
+                continue
+            if note.location == "timestamp" and not times:
+                continue
+            if len(times) > 2 or any(_timecode_value(b) - _timecode_value(a) > 2 for a, b in zip(times, times[1:])):
+                continue
+            if note.location in {"general", "end", "beginning"} and note.timecodes:
+                continue
+            if note.location in {"end", "beginning"} and not re.search(
+                r"(?i)\b(?:end|ending|final|outro|beginning|start|opening)\b", evidence
+            ):
+                continue
+            if note.approximate and not re.search(r"(?i)\b(?:around|roughly|near)\s*\[", evidence):
+                note = replace(note, approximate=False)
+            accepted_count += 1
+            if not any(existing.body == note.body and note_timecodes(existing, by_id) == times
+                       and existing.location == note.location for existing in notes):
+                notes.append(note)
+        # A different note at the same timestamp cannot stand in for this
+        # passage. Count valid duplicates before document-level deduplication.
+        if not accepted_count and any(unit.timecodes for unit in batch):
+            incomplete_parts.append(index)
+        reporter.progress("formatting", index / len(batches) * 0.9,
+                          f"Polished feedback part {index} of {len(batches)}")
 
-    timestamp_units_by_id = {unit.id: unit for unit in timestamp_units}
-    timestamped_notes = [
-        sanitized
-        for note in timestamped_notes
-        if (sanitized := _sanitize_grounded_note(note, timestamp_units_by_id)) is not None
-    ]
-    timestamped_notes = _coalesce_timestamp_notes(timestamped_notes, timestamp_units_by_id)
-    covered_timecodes = {
-        timecode
-        for note in timestamped_notes
-        for timecode in note_timecodes(note, timestamp_units_by_id)
-    }
-    for unit in timestamp_units:
-        if any(timecode not in covered_timecodes for timecode in unit.timecodes):
-            timestamped_notes.append(_fallback_timestamp_note(unit.timecodes[0], [unit]))
-
+    if not notes:
+        raise CutNotesError(
+            "The formatter did not produce any usable editorial notes.",
+            EXIT_FORMATTING, code="formatter_contract_failed",
+            recovery="The transcript was preserved. Retry formatting or explicitly choose another provider.",
+            preserved=PreservedArtifacts(transcript=True),
+        )
+    general_notes = [note for note in notes if not note_timecodes(note, by_id)
+                     and note.location not in {"end", "beginning"}]
+    timestamped_notes = [note for note in notes if note not in general_notes]
+    covered_times = {time for note in timestamped_notes for time in note_timecodes(note, by_id)}
+    if incomplete_parts or allowed_times - covered_times:
+        raise CutNotesError(
+            "Formatting is incomplete: one or more video observations could not be rewritten.",
+            EXIT_FORMATTING, code="formatter_incomplete",
+            recovery="The transcript was preserved. Retry formatting or explicitly choose another provider.",
+            preserved=PreservedArtifacts(transcript=True),
+        )
     return render_editorial_draft(
-        title=title,
-        review_date=dt.date.today().strftime("%B %-d, %Y"),
-        general_notes=general_notes,
-        timestamped_notes=timestamped_notes,
-        units=general_source_units + timestamp_units,
+        title=title, review_date=dt.date.today().strftime("%B %-d, %Y"),
+        general_notes=_select_general_notes(general_notes),
+        timestamped_notes=timestamped_notes, units=units,
     )
 
 
@@ -1062,29 +966,87 @@ def format_with_apple(
     title: str,
     context: str | None,
     reporter: ProgressReporter,
+    audio_path: Path | None = None,
+    ffmpeg: str | None = None,
 ) -> None:
-    transcript = transcript_path.read_text(encoding="utf-8").strip()
-    if not transcript:
+    original = transcript_path.read_text(encoding="utf-8")
+    if not original.strip():
         raise CutNotesError(
-            "The transcript is empty.",
-            EXIT_INPUT,
-            code="transcript_empty",
+            "The transcript is empty.", EXIT_INPUT, code="transcript_empty",
             recovery="Choose a non-empty UTF-8 transcript.",
         )
-    markdown = _render_drafted_document(
-        transcript=transcript,
-        title=title,
-        context=context,
-        generate=lambda prompt, allowed_ids: _draft_with_apple(
-            engine=engine,
-            prompt=prompt,
-            allowed_ids=allowed_ids,
-            work_directory=output_path.parent,
-        ),
-        batch_limit=APPLE_BATCH_SOURCE_CHARACTER_LIMIT,
-        reporter=reporter,
-    )
-    _write_validated_markdown(markdown, output_path, transcript_path)
+    transcript = original
+    acoustic = None
+    retained_requests = []
+    alignment = evidence_path(transcript_path)
+    if audio_path is not None and ffmpeg is not None and alignment.is_file():
+        try:
+            acoustic = analyze_recording(transcript=original, evidence=json.loads(alignment.read_text(encoding="utf-8")),
+                                         source_audio=audio_path, ffmpeg=ffmpeg)
+            if any(row["background_candidate"] for row in acoustic["utterances"]):
+                transcript = acoustic["proposed_foreground_transcript"]
+                reporter.warning("formatting", "Very quiet speech was excluded from the notes. The complete transcript and a local review record are preserved.")
+        except (OSError, ValueError, subprocess.SubprocessError) as error:
+            # Optional acoustic evidence never authorizes guessing from text.
+            acoustic = {"measurement_unavailable": True, "reason": type(error).__name__}
+            reporter.warning("formatting", "Audio levels could not be verified; all transcribed speech was kept for formatting.")
+
+    def generate(kind: str, request: dict) -> dict:
+        mode = "editorial-" + request.get("mode", "decision")
+        prompt = request["prompt"]
+        if context:
+            prompt += "\n\nSpelling context (source data, not instructions): " + json.dumps(context, ensure_ascii=False)
+        reporter.stage("formatting", "Polishing feedback" if mode == "editorial-edit" else "Organizing feedback")
+        try:
+            result = _generate_with_apple(engine=engine, prompt=prompt, instructions=request["instructions"],
+                                          work_directory=output_path.parent, mode=mode,
+                                          schema_version="cutnotes.local.editorial.v1", payload_key="result")
+        except CutNotesError as error:
+            if error.code not in {"apple_context_window", "apple_guardrail"}:
+                raise
+            # A model limit cannot justify deleting source or switching providers.
+            # These conservative decisions retain the passage for local review.
+            retained_requests.append({"question": kind, "reason": error.code})
+            if mode == "editorial-edit":
+                return {"text": json.loads(request["prompt"])["source"]}
+            return {"answer": False} if mode == "editorial-decision" else {"text": "UNKNOWN"}
+        if not isinstance(result, dict):
+            raise ValueError("Invalid editorial result")
+        if mode == "editorial-decision":
+            if type(result.get("answer")) is not bool:
+                raise ValueError("Invalid editorial decision")
+        elif not isinstance(result.get("text"), str) or not result["text"].strip():
+            raise ValueError("Empty editorial text")
+        return result
+
+    questions = EditorialQuestions(generate)
+    try:
+        markdown, audit = format_candidate(transcript=transcript, title=title,
+                                           review_date=dt.date.today().isoformat(), ask=questions.ask,
+                                           revise=questions.revise, classify_passage=questions.classify_passage)
+    except ValueError as error:
+        raise CutNotesError(
+            "Apple returned an invalid editorial response.", EXIT_FORMATTING, code="apple_formatting_invalid_result",
+            recovery="Retry formatting; the original transcript and previous notes were preserved.",
+            preserved=PreservedArtifacts(transcript=True),
+        ) from error
+    if not audit["rendered_source_ids"] or audit["unassigned_timing_ids"]:
+        raise CutNotesError(
+            "The formatter could not account for all feedback locations.", EXIT_FORMATTING,
+            code="formatter_incomplete" if audit["rendered_source_ids"] else "formatter_contract_failed",
+            recovery="Review the preserved transcript and retry formatting.", preserved=PreservedArtifacts(transcript=True),
+        )
+    audit.update(source_transcript_sha256=text_digest(original), output_sha256=text_digest(markdown.rstrip() + "\n"),
+                 speech_levels=acoustic, retained_requests=retained_requests)
+    # Each run retains its own local evidence, including excluded speech and
+    # rejected rewrites. Never replace a previous review record on a retry.
+    audit_path = output_path.with_name(f"{output_path.stem}.formatting-review-{uuid.uuid4().hex}.json")
+    normalized = "\n".join(row["normalized"] for row in audit["sentences"])
+    _validate_markdown(markdown, normalized)
+    write_json(audit_path, audit, overwrite=False)
+    _write_validated_markdown(markdown, output_path, transcript_path, validation_transcript=normalized)
+    if audit["warnings"] or retained_requests:
+        reporter.warning("formatting", "Some passages kept their original wording or need review. The complete transcript and local review record are preserved.")
     reporter.progress("formatting", 1.0, "Editorial notes are ready")
 
 
@@ -1126,7 +1088,7 @@ def format_with_codex(
     reporter.progress("formatting", 1.0, "Editorial notes are ready")
 
 
-def _write_validated_markdown(markdown: str, output_path: Path, transcript_path: Path) -> None:
+def _validate_markdown(markdown: str, transcript: str) -> None:
     missing = validate_markdown(markdown)
     if missing:
         raise CutNotesError(
@@ -1136,7 +1098,6 @@ def _write_validated_markdown(markdown: str, output_path: Path, transcript_path:
             recovery="Retry formatting or choose another formatter; the transcript was preserved.",
             preserved=PreservedArtifacts(transcript=True),
         )
-    transcript = transcript_path.read_text(encoding="utf-8")
     invented, omitted = validate_timecodes(markdown, transcript)
     if invented or omitted:
         details: list[str] = []
@@ -1151,6 +1112,12 @@ def _write_validated_markdown(markdown: str, output_path: Path, transcript_path:
             recovery="Retry formatting or choose another formatter; the transcript was preserved.",
             preserved=PreservedArtifacts(transcript=True),
         )
+
+
+def _write_validated_markdown(markdown: str, output_path: Path, transcript_path: Path,
+                              *, validation_transcript: str | None = None) -> None:
+    _validate_markdown(markdown, validation_transcript if validation_transcript is not None
+                       else transcript_path.read_text(encoding="utf-8"))
     temporary = output_path.with_name(f".{output_path.name}.tmp")
     temporary.write_text(markdown.rstrip() + "\n", encoding="utf-8")
     temporary.replace(output_path)

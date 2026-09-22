@@ -173,8 +173,34 @@ public struct DoctorPayload: Codable, Equatable, Sendable {
     }
 
     public struct AppleStatus: Codable, Equatable, Sendable {
+        public struct Model: Codable, Equatable, Sendable {
+            public let name: String
+            public let contextSize: Int
+            public let capabilities: [String]
+
+            public init(name: String, contextSize: Int, capabilities: [String]) {
+                self.name = name
+                self.contextSize = contextSize
+                self.capabilities = capabilities
+            }
+
+            enum CodingKeys: String, CodingKey {
+                case name, capabilities
+                case contextSize = "context_size"
+            }
+        }
+
         public let state: String
         public let reason: String?
+        // Absent with older helpers/SDKs and before macOS 27. Absence means
+        // unknown; do not infer the model's capabilities from the OS version.
+        public let model: Model?
+
+        public init(state: String, reason: String?, model: Model? = nil) {
+            self.state = state
+            self.reason = reason
+            self.model = model
+        }
     }
 
     public struct LocalEngine: Codable, Equatable, Sendable {

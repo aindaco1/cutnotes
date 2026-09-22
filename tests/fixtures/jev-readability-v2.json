@@ -1,0 +1,182 @@
+[
+  {
+    "name": "Complete observation",
+    "dimension": "fluency",
+    "split": "calibration",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The background is too bright. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The background because and when the. |\n"
+    }
+  },
+  {
+    "name": "A natural editorial question",
+    "dimension": "fluency",
+    "split": "calibration",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Could we hold the shot longer so the expression registers? |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Could we the shot longer because so. |\n"
+    }
+  },
+  {
+    "name": "Duplicate request",
+    "dimension": "repetition",
+    "split": "calibration",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Lower the wind slightly so the whispered line remains clear. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Lower the wind slightly. Reduce the wind a little. Make the wind slightly quieter. |\n"
+    }
+  },
+  {
+    "name": "Different details",
+    "dimension": "repetition",
+    "split": "calibration",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The sky is pale. The foreground needs more contrast. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The sky is pale. The sky looks pale. Its sky is pale. |\n"
+    }
+  },
+  {
+    "name": "Dictation filler",
+    "dimension": "dictation",
+    "split": "calibration",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Move the sound later. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Um, uh, move the, the, sound, um, later. |\n"
+    }
+  },
+  {
+    "name": "Abandoned thought",
+    "dimension": "dictation",
+    "split": "calibration",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The curtain should move with the breeze. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The curtain needs to, no wait, the curtain, uh, should move with the breeze. |\n"
+    }
+  },
+  {
+    "name": "Clear sections",
+    "dimension": "organization",
+    "split": "calibration",
+    "candidates": {
+      "pass": "## General feedback\n\n- The pacing works well.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The badge is too small. |\n",
+      "fail": "The pacing works well. The badge is too small. 00:09. General timestamp feedback all together."
+    }
+  },
+  {
+    "name": "Relative end label",
+    "dimension": "organization",
+    "split": "calibration",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **End of video** | Hold the credits longer. |\n",
+      "fail": "| x | y |\n| --- | --- |\n| The credits | end maybe general timestamp |"
+    }
+  },
+  {
+    "name": "Internal source identifier",
+    "dimension": "leakage",
+    "split": "calibration",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Make the sign easier to read. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | source_ids=[S0004], classification=request, text=Make the sign easier to read. |\n"
+    }
+  },
+  {
+    "name": "Prompt echo",
+    "dimension": "leakage",
+    "split": "calibration",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The room tone works well. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | You are a helpful formatter. Return JSON only. The room tone works well. |\n"
+    }
+  },
+  {
+    "name": "Required preservation instruction",
+    "dimension": "fluency",
+    "split": "validation",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Keep the silhouette. It makes the approaching figure visible. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Keep the silhouette which because the figure and. |\n"
+    }
+  },
+  {
+    "name": "Qualified assessment",
+    "dimension": "fluency",
+    "split": "validation",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The image seems warm, although my monitor may be contributing. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The image seems although my monitor may because. |\n"
+    }
+  },
+  {
+    "name": "Reason adds information",
+    "dimension": "repetition",
+    "split": "validation",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Hold the skyline longer. This gives us time to read the title. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Hold the skyline longer. Extend the skyline shot. Let the skyline stay longer. |\n"
+    }
+  },
+  {
+    "name": "Separate subjects",
+    "dimension": "repetition",
+    "split": "validation",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The handle moves too soon. The hinge moves too late. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The handle moves too soon. The handle moves early. The handle starts prematurely. |\n"
+    }
+  },
+  {
+    "name": "Brief praise",
+    "dimension": "dictation",
+    "split": "validation",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Looks excellent. Keep it. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Looks, uh, looks, um, excellent. Keep, keep it. |\n"
+    }
+  },
+  {
+    "name": "Quoted hesitation is dialogue",
+    "dimension": "dictation",
+    "split": "validation",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | After the line “Um, I cannot remember,” leave a longer pause. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | Uh, after the line, no, I mean, leave a, um, longer pause. |\n"
+    }
+  },
+  {
+    "name": "Repeated location for independent issues",
+    "dimension": "organization",
+    "split": "validation",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The window is too dark. |\n| **00:09** | The music is too loud. |\n",
+      "fail": "The window is dark, the music is loud. Timestamp section general nine feedback."
+    }
+  },
+  {
+    "name": "Empty general section is allowed",
+    "dimension": "organization",
+    "split": "validation",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **Around 00:21** | Trim the pause. |\n",
+      "fail": "## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| Trim the pause. | Unknown unlabeled note row |\n"
+    }
+  },
+  {
+    "name": "Ordinary reader prose",
+    "dimension": "leakage",
+    "split": "validation",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | The animation looks polished. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | analysis: The user wants an editorial note. confidence=0.83. final_output: The animation looks polished. |\n"
+    }
+  },
+  {
+    "name": "Reader-facing labels",
+    "dimension": "leakage",
+    "split": "validation",
+    "candidates": {
+      "pass": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **Around 00:21 — impact** | Align the impact with contact. |\n",
+      "fail": "## General feedback\n\nNo general summary was generated.\n\n## Timestamped feedback\n\n| Video time | Feedback |\n| --- | --- |\n| **00:09** | EvidenceFact(role=request, quote=align impact); schema_version=cutnotes.draft.v9 |\n"
+    }
+  }
+]

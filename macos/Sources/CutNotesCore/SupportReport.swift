@@ -41,7 +41,7 @@ public struct CutNotesSupportState: Codable, Equatable, Sendable {
         "apple_context_window", "apple_formatting_failed", "apple_formatting_invalid_result", "apple_guardrail",
         "apple_model_unavailable", "audio_not_captured", "audio_preparation_failed", "audio_track_missing",
         "cancelled", "codex_formatting_failed", "codex_formatting_invalid_result", "cutnotes_failed",
-        "dependency_missing", "ffprobe_missing", "formatter_contract_failed", "formatter_empty_response",
+        "dependency_missing", "ffprobe_missing", "formatter_contract_failed", "formatter_empty_response", "formatter_incomplete",
         "formatter_invalid_response", "formatter_timecode_contract_failed", "interactive_terminal_required",
         "local_engine_missing", "macwhisper_failed", "macwhisper_start_failed", "media_empty",
         "media_not_regular", "media_probe_failed", "media_too_long", "microphone_not_found",

@@ -18,6 +18,7 @@ let package = Package(
         .executableTarget(
             name: "CutNotesLocal",
             dependencies: [
+                "CutNotesCore",
                 .product(name: "RecordCore", package: "record"),
                 .product(name: "RecordSpeech", package: "record"),
             ]
@@ -37,6 +38,7 @@ let package = Package(
                 ])
             ]
         ),
+        .testTarget(name: "CutNotesLocalTests", dependencies: ["CutNotesLocal"]),
         .testTarget(name: "CutNotesCoreTests", dependencies: ["CutNotesCore"]),
         .testTarget(name: "CutNotesAppTests", dependencies: ["CutNotesApp", "CutNotesCore"]),
     ]

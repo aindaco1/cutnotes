@@ -1,0 +1,16 @@
+{
+  "protocol_sha256": "2813f10d5b5103cb9822d4031bb1bd87016391510d8f4f5b2317ed116d4c8385",
+  "calibration_sha256": "aa98f4991e916dbd5e861f2140fe4f3c256cbab38747b702b4bc386f4aaba24a",
+  "resolved_models": [
+    "jev-1.13.0"
+  ],
+  "minimum_margin": 0.1,
+  "calibration_metrics": {
+    "count": 26,
+    "correct": 26,
+    "false_passes": 0,
+    "false_failures": 0,
+    "review": 0
+  },
+  "calibration_report_sha256": "8e7552fcda26f0d4962230ad3e8d7756ff5b9a62c5c0432c541f38412710ae66"
+}

@@ -1,5 +1,6 @@
 from pathlib import Path
 import json
+import subprocess
 import tempfile
 import unittest
 from unittest import mock
@@ -10,6 +11,27 @@ from cutnotes_core import pipeline, providers
 
 
 class MacOSReadinessTests(unittest.TestCase):
+    def test_local_status_accepts_legacy_and_macos_27_model_metadata(self):
+        statuses = [
+            {"state": "ready", "reason": None},
+            {"state": "ready", "reason": None, "model": {
+                "name": "AFM 3 Core", "context_size": 4096,
+                "capabilities": ["guided_generation", "tool_calling"],
+            }},
+        ]
+        for apple in statuses:
+            with self.subTest(apple=apple), mock.patch.object(providers.subprocess, "run") as run:
+                run.return_value = subprocess.CompletedProcess([], 0, stdout=json.dumps({
+                    "schema_version": "cutnotes.local.status.v1", "version": "1.0.5", "apple": apple,
+                }))
+                result = providers.local_engine_status("/fixture/CutNotesLocal")
+            self.assertEqual(result["apple"], apple)
+            self.assertEqual(result["version"], "1.0.5")
+            run.assert_called_once_with(
+                ["/fixture/CutNotesLocal", "status", "--json"],
+                check=False, capture_output=True, text=True, timeout=20,
+            )
+
     def test_unavailable_apple_model_has_actionable_private_error(self):
         with tempfile.TemporaryDirectory() as temporary:
             directory = Path(temporary)
