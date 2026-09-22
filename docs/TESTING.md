@@ -50,6 +50,11 @@ For 1.0.0 there is no earlier Sparkle-enabled public version, so the real previo
 
 ## Formatting and optional-provider regressions
 
+The development-only [source-preserving formatter experiment](FORMATTER_RESET_EXPERIMENT.md)
+compares smaller Apple tasks and a relative-volume background-speech proposal.
+It remains outside the app pipeline because native/Jev acceptance is failing;
+its unit tests run in the standard suite.
+
 The 1.0.5 tests cover mouth and facial-animation observations without keyword gating; generated source IDs used as titles; malformed and unknown grounding IDs; adjacent spoken ranges; conversational second markers; natural general-note transitions; opening conversation followed by actual feedback; bounded long single edit moments; and context-limit retries. Both full and detected partial formatting failure must preserve the source and prior output and return an error. A separate missing passage at a timestamp already covered by another note must also fail, without disclosing source text in errors.
 
 Regression coverage also preserves faithful paraphrases with low lexical overlap.
