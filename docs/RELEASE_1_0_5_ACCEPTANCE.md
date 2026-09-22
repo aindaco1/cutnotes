@@ -12,7 +12,7 @@ The 1.0.5 work fixes unselected MacWhisper CLI probes and deterministic formatti
 
 | Gate | Status |
 | --- | --- |
-| Python regressions | 88 passed locally, including legacy/current model status, model-specific acceptance prerequisites and rejection of leaked schema prose |
+| Python regressions | 100 passed locally, including legacy/current model status, model-specific acceptance prerequisites, rejection of leaked schema prose, and development-only Jev evaluator isolation/error handling |
 | Swift contracts/app support | 21 passed locally, including native transcription evidence and optional model metadata |
 | CI on macOS 26 and Xcode 27 | Both lanes are required for the candidate; see the current [PR checks](https://github.com/aindaco1/cutnotes/pull/6/checks) |
 | Local release build | Passed |
@@ -129,3 +129,12 @@ before inference. The requirement never selects or downloads a model. Legacy
 status without model metadata remains supported when that prerequisite is omitted.
 The documented `cutnotes-notary` keychain profile is unavailable on this Mac;
 the new private development app is signed, not a notarized release candidate.
+
+The September 22 [Jev development evaluation](JEV_EVALUATION.md) adds an optional
+remote judge for saved public synthetic outputs, outside the app and default test
+path. The fresh Apple development run still passes 10/12 cases. Saved 20-case
+outputs pass 16/20 deterministic checks, 16/20 Jev judgments, and 14/20 combined;
+manual review found both useful semantic omissions and judge false alarms/misses.
+These diagnostic scores do not replace the content acceptance gate. No runtime
+formatter, private-transcript upload, additional user dependency, or release was
+introduced by this test integration.

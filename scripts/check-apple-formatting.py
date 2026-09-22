@@ -10,6 +10,7 @@ import platform
 import re
 import subprocess
 import sys
+import time
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
@@ -70,6 +71,8 @@ def main() -> int:
     parser.add_argument("--fixtures", type=Path, default=ROOT / "tests/fixtures/apple-formatting.json")
     parser.add_argument("--require-model", help="Exact reported Apple model name required before inference; does not select a model")
     parser.add_argument("--output-dir", type=Path, required=True, help="New local evidence directory")
+    parser.add_argument("--jev-live", action="store_true", help="After local tests, explicitly send public synthetic fixtures and saved outputs to the development Jev evaluator")
+    parser.add_argument("--jev-wrangler-auth", action="store_true", help="Use the existing Wrangler login for --jev-live")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=False)
     report = {
@@ -104,6 +107,7 @@ def main() -> int:
                 source.write_text(case["transcript"] + "\n", encoding="utf-8")
                 original = source.read_bytes()
                 result = {"name": case["name"], "source_sha256": hashlib.sha256(original).hexdigest()}
+                started = time.monotonic()
                 try:
                     format_with_apple(engine=str(args.engine.resolve()), transcript_path=source,
                                       output_path=output, title="Synthetic acceptance review", context=None,
@@ -111,6 +115,9 @@ def main() -> int:
                     result["failures"] = evaluate(output.read_text(encoding="utf-8"), case)
                 except CutNotesError as error:
                     result["failures"] = [f"Native formatting failed: {error.code}"]
+                result["elapsed_seconds"] = round(time.monotonic() - started, 3)
+                if output.exists():
+                    result["output_sha256"] = hashlib.sha256(output.read_bytes()).hexdigest()
                 if source.read_bytes() != original:
                     result["failures"].append("Source transcript was modified")
                 result["passed"] = not result["failures"]
@@ -121,6 +128,14 @@ def main() -> int:
         report["error"] = str(error)
     (args.output_dir / "report.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"Native Apple acceptance {'passed' if report['passed'] else 'FAILED'}: {args.output_dir / 'report.json'}")
+    if args.jev_live:
+        from scripts.jev_evaluation import review
+        try:
+            judged = review(args.output_dir, args.output_dir / "jev", live=True, wrangler_auth=args.jev_wrangler_auth)
+            return 0 if report["passed"] and judged["combined_passed"] else 1
+        except (OSError, ValueError) as error:
+            print(f"Jev evaluation stopped: {error}")
+            return 2
     return 0 if report["passed"] else 1
 
 
