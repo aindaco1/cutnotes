@@ -108,6 +108,7 @@ Parakeet transcription and Apple formatting run on the Mac. CutNotes has no tele
 Requirements: Apple Silicon, Xcode 26, Swift 6, Homebrew Python 3.14.7, and standard macOS build tools.
 
 ```bash
+git submodule update --init --recursive
 python3 scripts/test.py
 ./script/build_and_run.sh --verify
 ```
