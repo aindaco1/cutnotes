@@ -24,9 +24,39 @@ Initial production-integration checks: 175 Python and 23 Swift tests pass. A rea
 Apple run through the production CLI produced byte-for-byte identical Markdown
 to the user-reviewed v4 output. MacWhisper provider-isolation tests pass.
 
-Release validation evidence is collected in ignored
-`build/diagnostics/release-1.0.5/`. Signing, notarization, installation, and the
-previous-version Sparkle update must be verified separately below.
+## Published release validation — September 22, 2026
+
+[1.0.5 is published](https://github.com/aindaco1/cutnotes/releases/tag/v1.0.5)
+from `a3edb67f85271ec136888cb645452acc3cc5dab5`. The downloaded public app is
+installed in `/Applications/CutNotes.app` as version 1.0.5, build 6. Its UI shows
+Parakeet and Apple Intelligence ready, displays quiet-recording guidance, and
+reports that 1.0.5 is the newest release. The installed terminal command also
+reports 1.0.5 and a ready default workflow.
+
+| Gate | Final evidence |
+| --- | --- |
+| Python / Swift regressions | 175 / 23 passed |
+| Jev calibration | 42/42 public synthetic examples passed |
+| Native synthetic content | 15/16 deterministic; 12/16 combined with frozen Jev policy. The full development suite remains failed; manual acceptance does not turn these findings into passes. |
+| User-reviewed input | Public macOS 26-built helper reproduced the approved corrected-input Markdown byte for byte on this macOS 27 host |
+| Public Parakeet transcription | Real representative recording completed; original and copied audio hashes match. Known raw ASR ambiguities remain separate from user-confirmed corrections. |
+| MacWhisper isolation | Regression tests passed; fail-on-invocation sentinel was untouched during public Parakeet import and installed-app diagnostics |
+| CI compatibility | PR and main CI passed on macOS 26 and Xcode 27; native output on macOS 26 and Core Advanced remain untested |
+| Public app and DMG | Developer ID signed, notarized and stapled; mounted package, checksum, signatures and Gatekeeper checks passed |
+| Sparkle feed and signature | 1.0.4 offered 1.0.5; archive signature verified against the installed public key |
+| Previous-version update | Download failed with a network error. The complete Sparkle install/relaunch path did not pass. The verified public DMG was installed directly instead. |
+| Public installation and launch | Passed; installed 1.0.5 update check reports current |
+
+Release workflow `35793670111` passed. Detailed local evidence is retained in
+ignored `build/diagnostics/release-1.0.5/`, including `release-validation.json`,
+`install-state.json`, and `cleanup-result.json`. No private media or transcript
+was sent to Jev.
+
+Cleanup removed 39 obsolete artifacts, including the temporary previous-app
+backup (about 307 MiB total), plus the merged local and remote
+`fix/formatting-and-provider-isolation` branch. The current development app,
+SwiftPM/runtime caches, current probe, local development evaluator, source
+recordings, review evidence, and public 1.0.4 rollback and 1.0.5 installers remain.
 
 ## Historical investigation and earlier release holds
 
