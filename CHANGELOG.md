@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.6 — 2026-09-23
+
+- Use Dust Wave Platform’s shared local transcription and Apple Intelligence adapters. Keep the same Parakeet model, formatting behavior, provider choices, and source-preservation rules.
+- Remove the dependency on the Record app package and its unused argument-parser dependency. Preserve FluidAudio 0.15.6 and the existing model verification.
+- Pin the shared implementation to an exact revision, initialize it in CI and release builds, and include its license and original Record attribution.
+
 ## 1.0.5 — 2026-09-22
 
 - Fix MacWhisper opening unexpectedly. CutNotes invokes its transcription CLI only when MacWhisper is selected; setup and other providers do not probe it.

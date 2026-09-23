@@ -10,7 +10,8 @@ let package = Package(
         .executable(name: "CutNotesLocal", targets: ["CutNotesLocal"]),
     ],
     dependencies: [
-        .package(url: "https://github.com/aindaco1/record.git", exact: "1.2.2"),
+        .package(path: "../shared/dust-wave-platform/native"),
+        .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.15.6"),
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.6"),
     ],
     targets: [
@@ -19,8 +20,8 @@ let package = Package(
             name: "CutNotesLocal",
             dependencies: [
                 "CutNotesCore",
-                .product(name: "RecordCore", package: "record"),
-                .product(name: "RecordSpeech", package: "record"),
+                .product(name: "DustWaveSpeech", package: "native"),
+                .product(name: "DustWaveAppleIntelligence", package: "native"),
             ]
         ),
         .executableTarget(

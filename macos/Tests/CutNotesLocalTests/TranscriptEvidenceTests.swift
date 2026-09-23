@@ -1,5 +1,5 @@
 import Foundation
-import RecordSpeech
+import DustWaveSpeech
 import XCTest
 @testable import CutNotesLocal
 

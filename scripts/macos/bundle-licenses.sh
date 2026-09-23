@@ -26,10 +26,10 @@ copy_license() {
   /bin/cp "$source" "$licenses_dir/$destination"
 }
 
-copy_license "$package_checkouts/record/LICENSE" "Record-MIT.txt"
+copy_license "$root_dir/shared/dust-wave-platform/native/LICENSE.Record" "Record-MIT.txt"
+copy_license "$root_dir/shared/dust-wave-platform/LICENSE" "DustWavePlatform-MIT.txt"
 copy_license "$package_checkouts/FluidAudio/LICENSE" "FluidAudio-Apache-2.0.txt"
 copy_license "$package_checkouts/Sparkle/LICENSE" "Sparkle-MIT-and-external.txt"
-copy_license "$package_checkouts/swift-argument-parser/LICENSE.txt" "SwiftArgumentParser-Apache-2.0.txt"
 copy_license "$root_dir/third_party/SQLite-Public-Domain.txt" "SQLite-Public-Domain.txt"
 
 python_license="${CUTNOTES_PYTHON_FRAMEWORK:-/opt/homebrew/opt/python@3.14/Frameworks/Python.framework}/Versions/3.14/lib/python3.14/LICENSE.txt"

@@ -2,6 +2,11 @@
 
 CutNotes is one product with two clients: the human terminal and the SwiftUI app. Both call the same Python pipeline.
 
+`CutNotesLocal` now imports Platform's native speech and Apple generation adapters
+through the pinned `shared/dust-wave-platform` submodule. The Python pipeline
+still owns editorial policy, prompts, provider selection and source preservation;
+FluidAudio stays at 0.15.6. See [the migration guide](SHARED_NATIVE_MIGRATION.md).
+
 ```text
 SwiftUI app ── typed argv + FD 3/4 ─┐
                                     ├─> Python CLI/pipeline
@@ -22,7 +27,7 @@ This boundary keeps the CLI independently useful and prevents app behavior from 
 
 The app does not ship model weights. The CLI installs a single pinned Parakeet v3 manifest after explicit license acceptance. Every file has a fixed byte size and SHA-256. Imports and downloads stage into a temporary sibling directory, validate completely, then replace atomically.
 
-Media is normalized by bundled FFmpeg into mono 16 kHz WAV chunks no longer than 15 minutes. `CutNotesLocal` uses Record/FluidAudio offline APIs and Core ML. Chunk transcripts are joined in order.
+Media is normalized by bundled FFmpeg into mono 16 kHz WAV chunks no longer than 15 minutes. `CutNotesLocal` uses Platform/FluidAudio offline APIs and Core ML. Chunk transcripts are joined in order.
 
 Optional native word/token timing and confidence are validated and merged by the
 core into a companion evidence file bound to the transcript and original audio

@@ -6,9 +6,8 @@ CutNotes source code is MIT-licensed. Release builds aggregate the components be
 |---|---:|---|---|
 | Python | 3.14.7 | PSF License | Bundled CLI interpreter |
 | FFmpeg / FFprobe | 8.1.1 | LGPL 2.1 or later | Recording, media probing, decoding, and chunking |
-| Record | 1.2.2 | MIT | Reusable local speech interface |
+| Dust Wave Platform native | Exact `shared/dust-wave-platform` gitlink | MIT, retaining Record attribution | Local speech and Apple generation adapters |
 | FluidAudio | 0.15.6 | Apache 2.0 | Core ML Parakeet inference |
-| Swift Argument Parser | 1.8.2 | Apache 2.0 | Transitive Record package dependency |
 | Sparkle | 2.9.6 | MIT plus bundled external notices | Signed app updates |
 | OpenSSL | 3.6.3 | Apache 2.0 | Python HTTPS support |
 | XZ Utils | runtime-resolved | 0BSD/LGPL/GPL files as applicable | Python compression support |
