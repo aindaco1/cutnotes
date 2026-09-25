@@ -4,7 +4,7 @@ import SwiftUI
 @main
 struct CutNotesApp: App {
     @State private var store = CutNotesStore()
-    @StateObject private var updates = AppUpdateController()
+    @StateObject private var updates = AppUpdateController(checkingOnLaunch: true)
 
     var body: some Scene {
         WindowGroup {

@@ -17,6 +17,8 @@ jobs:
       - uses: actions/checkout@v4
         with:
           submodules: recursive
+      - name: Verify shared desktop dependency contract
+        run: node shared/dust-wave-platform/scripts/check-desktop-consumer.mjs
       - name: Verify Apple Silicon host
         run: |
           test "$(uname -m)" = arm64

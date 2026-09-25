@@ -1,3 +1,4 @@
+import DustWaveDiagnostics
 import Foundation
 
 public struct SupportApplicationInfo: Codable, Equatable, Sendable {
@@ -239,20 +240,11 @@ public struct CutNotesSupportSubmissionClient: CutNotesSupportSubmitting {
         do { response = try await transport(request) }
         catch { throw CutNotesSupportSubmissionError.unavailable }
         if response.1.statusCode == 429 { throw CutNotesSupportSubmissionError.rateLimited }
-        guard response.1.statusCode == 200, response.0.count <= 4_096,
-              let receipt = try? JSONDecoder().decode(Receipt.self, from: response.0),
-              receipt.ok, receipt.reportId == report.id,
-              ["created", "updated", "aggregated", "duplicate"].contains(receipt.action),
-              receipt.issueNumber > 0
-        else { throw CutNotesSupportSubmissionError.rejected }
+        guard response.1.statusCode == 200,
+              let receipt = try? ReportAcknowledgement.decode(response.0, reportID: report.id,
+                maximumBytes: 4096, actions: ["created", "updated", "aggregated", "duplicate"],
+                maximumIssueNumber: .max) else { throw CutNotesSupportSubmissionError.rejected }
         return receipt.issueNumber
-    }
-
-    private struct Receipt: Decodable {
-        let ok: Bool
-        let reportId: String
-        let action: String
-        let issueNumber: Int
     }
 
     public static func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
@@ -262,27 +254,10 @@ public struct CutNotesSupportSubmissionClient: CutNotesSupportSubmitting {
         configuration.requestCachePolicy = .reloadIgnoringLocalCacheData
         configuration.timeoutIntervalForRequest = 15
         configuration.timeoutIntervalForResource = 15
-        let session = URLSession(configuration: configuration, delegate: RejectSupportRedirects(), delegateQueue: nil)
-        defer { session.invalidateAndCancel() }
-        let (bytes, response) = try await session.bytes(for: request)
-        guard let response = response as? HTTPURLResponse else { throw CutNotesSupportSubmissionError.unavailable }
-        var data = Data()
-        for try await byte in bytes {
-            guard data.count < 4_096 else { throw CutNotesSupportSubmissionError.rejected }
-            data.append(byte)
-        }
-        return (data, response)
-    }
-}
-
-private final class RejectSupportRedirects: NSObject, URLSessionTaskDelegate, Sendable {
-    func urlSession(
-        _ session: URLSession,
-        task: URLSessionTask,
-        willPerformHTTPRedirection response: HTTPURLResponse,
-        newRequest request: URLRequest,
-        completionHandler: @escaping (URLRequest?) -> Void
-    ) {
-        completionHandler(nil)
+        do {
+            return try await BoundedReportTransport().send(request,
+                maximumResponseBytes: 4096, configuration: configuration)
+        } catch ReportTransportError.responseTooLarge { throw CutNotesSupportSubmissionError.rejected }
+        catch ReportTransportError.invalidResponse { throw CutNotesSupportSubmissionError.unavailable }
     }
 }
