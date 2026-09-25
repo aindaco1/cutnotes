@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.7 - 2026-09-25
+
+- Share Sparkle controller, bounded reviewed-report transport and acknowledgement validation through the pinned Dust Wave Platform dependency. Preserve existing update consent and product-specific diagnostics behavior. See the [migration record](docs/SHARED_DESKTOP_MIGRATION.md).
+
 ## 1.0.6 — 2026-09-23
 
 - Use Dust Wave Platform’s shared local transcription and Apple Intelligence adapters. Keep the same Parakeet model, formatting behavior, provider choices, and source-preservation rules.

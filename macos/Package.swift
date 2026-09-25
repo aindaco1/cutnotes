@@ -10,12 +10,13 @@ let package = Package(
         .executable(name: "CutNotesLocal", targets: ["CutNotesLocal"]),
     ],
     dependencies: [
+        .package(path: "../shared/dust-wave-platform/desktop"),
         .package(path: "../shared/dust-wave-platform/native"),
         .package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.15.6"),
         .package(url: "https://github.com/sparkle-project/Sparkle", exact: "2.9.6"),
     ],
     targets: [
-        .target(name: "CutNotesCore"),
+        .target(name: "CutNotesCore", dependencies: [.product(name: "DustWaveDiagnostics", package: "desktop")]),
         .executableTarget(
             name: "CutNotesLocal",
             dependencies: [
@@ -28,7 +29,7 @@ let package = Package(
             name: "CutNotesApp",
             dependencies: [
                 "CutNotesCore",
-                .product(name: "Sparkle", package: "Sparkle"),
+                .product(name: "DustWaveUpdates", package: "desktop"),
             ],
             exclude: ["Info.plist", "CutNotes.entitlements"],
             resources: [.process("Resources")],

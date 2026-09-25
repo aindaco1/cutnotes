@@ -1,5 +1,9 @@
 # Third-Party Notices
 
+## Shared desktop services
+
+Dust Wave Platform desktop 0.2.0 provides shared updater and reviewed-report mechanics under MIT. Original Record, Auto Subtitle, CutNotes and Podcast Visualizer notices remain in `shared/dust-wave-platform/desktop/LICENSE.*` and are packaged with Platform's MIT license in `Contents/Resources/Licenses`.
+
 CutNotes source code is MIT-licensed. Release builds aggregate the components below under their own licenses. Full license texts are copied into `CutNotes.app/Contents/Resources/Licenses/` by the release build.
 
 | Component | Pinned version | License | Purpose |
