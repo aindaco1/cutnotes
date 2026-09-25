@@ -1,8 +1,8 @@
 # Changelog
 
-## Unreleased
+## 1.0.7 - 2026-09-25
 
-- Share sparkle controller, bounded reviewed-report transport and acknowledgement validation through the pinned Dust Wave Platform dependency. Preserve existing update consent and product-specific diagnostics behavior. See the [migration record](docs/SHARED_DESKTOP_MIGRATION.md).
+- Share Sparkle controller, bounded reviewed-report transport and acknowledgement validation through the pinned Dust Wave Platform dependency. Preserve existing update consent and product-specific diagnostics behavior. See the [migration record](docs/SHARED_DESKTOP_MIGRATION.md).
 
 ## 1.0.6 — 2026-09-23
 
