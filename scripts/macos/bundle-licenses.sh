@@ -28,7 +28,7 @@ copy_license() {
 
 copy_license "$root_dir/shared/dust-wave-platform/native/LICENSE.Record" "Record-MIT.txt"
 copy_license "$root_dir/shared/dust-wave-platform/LICENSE" "DustWavePlatform-MIT.txt"
-for source in "$root_dir"/shared/dust-wave-platform/desktop/LICENSE.*; do
+for source in "$root_dir"/shared/dust-wave-platform/{desktop,support}/LICENSE.*; do
   copy_license "$source" "$(basename "$source")"
 done
 copy_license "$package_checkouts/FluidAudio/LICENSE" "FluidAudio-Apache-2.0.txt"

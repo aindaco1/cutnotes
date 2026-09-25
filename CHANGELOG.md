@@ -1,5 +1,9 @@
 # Changelog
 
+## [1.0.8] - 2026-09-25
+
+- Adopt the shared Apple support core through the compatible desktop diagnostics API. Preserve reviewed reports, explicit sending, update consent and existing app behavior.
+
 ## 1.0.7 - 2026-09-25
 
 - Share Sparkle controller, bounded reviewed-report transport and acknowledgement validation through the pinned Dust Wave Platform dependency. Preserve existing update consent and product-specific diagnostics behavior. See the [migration record](docs/SHARED_DESKTOP_MIGRATION.md).
