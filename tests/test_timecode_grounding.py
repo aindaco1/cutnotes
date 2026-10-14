@@ -17,6 +17,7 @@ class TimecodeGroundingTests(unittest.TestCase):
     def test_spoken_cues_survive_fillers_restarts_and_canonicalization(self):
         cases = {
             "At only five oh six, the lamp flickers.": ["05:06"],
+            "At 5.06, the dialogue is too quiet.": ["05:06"],
             "At um one thirty, keep the insert.": ["01:30"],
             "At uh three sixteen, trim the insert.": ["03:16"],
             "At at eleven thirty two, keep the insert.": ["11:32"],
@@ -41,6 +42,9 @@ class TimecodeGroundingTests(unittest.TestCase):
             "The shot takes twenty five frames.", "We got twenty five takes.",
             "Keep the gain at twenty five percent.", "The footage runs for fifteen minutes.",
             "The camera stops at four hours.", "We got one two cameras.",
+            "Keep the duration at 4.25 seconds.", "Keep the gain at 4.25 percent.",
+            "The duration is 4.25 seconds.", "At 5.75 seconds, stop recording.",
+            "The shot runs from 4.25 to 5.25 seconds.",
         ):
             with self.subTest(source=source):
                 self.assertEqual(f.source_timecodes(source), [])

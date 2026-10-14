@@ -89,7 +89,7 @@ _NUMBER_PHRASE = rf"{_NUMBER_TOKEN}(?:[ -]+{_NUMBER_TOKEN}){{0,3}}"
 # A partial restart ("twel twelve") is checked against the following number,
 # never guessed. Fillers are accepted only inside an explicit timing cue.
 _TIME_FILLERS = r"(?:(?:the|um|uh|only|like|about|at)\s+){0,3}"
-_TIME_VALUE = rf"(?:\d{{1,3}}:[0-5]\d|(?:[a-z]{{2,}}\s+)?{_NUMBER_PHRASE})"
+_TIME_VALUE = rf"(?:\d{{1,3}}[:.][0-5]\d|(?:[a-z]{{2,}}\s+)?{_NUMBER_PHRASE})(?!\d|\.\d)"
 MINUTE_SECOND_TIMECODE = re.compile(
     rf"\b(?P<minutes>{_NUMBER_PHRASE})\s+(?:minutes?|mins?)\s+"
     rf"(?P<seconds>{_NUMBER_PHRASE})(?:\s+(?:seconds?|secs?))?\b",
@@ -124,7 +124,8 @@ SPOKEN_CUT_RANGE = re.compile(
     rf"(?:to|through)\s+{_TIME_FILLERS}(?P<end>{_TIME_VALUE})\b", re.IGNORECASE,
 )
 NON_CUT_SUFFIX = re.compile(
-    r"\s+(?:o['’]?clock|a\.?m\.?|p\.?m\.?|hours?|minutes?|days?|weeks?|"
+    rf"\s+(?:(?:to|through)\s+{_TIME_VALUE}\s+)?"
+    r"(?:o['’]?clock|a\.?m\.?|p\.?m\.?|hours?|minutes?|seconds?|secs?|days?|weeks?|"
     r"frames?|shots?|takes?|percent|dollars?|people|cameras?|times)\b", re.IGNORECASE,
 )
 SPOKEN_SECOND_RANGE = re.compile(
@@ -207,8 +208,8 @@ def _number_components(value: str) -> list[int] | None:
 
 def _shorthand_timecode(value: str, *, require_minutes: bool = False) -> str | None:
     compact = value.strip()
-    if re.fullmatch(r"\d{1,3}:[0-5]\d", compact):
-        return _canonical_timecode(*compact.split(":"))
+    if re.fullmatch(r"\d{1,3}[:.][0-5]\d", compact):
+        return _canonical_timecode(*re.split(r"[:.]", compact))
     tokens = compact.casefold().split()
     if len(tokens) > 1 and tokens[0] not in NUMBER_WORDS and not tokens[0].isdigit():
         if not tokens[1].startswith(tokens[0]) or tokens[1] not in NUMBER_WORDS:
@@ -294,7 +295,10 @@ def _located_timecodes(transcript: str) -> list[_LocatedTimecode]:
                 value = _canonical_timecode("0", str(seconds))
                 add(match, (value,), f"[{value}]", priority)
     for match in ANCHORED_SHORTHAND_TIMECODE.finditer(transcript):
-        if NON_CUT_SUFFIX.match(transcript[match.end():]):
+        # ASR can render CUT times with a dot. Explicit decimal durations and
+        # quantities are still numbers, including when the regex consumed secs.
+        suffix_start = match.end("value") if "." in match.group("value") else match.end()
+        if NON_CUT_SUFFIX.match(transcript[suffix_start:]):
             continue
         if value := _shorthand_timecode(match.group("value")):
             qualifier = "around " if re.match(r"(?i)(around|near|roughly)\b", match.group()) else ""
