@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from difflib import SequenceMatcher
 import re
+from .formatting import source_timecodes
 
 SENTENCES = re.compile(r'''(?<=[.!?])\s+|(?<=[.!?]["'’”])\s+|\n+''')
 REQUEST = re.compile(
@@ -17,7 +18,8 @@ REQUEST = re.compile(
 UNCERTAIN = re.compile(r"\b(?:may|might|maybe|perhaps|possibly|possible|could|unsure|not sure|"
                        r"(?:I )?(?:do not|don't|don’t) know)\b", re.I)
 CONDITIONAL = re.compile(r"\b(?:if|unless|provided|only when|before)\b", re.I)
-SMALL = re.compile(r"\b(?:slight\w*|subtle|little|bit)\b", re.I)
+SMALL = re.compile(r"\b(?:slight\w*|subtl\w*|a (?:little|bit|hair|touch)|"
+                   r"(?:little|bit) (?:more|less|too)|(?:only|very) little)\b", re.I)
 REASON = re.compile(r"\b(?:because|so that|so we|so the|since|in order to)\b", re.I)
 FUNCTION_WORDS = frozenset("a an the is are am was were be been being it its that this these those i we you they he she them their there of to in on with and but as at for from by just um uh".split())
 
@@ -119,7 +121,10 @@ def _clauses(text):
 
 
 def _negative(text):
-    return any(w in {"not", "never", "cannot", "no"} for w in _words(text))
+    # Epistemic negatives express uncertainty, checked separately below. Their
+    # faithful rewrite as "unsure" must not count as losing a negative claim.
+    text = re.sub(r"\b(?:(?:do not|don't|don’t) know|not sure)\b", "unsure", text, flags=re.I)
+    return any(w in {"not", "never", "cannot", "no", "unclear"} for w in _words(text))
 
 
 def revision_issues(source: str, candidate: str) -> list[str]:
@@ -132,8 +137,14 @@ def revision_issues(source: str, candidate: str) -> list[str]:
         return ["Empty revision"]
     issues = []
     before, after = _content(source), _content(candidate)
-    if re.findall(r"\d+", source) != re.findall(r"\d+", candidate):
+    # Repeated references to the same shot can be consolidated. Other numbers
+    # (frame counts, durations, etc.) still require exact preservation.
+    def numbers(text):
+        return re.findall(r"\d+", re.sub(r"\b\d{1,3}:[0-5]\d\b", "", text))
+    if numbers(source) != numbers(candidate):
         issues.append("Numbers changed or omitted")
+    if source_timecodes(source) != source_timecodes(candidate):
+        issues.append("CUT time references changed or omitted")
     for quote in re.findall(r'[“"]([^”"]+)[”"]', source):
         if " ".join(_words(quote)) not in " ".join(_words(candidate)):
             issues.append("Quoted dialogue changed or omitted")

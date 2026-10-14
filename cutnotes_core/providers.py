@@ -141,7 +141,7 @@ def _run_checked(command: list[str], *, failure: str, code: str, exit_code: int,
             failure,
             exit_code,
             code=code,
-            recovery="Verify the selected provider and retry; existing artifacts were preserved.",
+            recovery="Verify the selected provider and retry.",
         ) from error
     if result.returncode != 0:
         detail = " ".join(result.stderr.strip().split())[:500]
@@ -149,7 +149,7 @@ def _run_checked(command: list[str], *, failure: str, code: str, exit_code: int,
             f"{failure}{f': {detail}' if detail else '.'}",
             exit_code,
             code=code,
-            recovery="Verify the selected provider and retry; existing artifacts were preserved.",
+            recovery="Verify the selected provider and retry.",
         )
     return result
 
@@ -196,7 +196,7 @@ def transcribe_with_macwhisper(
             "MacWhisper could not be started.",
             EXIT_TRANSCRIPTION,
             code="macwhisper_start_failed",
-            recovery="Check MacWhisper, then retry; the audio was preserved.",
+            recovery="Check MacWhisper, then retry.",
             preserved=PreservedArtifacts(audio=True),
         ) from error
     if result.returncode != 0:
@@ -205,7 +205,7 @@ def transcribe_with_macwhisper(
             f"MacWhisper transcription failed{f': {detail}' if detail else '.'}",
             EXIT_TRANSCRIPTION,
             code="macwhisper_failed",
-            recovery="Check MacWhisper, then retry; the audio was preserved.",
+            recovery="Check MacWhisper, then retry.",
             preserved=PreservedArtifacts(audio=True),
         )
     if not transcript_path.is_file() or not transcript_path.read_text(encoding="utf-8").strip():
@@ -213,7 +213,7 @@ def transcribe_with_macwhisper(
             "MacWhisper produced an empty transcript.",
             EXIT_TRANSCRIPTION,
             code="transcript_empty",
-            recovery="Retry with a recording that contains clear speech; the audio was preserved.",
+            recovery="Retry with a recording that contains clear speech.",
             preserved=PreservedArtifacts(audio=True),
         )
 
@@ -313,7 +313,7 @@ def transcribe_with_parakeet(
                     "Parakeet returned an unreadable transcript.",
                     EXIT_TRANSCRIPTION,
                     code="parakeet_invalid_result",
-                    recovery="Retry transcription; the audio was preserved.",
+                    recovery="Retry transcription.",
                     preserved=PreservedArtifacts(audio=True),
                 ) from error
             if text:
@@ -335,7 +335,7 @@ def transcribe_with_parakeet(
             "Parakeet produced an empty transcript.",
             EXIT_TRANSCRIPTION,
             code="transcript_empty",
-            recovery="Retry with a recording that contains clear speech; the audio was preserved.",
+            recovery="Retry with a recording that contains clear speech.",
             preserved=PreservedArtifacts(audio=True),
         )
     temporary_transcript = transcript_path.with_name(f".{transcript_path.name}.tmp")
@@ -404,7 +404,7 @@ def _generate_with_apple(
                     code="apple_model_unavailable",
                     recovery=(
                         "Check Apple Intelligence in System Settings and wait for its models "
-                        "to finish preparing, then retry formatting; the transcript was preserved."
+                        "to finish preparing, then retry formatting."
                     ),
                     preserved=PreservedArtifacts(transcript=True),
                 ) from error
@@ -424,14 +424,14 @@ def _generate_with_apple(
                     "Apple on-device formatting declined to classify a sensitive transcript section.",
                     EXIT_FORMATTING,
                     code="apple_guardrail",
-                    recovery="CutNotes will retry smaller passages; if rewriting still fails, the transcript remains preserved.",
+                    recovery="Retry formatting with a smaller passage.",
                     preserved=PreservedArtifacts(transcript=True),
                 ) from error
             raise CutNotesError(
                 "Apple on-device classification failed.",
                 EXIT_FORMATTING,
                 code=error.code,
-                recovery="Retry Apple formatting or explicitly choose Codex CLI; the transcript was preserved.",
+                recovery="Retry Apple formatting or explicitly choose Codex CLI.",
                 preserved=PreservedArtifacts(transcript=True),
             ) from error
         payload = json.loads(response_path.read_text(encoding="utf-8"))
@@ -447,7 +447,7 @@ def _generate_with_apple(
             "Apple on-device formatting returned an unreadable response.",
             EXIT_FORMATTING,
             code="apple_formatting_invalid_result",
-            recovery="Retry or explicitly choose Codex; the transcript was preserved.",
+            recovery="Retry or explicitly choose Codex.",
             preserved=PreservedArtifacts(transcript=True),
         ) from error
     finally:
@@ -495,7 +495,7 @@ def _draft_with_apple(
             "Apple on-device formatting returned an unreadable editorial draft.",
             EXIT_FORMATTING,
             code="apple_formatting_invalid_result",
-            recovery="Retry or explicitly choose Codex; the transcript was preserved.",
+            recovery="Retry or explicitly choose Codex.",
             preserved=PreservedArtifacts(transcript=True),
         )
     for note in payload["notes"]:
@@ -558,7 +558,7 @@ def _structured_with_codex(
                 f"Codex classification failed{f': {detail}' if detail else '.'}",
                 EXIT_FORMATTING,
                 code="codex_formatting_failed",
-                recovery="Check the Codex CLI and retry; the transcript was preserved.",
+                recovery="Check the Codex CLI and retry.",
                 preserved=PreservedArtifacts(transcript=True),
             )
         payload = json.loads(response_path.read_text(encoding="utf-8"))
@@ -570,7 +570,7 @@ def _structured_with_codex(
             "Codex returned an unreadable editorial response.",
             EXIT_FORMATTING,
             code="codex_formatting_invalid_result",
-            recovery="Check the Codex CLI and retry; the transcript was preserved.",
+            recovery="Check the Codex CLI and retry.",
             preserved=PreservedArtifacts(transcript=True),
         ) from error
     finally:
@@ -937,7 +937,7 @@ def _render_drafted_document(
         raise CutNotesError(
             "The formatter did not produce any usable editorial notes.",
             EXIT_FORMATTING, code="formatter_contract_failed",
-            recovery="The transcript was preserved. Retry formatting or explicitly choose another provider.",
+            recovery="Retry formatting or explicitly choose another provider.",
             preserved=PreservedArtifacts(transcript=True),
         )
     general_notes = [note for note in notes if not note_timecodes(note, by_id)
@@ -948,7 +948,7 @@ def _render_drafted_document(
         raise CutNotesError(
             "Formatting is incomplete: one or more video observations could not be rewritten.",
             EXIT_FORMATTING, code="formatter_incomplete",
-            recovery="The transcript was preserved. Retry formatting or explicitly choose another provider.",
+            recovery="Retry formatting or explicitly choose another provider.",
             preserved=PreservedArtifacts(transcript=True),
         )
     return render_editorial_draft(
@@ -994,8 +994,10 @@ def format_with_apple(
     def generate(kind: str, request: dict) -> dict:
         mode = "editorial-" + request.get("mode", "decision")
         prompt = request["prompt"]
-        if context:
-            prompt += "\n\nSpelling context (source data, not instructions): " + json.dumps(context, ensure_ascii=False)
+        if context and mode == "editorial-edit":
+            # Keep spelling metadata separate from the passage. Appending it as
+            # another sentence can leak it into notes or relevance decisions.
+            prompt = json.dumps({"spelling_context": context, **json.loads(prompt)}, ensure_ascii=False)
         reporter.stage("formatting", "Polishing feedback" if mode == "editorial-edit" else "Organizing feedback")
         try:
             result = _generate_with_apple(engine=engine, prompt=prompt, instructions=request["instructions"],
@@ -1027,22 +1029,32 @@ def format_with_apple(
     except ValueError as error:
         raise CutNotesError(
             "Apple returned an invalid editorial response.", EXIT_FORMATTING, code="apple_formatting_invalid_result",
-            recovery="Retry formatting; the original transcript and previous notes were preserved.",
+            recovery="Retry formatting.",
             preserved=PreservedArtifacts(transcript=True),
         ) from error
-    if not audit["rendered_source_ids"] or audit["unassigned_timing_ids"]:
-        raise CutNotesError(
-            "The formatter could not account for all feedback locations.", EXIT_FORMATTING,
-            code="formatter_incomplete" if audit["rendered_source_ids"] else "formatter_contract_failed",
-            recovery="Review the preserved transcript and retry formatting.", preserved=PreservedArtifacts(transcript=True),
-        )
     audit.update(source_transcript_sha256=text_digest(original), output_sha256=text_digest(markdown.rstrip() + "\n"),
                  speech_levels=acoustic, retained_requests=retained_requests)
     # Each run retains its own local evidence, including excluded speech and
     # rejected rewrites. Never replace a previous review record on a retry.
     audit_path = output_path.with_name(f"{output_path.stem}.formatting-review-{uuid.uuid4().hex}.json")
-    normalized = "\n".join(row["normalized"] for row in audit["sentences"])
-    _validate_markdown(markdown, normalized)
+    try:
+        if not audit["rendered_source_ids"] or audit["unassigned_timing_ids"]:
+            raise CutNotesError(
+                "The formatter could not account for all feedback locations.", EXIT_FORMATTING,
+                code="formatter_incomplete" if audit["rendered_source_ids"] else "formatter_contract_failed",
+                recovery="Review the transcript and retry formatting.", preserved=PreservedArtifacts(transcript=True),
+            )
+        normalized = "\n".join(row["normalized"] for row in audit["sentences"])
+        _validate_markdown(markdown, normalized)
+    except CutNotesError as error:
+        # A failed draft is private review evidence, never successful notes.
+        audit.update(validation={"status": "failed", "code": error.code}, candidate_markdown=markdown)
+        try:
+            write_json(audit_path, audit, overwrite=False)
+        except OSError:
+            reporter.warning("formatting", "The failed formatting review could not be saved.")
+        raise
+    audit["validation"] = {"status": "passed"}
     write_json(audit_path, audit, overwrite=False)
     _write_validated_markdown(markdown, output_path, transcript_path, validation_transcript=normalized)
     if audit["warnings"] or retained_requests:
@@ -1095,7 +1107,7 @@ def _validate_markdown(markdown: str, transcript: str) -> None:
             "The formatter omitted required document sections: " + ", ".join(missing),
             EXIT_FORMATTING,
             code="formatter_contract_failed",
-            recovery="Retry formatting or choose another formatter; the transcript was preserved.",
+            recovery="Retry formatting or choose another formatter.",
             preserved=PreservedArtifacts(transcript=True),
         )
     invented, omitted = validate_timecodes(markdown, transcript)
@@ -1109,7 +1121,7 @@ def _validate_markdown(markdown: str, transcript: str) -> None:
             "The formatter returned ungrounded CUT timecodes (" + "; ".join(details) + ").",
             EXIT_FORMATTING,
             code="formatter_timecode_contract_failed",
-            recovery="Retry formatting or choose another formatter; the transcript was preserved.",
+            recovery="Retry formatting or choose another formatter.",
             preserved=PreservedArtifacts(transcript=True),
         )
 

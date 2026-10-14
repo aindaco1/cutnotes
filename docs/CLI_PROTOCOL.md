@@ -73,11 +73,19 @@ context/guardrail refusals retain source wording for review. The matching helper
 ships with the app. No silent old-helper or provider fallback is allowed.
 The existing plan/draft contracts and outer CLI result/error schemas are unchanged.
 
-Each successful Apple formatting run saves a unique local
+Each Apple formatting run that produces a draft saves a unique local
 `<notes-stem>.formatting-review-<id>.json` beside the Markdown. It includes the
 source transcript/output hashes, source sentences, rejected revisions, relevance
-exclusions, and available acoustic evidence. It contains private text and is not
+exclusions, and available acoustic evidence. Drafts that fail structural validation
+record `validation.status: failed`, the error code, and `candidate_markdown` in
+this review file; they never replace the requested notes. Successful validation
+records `validation.status: passed`. A failure to save an audit cannot replace the
+original formatting error. It contains private text and is not
 telemetry or an input to remote development evaluation.
+
+Recovery text describes the next action; the app and human CLI render preservation
+messages from `preserved.audio` and `preserved.transcript` once. The machine error
+schema and Boolean flag meanings are unchanged.
 
 ## Compatibility rule
 

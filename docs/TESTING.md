@@ -46,6 +46,12 @@ The recording gate includes pause/resume with more than one pause, finish while 
 
 Formatting fixtures must cover colon, compact-digit, explicit minute/second, and spoken shorthand timecodes; out-of-order source mentions; adjacent ranges; orphaned markers; false starts; background lyrics; and guardrail rejection. Acceptance requires a concise general summary, chronological notes with distinct issues at the same moment kept separate, no source IDs in reader-facing prose, no cross-time merging, no reversed negation, and exact preservation of the source transcript.
 
+`test_timecode_grounding.py` covers filler-separated cues, partial/repeated number
+restarts, primary locations versus earlier-shot references, and per-passage rejection
+of changed or borrowed times. It includes duration, quantity, and wall-clock negative
+controls. Provider tests retain failed-validation audits without replacing source
+or previous notes; human-CLI preservation text and JSON flags are checked separately.
+
 For 1.0.0 there is no earlier Sparkle-enabled public version, so the real previous-version update hop becomes a mandatory 1.0.1 release gate. Feed generation and archive signatures are still required for 1.0.0.
 
 ## Formatting and optional-provider regressions
@@ -317,3 +323,5 @@ The runner follows the author's Flan-T5 support-token protocol:
 [reference implementation](https://github.com/Liyan06/MiniCheck/blob/main/minicheck/inference.py).
 Keep weights, environments and reports under ignored development/build paths;
 none belongs in source control or the application bundle.
+
+The Overall feedback paragraph parser also accepts legacy bullet lists. Its 2026-10-14 compatibility check preserved all 42 frozen calibration request payloads byte-for-byte; only the parser fingerprint in the policy metadata changed. Questions, examples, model allowlist, decision margin, and recorded calibration results remain unchanged. This compatibility check is not a fresh live Jev evaluation.

@@ -41,10 +41,20 @@ The Python `doctor` contract exposes the model's supported language codes and na
 
 Python normalizes clear spoken and compact CUT timecodes before provider use, then groups coherent passages at timestamp and natural topic boundaries. Natural general-feedback transitions clear the active timestamp. Adjacent markers can form a range when the surrounding note is continuous. All passages remain eligible for formatting, including feedback after untimed opening conversation. Retrospective time corrections remain attached to the preceding passage; relative end-of-video suggestions stay separate from general feedback.
 
-Apple handles small classification and copyediting requests through
-`cutnotes.local.editorial.v1`. Shared Python prompts and policy keep individual
-usable statements unchanged, group passages, and check proposed edits for
-selected changes in meaning. A rejected edit retains the source wording. These
+The same parser recognizes bounded fillers and number restarts before prose cleanup.
+Repeated number words remain evidence. The Apple passage formatter separates a
+note's primary location from inline `from`/`until` references; an earlier-shot
+reference does not move the note. Source-owned locations stay outside the edit
+request. Each proposed edit must preserve its passage's inline CUT references
+before the final document-wide validation runs.
+
+Apple handles small classification and editing requests through
+`cutnotes.local.editorial.v1`. Shared Python prompts summarize each passage,
+including single sentences, into concise prose while preserving qualifications
+and concrete details. Already concise statements can remain unchanged. Proposed
+edits are checked for selected changes in meaning; a failed check gets one repair
+attempt grounded in the original source and the specific issues. Spelling context is edit metadata and is never added to classification input. Both proposals
+remain in the audit. A second rejected edit retains the source wording. These
 bounded checks are not a proof of semantic correctness. CutNotes owns timestamps,
 source IDs, rendering, and local audit records. Codex retains its explicit
 optional draft schema and grounding checks; the older native draft/plan helper
@@ -61,7 +71,7 @@ development, never in this runtime path.
 
 Apple receives the core-owned task instructions in a separate `--instructions` file, passed to `LanguageModelSession.instructions`; its prompt contains only source observations and spelling context. The native helper generates the body before supporting IDs and title while retaining the existing response schema. Apple requests use alphabetic source-ID aliases so observation numbers cannot be confused with video times. Python maps them back before grounding validation. Temporary request files are removed on success and failure. See Apple's [prompting guidance](https://developer.apple.com/documentation/foundationmodels/prompting-an-on-device-foundation-model).
 
-The renderer emits two sections: general feedback bullets and a chronological video-time table. Distinct issues can share a timestamp. Both general and timestamped requests use bounded source batches. Long single observations can be split again after context or guardrail rejection. A timed source passage with no accepted rewrite returns `formatter_incomplete`, even if another note covers its timestamp. No incomplete document replaces existing notes or reports success. CutNotes never substitutes a raw transcript dump or canned scene advice. If no usable notes remain, formatting returns `formatter_contract_failed` and preserves the transcript. Invented or omitted detected CUT times still reject the document before atomic replacement. These structural checks do not establish semantic completeness; native content acceptance remains a separate gate.
+The renderer emits two sections: paragraphs under one Overall feedback heading and a chronological video-time table. Validation still accepts older General feedback documents. Distinct issues can share a timestamp. Both general and timestamped requests use bounded source batches. Long single observations can be split again after context or guardrail rejection. The optional Codex draft path returns `formatter_incomplete` for a timed passage with no accepted draft, even if another note covers its timestamp. Apple instead retains rejected passages with a warning and local review evidence, as described above. Structural completeness does not mean every passage was successfully summarized. Neither provider invents replacement advice for missing drafts. If no usable notes remain, formatting returns `formatter_contract_failed` and preserves the transcript. Invented or omitted detected CUT times still reject the document before atomic replacement. These structural checks do not establish semantic completeness; native content acceptance remains a separate gate.
 
 There is no automatic provider fallback. MacWhisper is passively discovered during setup and invoked through `mw transcribe` only when explicitly selected; setup does not query its version or models.
 

@@ -1,5 +1,5 @@
 {
-  "protocol_sha256": "2813f10d5b5103cb9822d4031bb1bd87016391510d8f4f5b2317ed116d4c8385",
+  "protocol_sha256": "7765d957dcd4ad38ccac9d187f33f3cb6d0f24e01a49021a69112fcfe1588349",
   "calibration_sha256": "aa98f4991e916dbd5e861f2140fe4f3c256cbab38747b702b4bc386f4aaba24a",
   "resolved_models": [
     "jev-1.13.0"

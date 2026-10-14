@@ -67,6 +67,15 @@ class CandidateFormatterTests(unittest.TestCase):
         self.assertEqual(len(audit["warnings"]), 2)
         self.assertTrue(audit["requires_review"])
 
+    def test_standalone_fillers_are_audited_but_praise_and_dialogue_survive(self):
+        markdown, audit = self.render('Okay. At eight seconds, looks great. Yeah. Keep the line “Okay.”')
+        self.assertNotIn('| Okay.', markdown)
+        self.assertNotIn('Yeah.', markdown)
+        self.assertIn('Looks great.', markdown)
+        self.assertIn('Keep the line “Okay.”', markdown)
+        self.assertEqual([row['source'] for row in audit['sentences'] if row.get('dictation_filler')],
+                         ['Okay.', 'Yeah.'])
+
     def test_filler_cleanup_preserves_negation_comparison_and_conditions(self):
         source = "Um the glow is like fog. Do not remove it. If time allows, keep keep the effect."
         self.assertEqual(clean_disfluencies(source),
