@@ -12,9 +12,10 @@ from .contracts import CutNotesError, EXIT_FORMATTING
 
 REQUIRED_HEADINGS = (
     "# ",
-    "## General feedback",
+    "## Overall feedback",
     "## Timestamped feedback",
 )
+GENERAL_REQUIRED_HEADINGS = ("# ", "## General feedback", "## Timestamped feedback")
 PREVIOUS_REQUIRED_HEADINGS = (
     "# ",
     "## Feedback Summary",
@@ -85,6 +86,10 @@ _NUMBER_TOKEN = (
     r"nineteen|twenty|thirty|forty|fifty)"
 )
 _NUMBER_PHRASE = rf"{_NUMBER_TOKEN}(?:[ -]+{_NUMBER_TOKEN}){{0,3}}"
+# A partial restart ("twel twelve") is checked against the following number,
+# never guessed. Fillers are accepted only inside an explicit timing cue.
+_TIME_FILLERS = r"(?:(?:the|um|uh|only|like|about|at)\s+){0,3}"
+_TIME_VALUE = rf"(?:\d{{1,3}}[:.][0-5]\d|(?:[a-z]{{2,}}\s+)?{_NUMBER_PHRASE})(?!\d|\.\d)"
 MINUTE_SECOND_TIMECODE = re.compile(
     rf"\b(?P<minutes>{_NUMBER_PHRASE})\s+(?:minutes?|mins?)\s+"
     rf"(?P<seconds>{_NUMBER_PHRASE})(?:\s+(?:seconds?|secs?))?\b",
@@ -106,9 +111,22 @@ CORRUPTED_ZERO_LED_TIMECODE = re.compile(
 )
 ANCHORED_SHORTHAND_TIMECODE = re.compile(
     rf"\b(?:right\s+at|at|around|near|roughly|time\s*stamp|timecode|"
-    rf"this\s+is(?:\s+at|\s+a)?)\s+(?:the\s+)?(?P<value>{_NUMBER_PHRASE})"
+    rf"this\s+is(?:\s+at|\s+a)?)\s+{_TIME_FILLERS}(?P<value>{_TIME_VALUE})"
     r"(?:\s+(?:seconds?|secs?))?\b",
     re.IGNORECASE,
+)
+CONTEXTUAL_TIMECODE = re.compile(
+    rf"\b(?P<cue>(?:shot|scene|sequence|footage)(?:\s+here)?|here|got|until|from)\s+"
+    rf"{_TIME_FILLERS}(?P<value>{_TIME_VALUE})\b", re.IGNORECASE,
+)
+SPOKEN_CUT_RANGE = re.compile(
+    rf"\b(?:from|at|around)\s+{_TIME_FILLERS}(?P<start>{_TIME_VALUE})\s+"
+    rf"(?:to|through)\s+{_TIME_FILLERS}(?P<end>{_TIME_VALUE})\b", re.IGNORECASE,
+)
+NON_CUT_SUFFIX = re.compile(
+    rf"\s+(?:(?:to|through)\s+{_TIME_VALUE}\s+)?"
+    r"(?:o['’]?clock|a\.?m\.?|p\.?m\.?|hours?|minutes?|seconds?|secs?|days?|weeks?|"
+    r"frames?|shots?|takes?|percent|dollars?|people|cameras?|times)\b", re.IGNORECASE,
 )
 SPOKEN_SECOND_RANGE = re.compile(
     rf"\b(?:at|around|timestamp|timecode)\s+(?P<start>{_NUMBER_PHRASE})"
@@ -130,6 +148,7 @@ class _LocatedTimecode:
     values: tuple[str, ...]
     replacement: str
     priority: int
+    reference: bool = False
 
 
 def _canonical_timecode(minutes: str, seconds: str) -> str:
@@ -187,13 +206,20 @@ def _number_components(value: str) -> list[int] | None:
     return components
 
 
-def _shorthand_timecode(value: str) -> str | None:
+def _shorthand_timecode(value: str, *, require_minutes: bool = False) -> str | None:
     compact = value.strip()
+    if re.fullmatch(r"\d{1,3}[:.][0-5]\d", compact):
+        return _canonical_timecode(*re.split(r"[:.]", compact))
+    tokens = compact.casefold().split()
+    if len(tokens) > 1 and tokens[0] not in NUMBER_WORDS and not tokens[0].isdigit():
+        if not tokens[1].startswith(tokens[0]) or tokens[1] not in NUMBER_WORDS:
+            return None
+        compact = " ".join(tokens[1:])
     if compact.isdigit():
         if len(compact) in {3, 4}:
             minutes = int(compact[:-2])
             seconds = int(compact[-2:])
-        elif len(compact) <= 2:
+        elif len(compact) <= 2 and not require_minutes:
             minutes = 0
             seconds = int(compact)
         else:
@@ -201,7 +227,7 @@ def _shorthand_timecode(value: str) -> str | None:
         return _canonical_timecode(str(minutes), str(seconds)) if seconds < 60 else None
 
     components = _number_components(compact)
-    if not components:
+    if not components or (require_minutes and len(components) < 2):
         return None
     if len(components) == 1:
         minutes, seconds = 0, components[0]
@@ -213,6 +239,9 @@ def _shorthand_timecode(value: str) -> str | None:
         minutes, seconds = components[0], components[2]
     elif len(components) == 3 and components[0] == 0 and components[1] == 0:
         minutes, seconds = 0, components[2]
+    elif len(components) == 3 and components[0] == components[1]:
+        # A repeated minute before the seconds: "ten ten thirty".
+        minutes, seconds = components[1:]
     else:
         return None
     if not (0 <= minutes <= 239 and 0 <= seconds <= 59):
@@ -223,9 +252,13 @@ def _shorthand_timecode(value: str) -> str | None:
 def _located_timecodes(transcript: str) -> list[_LocatedTimecode]:
     candidates: list[_LocatedTimecode] = []
 
-    def add(match: re.Match[str], values: tuple[str, ...], replacement: str, priority: int) -> None:
+    def add(match: re.Match[str], values: tuple[str, ...], replacement: str, priority: int,
+            *, start: int | None = None, reference: bool | None = None) -> None:
+        start = match.start() if start is None else start
+        if reference is None:
+            reference = bool(re.search(rf"\b(?:from|until)\s+{_TIME_FILLERS}$", transcript[:start], re.I)) and len(values) == 1
         candidates.append(
-            _LocatedTimecode(match.start(), match.end(), values, replacement, priority)
+            _LocatedTimecode(start, match.end(), values, replacement, priority, reference)
         )
 
     for match in BRACKETED_TIMECODE.finditer(transcript):
@@ -262,11 +295,25 @@ def _located_timecodes(transcript: str) -> list[_LocatedTimecode]:
                 value = _canonical_timecode("0", str(seconds))
                 add(match, (value,), f"[{value}]", priority)
     for match in ANCHORED_SHORTHAND_TIMECODE.finditer(transcript):
-        if re.match(r"\s+o['’]?clock\b", transcript[match.end():], re.IGNORECASE):
+        # ASR can render CUT times with a dot. Explicit decimal durations and
+        # quantities are still numbers, including when the regex consumed secs.
+        suffix_start = match.end("value") if "." in match.group("value") else match.end()
+        if NON_CUT_SUFFIX.match(transcript[suffix_start:]):
             continue
         if value := _shorthand_timecode(match.group("value")):
             qualifier = "around " if re.match(r"(?i)(around|near|roughly)\b", match.group()) else ""
             add(match, (value,), f"{qualifier}[{value}]", 70)
+    for match in CONTEXTUAL_TIMECODE.finditer(transcript):
+        # Context alone cannot turn a single count/duration into a CUT time.
+        value = _shorthand_timecode(match.group("value"), require_minutes=True)
+        if not value or NON_CUT_SUFFIX.match(transcript[match.end():]):
+            continue
+        add(match, (value,), f"[{value}]", 65, start=match.start("value"),
+            reference=match.group("cue").casefold() in {"from", "until"})
+    for match in SPOKEN_CUT_RANGE.finditer(transcript):
+        start, end = (_shorthand_timecode(match.group(key), require_minutes=True) for key in ("start", "end"))
+        if start and end and not NON_CUT_SUFFIX.match(transcript[match.end():]):
+            add(match, (start, end), f"[{start}–{end}]", 96, reference=False)
     for match in SPOKEN_SECOND_RANGE.finditer(transcript):
         start = _number_phrase(match.group("start"), maximum=59)
         end = _number_phrase(match.group("end"), maximum=59)
@@ -329,6 +376,21 @@ def canonicalize_timecodes(transcript: str) -> str:
     for located in reversed(_located_timecodes(transcript)):
         normalized = normalized[: located.start] + located.replacement + normalized[located.end :]
     return normalized
+
+
+def note_timing(text: str) -> tuple[tuple[str, ...], str]:
+    """Separate a note's location from inline references using the same parser."""
+    located = _located_timecodes(text)
+    times = tuple(dict.fromkeys(value for item in located if not item.reference for value in item.values))
+    body = text
+    for item in reversed(located):
+        if not item.reference:
+            cue = re.search(rf"\b(?:at|around|near|roughly|timestamp|timecode)\s+{_TIME_FILLERS}$",
+                            text[:item.start], re.I)
+            start = cue.start() if cue else item.start
+            body = body[:start] + body[item.end:]
+    body = re.sub(r",\s*,", ",", body)
+    return times, " ".join(body.split()).strip(" ,.")
 
 
 def validate_timecodes(markdown: str, transcript: str) -> tuple[list[str], list[str]]:
@@ -549,9 +611,9 @@ def render_editorial_draft(
     def cell(value: str) -> str:
         return value.replace("|", "\\|").replace("\n", " ")
 
-    general_text = "\n".join(f"- **{cell(note.title)}.** {cell(note.body)}" for note in general_notes)
+    general_text = "\n\n".join(cell(note.body) for note in general_notes)
     if not general_text:
-        general_text = "- No general summary was generated."
+        general_text = "No general summary was generated."
 
     rendered_timestamped: list[tuple[int, str]] = []
     for note in timestamped_notes:
@@ -563,7 +625,9 @@ def render_editorial_draft(
             continue
         elif len(timecodes) == 1:
             label = timecodes[0]
-        elif all(
+        elif any(item.values == timecodes and len(item.values) == 2
+                 for source_id in note.source_ids if source_id in units_by_id
+                 for item in _located_timecodes(units_by_id[source_id].text)) or all(
             _timecode_seconds(current) - _timecode_seconds(previous) <= 2
             for previous, current in zip(timecodes, timecodes[1:])
         ):
@@ -593,7 +657,7 @@ def render_editorial_draft(
         (
             f"# {safe_title}",
             f"**Review date:** {review_date}",
-            "## General feedback\n\n" + general_text,
+            "## Overall feedback\n\n" + general_text,
             "## Timestamped feedback\n\n" + timestamp_text,
         )
     )
@@ -873,7 +937,7 @@ def parse_markdown_envelope(raw: str, provider: str = "formatter") -> str:
                 f"{provider} returned an unreadable response.",
                 EXIT_FORMATTING,
                 code="formatter_invalid_response",
-                recovery="Retry formatting; the transcript was preserved.",
+                recovery="Retry formatting.",
             )
         try:
             payload = json.loads(stripped[start : end + 1])
@@ -882,7 +946,7 @@ def parse_markdown_envelope(raw: str, provider: str = "formatter") -> str:
                 f"{provider} returned invalid structured output.",
                 EXIT_FORMATTING,
                 code="formatter_invalid_response",
-                recovery="Retry formatting; the transcript was preserved.",
+                recovery="Retry formatting.",
             ) from error
 
     markdown = payload.get("markdown") if isinstance(payload, dict) else None
@@ -891,7 +955,7 @@ def parse_markdown_envelope(raw: str, provider: str = "formatter") -> str:
             f'{provider} output did not contain a non-empty "markdown" field.',
             EXIT_FORMATTING,
             code="formatter_empty_response",
-            recovery="Retry formatting; the transcript was preserved.",
+            recovery="Retry formatting.",
         )
     return strip_markdown_fence(markdown)
 
@@ -922,6 +986,6 @@ def validate_markdown(markdown: str) -> list[str]:
         return missing
 
     current = violations(REQUIRED_HEADINGS)
-    legacy = violations(LEGACY_REQUIRED_HEADINGS)
-    previous = violations(PREVIOUS_REQUIRED_HEADINGS)
-    return [] if not current or not previous or not legacy else current
+    return [] if any(not violations(contract) for contract in (
+        REQUIRED_HEADINGS, GENERAL_REQUIRED_HEADINGS, PREVIOUS_REQUIRED_HEADINGS, LEGACY_REQUIRED_HEADINGS
+    )) else current

@@ -5,18 +5,43 @@ from unittest.mock import Mock
 
 from cutnotes_core.editorial_edits import evidence_for, relevance_review, revision_issues, revision_review, validate_extracted_facts
 from cutnotes_core.formatter_candidate import format_candidate
+from cutnotes_core.apple_editorial import EditorialQuestions
+import json
 
 
 class EditorialEditsTests(unittest.TestCase):
-    def test_single_statement_needs_no_model_reinterpretation(self):
+    def test_single_statement_uses_the_shared_editing_pass(self):
         runner = runpy.run_path(str(Path(__file__).resolve().parents[1] / "scripts/experiment-apple-formatter.py"))
         native = object.__new__(runner["NativeQuestions"])
-        native.generate = Mock(side_effect=AssertionError("Single statements must stay local source text"))
-        for source in ("The grading feels too cool.", "The rim light is too soft.", "Keep the current timing."):
-            result = native.revise(source)
-            self.assertEqual(result["proposed"], source)
-            self.assertEqual(result["strategy"], "single_statement_preserved")
-        native.generate.assert_not_called()
+        native.generate = Mock(return_value={"text": "I really like the look from the light diffuser."})
+        result = native.revise("Yeah, I really like the look we got with that cool little light diffuser.")
+        self.assertTrue(result["accepted_for_review"])
+        self.assertEqual(result["proposed"], "I really like the look from the light diffuser.")
+        native.generate.assert_called_once()
+
+    def test_failed_revision_gets_one_grounded_repair(self):
+        source = "Maybe lower the sound slightly. The dialogue is hard to hear."
+        generate = Mock(side_effect=[{"text": "Lower the sound."},
+                                     {"text": "Maybe lower the sound slightly; the dialogue is hard to hear."}])
+        review = EditorialQuestions(generate).revise(source)
+        self.assertTrue(review["accepted_for_review"])
+        self.assertEqual(len(review["attempts"]), 2)
+        repair = json.loads(generate.call_args_list[1].args[1]["prompt"])
+        self.assertEqual(repair["source"], source)
+        self.assertIn("Uncertainty may be missing", repair["repair_issues"])
+
+    def test_failed_repair_stops_and_retains_both_proposals(self):
+        generate = Mock(return_value={"text": "Make the coat blue."})
+        review = EditorialQuestions(generate).revise("The coat is blue.")
+        self.assertFalse(review["accepted_for_review"])
+        self.assertEqual(generate.call_count, 2)
+        self.assertEqual(len(review["attempts"]), 2)
+
+    def test_repeated_time_reference_can_be_summarized_but_not_replaced(self):
+        source = "Maybe use the shot from [10:10]. Something from [10:10] could work."
+        self.assertEqual(revision_issues(source, "Maybe use the shot from [10:10]."), [])
+        self.assertIn("CUT time references changed or omitted",
+                      revision_issues(source, "Maybe use the shot from [10:12]."))
 
     def test_evidence_preserves_every_sentence_without_inventing_a_request(self):
         source = "The lamp is off. It looks odd. It would be nice if it were on."
@@ -70,6 +95,15 @@ class EditorialEditsTests(unittest.TestCase):
         self.assertIn("Condition may be missing", revision_issues(
             "I don't know if the tracks overlap. If time permits, check them.",
             "Maybe the tracks overlap. Check them."))
+
+    def test_uncertainty_and_unclear_paraphrases_do_not_lose_negation(self):
+        for source, proposal in (
+            ("I don't know about the fonts.", "I'm unsure about the fonts."),
+            ("The sound is not clear.", "The sound is unclear."),
+        ):
+            self.assertEqual(revision_issues(source, proposal), [])
+        self.assertTrue(revision_issues("I don't know if the music works.", "The music works."))
+        self.assertTrue(revision_issues("The sound is unclear.", "The sound is clear."))
 
     def test_explicit_general_feedback_survives_a_wrong_background_classification(self):
         markdown, audit = format_candidate(transcript="Overall, looks wonderful.", title="Review", review_date="2026-09-22",

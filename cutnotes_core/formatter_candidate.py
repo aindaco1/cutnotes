@@ -12,8 +12,8 @@ import re
 from typing import Callable
 
 from .formatting import (
-    BRACKETED_TIMECODE, DraftNote, SourceUnit, _NUMBER_PHRASE, _number_phrase,
-    canonicalize_timecodes, render_editorial_draft, source_timecodes,
+    DraftNote, SourceUnit, NUMBER_WORDS, _NUMBER_PHRASE, _number_phrase,
+    canonicalize_timecodes, note_timing, render_editorial_draft, source_timecodes,
 )
 
 
@@ -31,6 +31,7 @@ ENDING = re.compile(r"\b(?:at the end|last frame|final (?:image|frame)|outro|end
 BEGINNING = re.compile(r"\b(?:opening shot|at the beginning)\b", re.I)
 CONTINUATION = re.compile(r"^(?:it\b|this\b|that\b|they\b|he\b|she\b|maybe\b|perhaps\b|I don['’]t\b|I mean\b|if\b)", re.I)
 PREFACE = re.compile(r"^(?:this is (?:a )?)?(?:bonus|final) (?:thing|thought|note)[.!?]*$", re.I)
+FILLER_ONLY = re.compile(r"(?:(?:okay|ok|um|uh|hmm|yeah)[,\s.!?]*)+", re.I)
 INTRO = re.compile(r"^(?:(?:okay|ok|um|uh|so|again|just|right|at)[,\s]+)+", re.I)
 TIMING_FILLER = re.compile(
     r"^(?:(?:okay|ok|um|uh|so|again|just|right|at|for|with|a|the|beginning|to|that|"
@@ -66,7 +67,9 @@ def copyedit_issues(source: str, candidate: str) -> list[str]:
 def clean_disfluencies(text: str) -> str:
     """Only mechanical deletions; never infer a desired edit or repair a name."""
     text = re.sub(r"\b(?:um|uh)\b[,\s]*", "", text, flags=re.I)
-    text = re.sub(r"\b(\w+)(?:\s+\1\b)+", r"\1", text, flags=re.I)
+    text = re.sub(r"\b(\w+)(?:\s+\1\b)+",
+                  lambda m: m[0] if m[1].isdigit() or m[1].casefold() in NUMBER_WORDS else m[1],
+                  text, flags=re.I)
     # A repeated lead-in with an abandoned partial word: "with the d with the drawing".
     text = re.sub(r"\b((?:with|on|in|to|for) the) ([a-z]{1,2}) \1 (\2[a-z]{2,})\b",
                   r"\1 \3", text, flags=re.I)
@@ -133,9 +136,8 @@ def format_candidate(*, transcript: str, title: str, review_date: str,
             if seconds is not None:
                 normalized = f"[00:{seconds:02d}]"
                 warnings.append(f"{source_id}: speaker gives an uncertain timing correction; both times are retained.")
-        times = tuple(source_timecodes(normalized))
+        times, body = note_timing(normalized)
         units.append(SourceUnit(source_id, original, times))
-        body = BRACKETED_TIMECODE.sub("", normalized).strip(" ,.")
         body = INTRO.sub("", body).strip(" ,.")
         retrospective = bool(RETROSPECTIVE.search(cleaned))
         timing_only = bool(times) and bool(
@@ -173,6 +175,10 @@ def format_candidate(*, transcript: str, title: str, review_date: str,
             if affirmation and passages and set(times).intersection(passages[-1].times):
                 passages[-1].texts.append(affirmation.group()[0].upper() + affirmation.group()[1:] + ".")
             previous_source, previous_was_cue = original, True
+            continue
+
+        if not times and (not body or FILLER_ONLY.fullmatch(body)):
+            row["dictation_filler"] = True
             continue
 
         context = f"Previous sentence: {previous_source or '(none)'}\nTarget sentence: {body}"
@@ -247,12 +253,25 @@ def format_candidate(*, transcript: str, title: str, review_date: str,
                 continue
             if classification["disposition"] == "review":
                 warnings.append(" / ".join(passage.source_ids) + ": uncertain relevance; retained for review.")
-        body = edit(source_body) if edit else source_body
-        if revise:
-            revision = revise(source_body)
+        body = source_body
+        if revise or edit:
+            if revise:
+                revision = revise(source_body)
+            else:
+                proposed = edit(source_body)
+                if not isinstance(proposed, str) or not proposed.strip():
+                    raise ValueError("Native Apple editing returned no text")
+                revision = {"proposed": proposed, "issues": copyedit_issues(source_body, proposed)}
             body = revision.get("proposed")
             if not isinstance(body, str) or not body.strip() or not isinstance(revision.get("issues"), list):
                 raise ValueError("Invalid evidence-based revision")
+            revision = dict(revision, issues=list(revision["issues"]))
+            # Locations were removed before editing. Inline references must stay
+            # with this passage; a document-wide allowlist cannot establish that.
+            if source_timecodes(body) != source_timecodes(source_body) and "CUT time references changed or omitted" not in revision["issues"]:
+                revision["issues"].append("CUT time references changed or omitted")
+            if "accepted_for_review" in revision:
+                revision["accepted_for_review"] = not revision["issues"]
             revisions.append({"source_ids": passage.source_ids, "source": source_body, **revision,
                               "accepted": not revision["issues"]})
             if revision["issues"]:
@@ -260,13 +279,6 @@ def format_candidate(*, transcript: str, title: str, review_date: str,
                 warnings.append(" / ".join(passage.source_ids) + ": revision needs review; source wording retained.")
         if not isinstance(body, str) or not body.strip():
             raise ValueError("Native Apple editing returned no text")
-        if edit:
-            issues = copyedit_issues(source_body, body)
-            revisions.append({"source_ids": passage.source_ids, "source": source_body,
-                              "proposed": body, "accepted": not issues, "issues": issues})
-            if issues:
-                body = source_body
-                warnings.append(" / ".join(passage.source_ids) + ": copyedit exceeded the source-preserving contract; source wording retained for review.")
         note = DraftNote("Overall feedback" if passage.location == "general" else "Editorial feedback",
                          body.strip(), tuple(passage.source_ids),
                          location=passage.location, timecodes=passage.times,

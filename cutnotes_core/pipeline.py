@@ -427,7 +427,7 @@ def record_audio(
             "Recording was cancelled.",
             EXIT_CANCELLED,
             code="cancelled",
-            recovery="Start a new session when ready; any captured audio was preserved.",
+            recovery="Start a new session when ready.",
             preserved=PreservedArtifacts(audio=has_audio),
         )
     if not has_audio:

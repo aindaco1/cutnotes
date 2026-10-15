@@ -6,9 +6,25 @@ from unittest.mock import patch
 
 from scripts import jev_evaluation as jev
 from scripts import readability_evaluation as readability
+from scripts.apple_test_support import parse_notes
+from cutnotes_core.formatting import DraftNote, render_editorial_draft, validate_markdown
 
 
 class ReadabilityEvaluationTests(unittest.TestCase):
+    def test_overall_paragraphs_render_once_and_remain_evaluable(self):
+        paragraphs = ['The pacing works.', 'The sound is clear.', 'The ending is strong.']
+        markdown = render_editorial_draft(title='Review', review_date='2026-10-14', units=[],
+            general_notes=[DraftNote('Overall feedback', body, ()) for body in paragraphs], timestamped_notes=[])
+        self.assertEqual(markdown.count('Overall feedback'), 1)
+        self.assertIn('\n\n'.join(paragraphs), markdown)
+        self.assertEqual([row['text'] for row in parse_notes(markdown)], paragraphs)
+        self.assertEqual(validate_markdown(markdown), [])
+        old = markdown.replace('## Overall feedback', '## General feedback')
+        for paragraph in paragraphs:
+            old = old.replace(paragraph, '- ' + paragraph)
+        self.assertEqual(validate_markdown(old), [])
+        self.assertEqual(parse_notes(old), parse_notes(markdown))
+
     def test_rubric_is_separate_from_the_frozen_gate(self):
         before = jev.protocol_digest()
         rows, metadata = readability.prepare()

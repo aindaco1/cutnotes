@@ -275,8 +275,7 @@ class CutNotesUnitTests(unittest.TestCase):
         )
         self.assertEqual(cutnotes.validate_markdown(markdown), [])
         self.assertLess(markdown.index("00:37"), markdown.index("00:40"))
-        self.assertNotIn("## Overall", markdown)
-        self.assertIn("## General feedback", markdown)
+        self.assertIn("## Overall feedback", markdown)
 
     def test_draft_payload_keeps_grounding_ids_out_of_reader_prose(self) -> None:
         notes = cutnotes.draft_notes_from_payload(
@@ -738,7 +737,7 @@ output.write_text(json.dumps({"schema_version": "cutnotes.local.editorial.v1", "
 
             self.assertEqual(result.returncode, 0, result.stderr)
             self.assertTrue(output.is_file())
-            self.assertIn("## General feedback", output.read_text(encoding="utf-8"))
+            self.assertIn("## Overall feedback", output.read_text(encoding="utf-8"))
             markdown = output.read_text(encoding="utf-8")
             self.assertIn("SENSITIVE_MARKER", markdown)
             for index in range(1, 81):

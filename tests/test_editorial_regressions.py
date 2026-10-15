@@ -326,7 +326,7 @@ class EditorialRegressionTests(unittest.TestCase):
             return [f.DraftNote("Feedback", " ".join(unit.text for unit in selected), tuple(sorted(ids)))]
         markdown = self.render(transcript, generate)
         general, timed = markdown.split("## Timestamped feedback")
-        self.assertEqual(general.count("- **"), 2)
+        self.assertEqual(len(general.split("## Overall feedback\n\n")[1].strip().split("\n\n")), 2)
         self.assertIn("lot of charm", general)
         self.assertIn("dialogue forward", general)
         self.assertIn("| **00:11–00:12** |", timed)

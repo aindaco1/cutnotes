@@ -9,6 +9,7 @@ from cutnotes_core import providers as p
 from cutnotes_core.apple_editorial import EditorialQuestions
 from cutnotes_core.contracts import CutNotesError, EXIT_FORMATTING, ProgressReporter
 from cutnotes_core.transcription import evidence_path, text_digest
+from cutnotes_core.formatter_candidate import format_candidate
 
 
 class AppleEditorialTests(unittest.TestCase):
@@ -49,12 +50,27 @@ class AppleEditorialTests(unittest.TestCase):
             self.assertEqual(call.kwargs['payload_key'], 'result')
             self.assertNotIn('the light is warm', call.kwargs['instructions'])
 
-    def test_single_observation_is_never_reinterpreted(self):
-        generate = mock.Mock(side_effect=AssertionError('No rewrite is needed'))
+    def test_concise_observation_can_remain_unchanged_after_editing(self):
+        generate = mock.Mock(return_value={'text': 'The grade is warm.'})
         review = EditorialQuestions(generate).revise('The grade is warm.')
         self.assertEqual(review['proposed'], 'The grade is warm.')
-        self.assertEqual(review['strategy'], 'single_statement_preserved')
-        generate.assert_not_called()
+        self.assertEqual(review['strategy'], 'apple_passage_edit')
+        self.assertTrue(review['accepted_for_review'])
+        generate.assert_called_once()
+
+    def test_spelling_context_is_edit_metadata_not_classification_evidence(self):
+        context = 'Aeris = Iris (film title spelling)'
+        with mock.patch.object(p, '_generate_with_apple', side_effect=self.response) as generate:
+            p.format_with_apple(engine='fake', transcript_path=self.source, output_path=self.output,
+                                title='Review', context=context, reporter=self.reporter)
+        for call in generate.call_args_list:
+            request = call.kwargs
+            if request['mode'] == 'editorial-edit':
+                payload = json.loads(request['prompt'])
+                self.assertEqual(payload['spelling_context'], context)
+                self.assertNotIn('Aeris', payload['source'])
+            else:
+                self.assertNotIn('Aeris', request['prompt'])
 
     def test_invalid_decision_preserves_prior_output(self):
         for invalid in ({'answer': 'false'}, None, {'text': 'YES'}):
@@ -74,6 +90,39 @@ class AppleEditorialTests(unittest.TestCase):
             with self.assertRaises(CutNotesError) as raised:
                 self.run_format()
         self.assertEqual(raised.exception.code, 'apple_model_unavailable')
+        self.assertFalse(self.output.exists())
+
+    def test_failed_time_validation_retains_unique_audit_and_previous_notes(self):
+        source = self.source.read_bytes()
+        self.output.write_text('Approved earlier notes')
+        markdown, audit = format_candidate(transcript=source.decode(), title='Review', review_date='2026-10-14',
+                                           ask=lambda *args: False)
+        markdown = markdown.replace('00:05', '99:59')
+        for _ in range(2):
+            with mock.patch.object(p, 'format_candidate', return_value=(markdown, audit)):
+                with self.assertRaises(CutNotesError) as raised:
+                    self.run_format()
+            self.assertEqual(raised.exception.code, 'formatter_timecode_contract_failed')
+            self.assertNotIn('preserved', raised.exception.recovery)
+            self.assertTrue(raised.exception.preserved.transcript)
+        reviews = list(self.root.glob('*.formatting-review-*.json'))
+        self.assertEqual(len(reviews), 2)
+        for path in reviews:
+            saved = json.loads(path.read_text())
+            self.assertEqual(saved['validation'], {'status': 'failed', 'code': 'formatter_timecode_contract_failed'})
+            self.assertEqual(saved['candidate_markdown'], markdown)
+            self.assertEqual(saved['source_transcript_sha256'], text_digest(source.decode()))
+        self.assertEqual(self.output.read_text(), 'Approved earlier notes')
+        self.assertEqual(self.source.read_bytes(), source)
+
+    def test_audit_write_failure_does_not_hide_the_formatting_error(self):
+        markdown, audit = format_candidate(transcript=self.source.read_text(), title='Review', review_date='2026-10-14',
+                                           ask=lambda *args: False)
+        with mock.patch.object(p, 'format_candidate', return_value=(markdown.replace('00:05', '99:59'), audit)), \
+                mock.patch.object(p, 'write_json', side_effect=OSError('Disk unavailable')):
+            with self.assertRaises(CutNotesError) as raised:
+                self.run_format()
+        self.assertEqual(raised.exception.code, 'formatter_timecode_contract_failed')
         self.assertFalse(self.output.exists())
 
     def test_context_or_guardrail_limit_keeps_source_and_reports_it(self):

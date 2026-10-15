@@ -92,3 +92,7 @@ class DevelopmentWorkflowTests(unittest.TestCase):
         policy = jev.load_policy()
         self.assertIsNotNone(policy)
         self.assertEqual(policy['protocol_sha256'], jev.protocol_digest())
+        # The paragraph parser must not change the previously calibrated inputs.
+        rows, _ = calibrator['prepare']('all')
+        self.assertEqual(jev.digest(jev.encode(rows)),
+                         '70cd6acc8573cdf73e123d9d3a1648391a7b0840d0e38fbe03110a6391d97ac4')

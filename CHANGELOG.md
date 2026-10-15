@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.0.9] - 2026-10-14
+
+- Render overall feedback as paragraphs under one heading. Summarize dictated feedback into natural prose, including single-sentence notes, with one grounded repair attempt when an edit fails preservation checks.
+- Recognize filler-separated and restarted spoken CUT times before copyediting. Preserve repeated number words, explicit ranges, and earlier-shot references without moving them to the note's primary location.
+- Reject unsupported time changes within each edited passage and retain failed validation drafts in unique local review records. Keep original media, transcripts, and prior notes intact.
+- Keep spelling context separate from feedback and classification evidence.
+- Report preserved artifacts once in app and terminal errors.
+
+Review generated notes before sharing. Apple can retain original wording when a rewrite fails preservation checks or the on-device model declines a passage; this release does not guarantee fully automatic editorial summaries.
+
 ## [1.0.8] - 2026-09-25
 
 - Adopt the shared Apple support core through the compatible desktop diagnostics API. Preserve reviewed reports, explicit sending, update consent and existing app behavior.

@@ -435,13 +435,17 @@ def main(argv: list[str] | None = None) -> int:
         else:
             eprint(f"cutnotes: {error}")
             eprint(f"Recovery: {error.recovery}")
+            if error.preserved.audio:
+                eprint("Captured audio was preserved.")
+            if error.preserved.transcript:
+                eprint("The transcript was preserved.")
         return error.exit_code
     except KeyboardInterrupt:
         error = CutNotesError(
             "Interrupted.",
             EXIT_CANCELLED,
             code="cancelled",
-            recovery="Run CutNotes again when ready; completed artifacts were preserved.",
+            recovery="Run CutNotes again when ready.",
         )
         if machine:
             print(json.dumps(error.payload(), separators=(",", ":")), file=sys.stderr)
