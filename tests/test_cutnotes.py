@@ -351,7 +351,7 @@ class CutNotesUnitTests(unittest.TestCase):
             ["import", "/tmp/review.mov", "--title", "Demo"]
         )
         self.assertEqual(args.transcriber, "parakeet")
-        self.assertEqual(args.formatter, "apple")
+        self.assertEqual(args.formatter, "gemma")
         self.assertFalse(args.transcript_only)
 
     def test_four_hour_import_limit_is_exact(self) -> None:
@@ -522,7 +522,8 @@ class CutNotesUnitTests(unittest.TestCase):
                 "apple": {"state": "ready"},
             },
             "parakeet": {"state": "ready"},
-            "apple_formatter": {"state": "ready"},
+            "apple_formatter": {"state": "unavailable"},
+            "gemma_formatter": {"state": "ready"},
             "ffprobe": {"path": "/fake/ffprobe", "version": "ffprobe test"},
             "microphones": [{"index": 1, "name": "MacBook Pro Microphone"}],
         }
@@ -544,7 +545,7 @@ class CutNotesUnitTests(unittest.TestCase):
         self.assertEqual(interactive_args.title, "Demo Rough Cut")
         self.assertFalse(interactive_args.transcript_only)
         self.assertEqual(interactive_args.transcriber, "parakeet")
-        self.assertEqual(interactive_args.formatter, "apple")
+        self.assertEqual(interactive_args.formatter, "gemma")
 
 
 class CutNotesIntegrationTests(unittest.TestCase):
@@ -578,7 +579,7 @@ class CutNotesIntegrationTests(unittest.TestCase):
             runtime.mkdir(parents=True)
             self.make_executable(
                 runtime,
-                "python3",
+                "python3.14",
                 """#!/bin/sh
 printf 'ENTRYPOINT=%s\\n' "$1"
 printf 'ARG=%s\\n' "$2"
@@ -666,83 +667,6 @@ output.write_text(json.dumps(draft), encoding="utf-8")
             self.assertEqual(Path(payload["markdown"]), output.resolve())
             self.assertIn("**00:05**", output.read_text(encoding="utf-8"))
             self.assertIn("Shorten the shot.", output.read_text(encoding="utf-8"))
-
-    def test_apple_format_preserves_long_transcript_on_context_and_guardrail_limits(self) -> None:
-        with tempfile.TemporaryDirectory() as temporary_directory:
-            temp = Path(temporary_directory)
-            transcript = temp / "transcript.txt"
-            output = temp / "feedback.md"
-            transcript.write_text(
-                " ".join(
-                    (
-                        "Editorial observation 40 contains SENSITIVE_MARKER and must still be preserved."
-                        if index == 40
-                        else f"Editorial observation {index} should preserve this distinct requested change."
-                    )
-                    for index in range(1, 81)
-                ),
-                encoding="utf-8",
-            )
-
-            fake_engine = self.make_executable(
-                temp,
-                "CutNotesLocal",
-                """#!/usr/bin/env python3
-import json
-import pathlib
-import sys
-
-args = sys.argv[1:]
-prompt = pathlib.Path(args[args.index("--prompt") + 1]).read_text(encoding="utf-8")
-if "SENSITIVE_MARKER" in prompt:
-    print(
-        "CutNotesLocal: guardrailViolation: May contain unsafe content",
-        file=sys.stderr,
-    )
-    raise SystemExit(1)
-if len(prompt) > 2_500:
-    print(
-        "CutNotesLocal: exceededContextWindowSize: maximum allowed context size of 4096",
-        file=sys.stderr,
-    )
-    raise SystemExit(1)
-output = pathlib.Path(args[args.index("--output") + 1])
-mode = args[args.index("--mode") + 1]
-result = {"answer": False} if mode == "editorial-decision" else {"text": "YES"}
-output.write_text(json.dumps({"schema_version": "cutnotes.local.editorial.v1", "result": result}), encoding="utf-8")
-""",
-            )
-            environment = os.environ.copy()
-            environment["CUTNOTES_LOCAL_ENGINE"] = str(fake_engine)
-
-            result = subprocess.run(
-                [
-                    sys.executable,
-                    str(SCRIPT),
-                    "format",
-                    str(transcript),
-                    "--title",
-                    "Long Review",
-                    "--output",
-                    str(output),
-                    "--formatter",
-                    "apple",
-                    "--json",
-                ],
-                check=False,
-                capture_output=True,
-                text=True,
-                env=environment,
-            )
-
-            self.assertEqual(result.returncode, 0, result.stderr)
-            self.assertTrue(output.is_file())
-            self.assertIn("## Overall feedback", output.read_text(encoding="utf-8"))
-            markdown = output.read_text(encoding="utf-8")
-            self.assertIn("SENSITIVE_MARKER", markdown)
-            for index in range(1, 81):
-                self.assertIn(f"Editorial observation {index} ", markdown)
-            self.assertIn("SENSITIVE_MARKER", transcript.read_text(encoding="utf-8"))
 
     def test_format_rejects_non_utf8_transcript_with_machine_error(self) -> None:
         with tempfile.TemporaryDirectory() as temporary_directory:

@@ -8,9 +8,9 @@ CutNotes source code is MIT-licensed. Release builds aggregate the components be
 
 | Component | Pinned version | License | Purpose |
 |---|---:|---|---|
-| Python | 3.14.7 | PSF License | Bundled CLI interpreter |
+| Python | 3.14.8 | PSF License | Bundled CLI interpreter |
 | FFmpeg / FFprobe | 8.1.1 | LGPL 2.1 or later | Recording, media probing, decoding, and chunking |
-| Dust Wave Platform native | Exact `shared/dust-wave-platform` gitlink | MIT, retaining Record attribution | Local speech and Apple generation adapters |
+| Dust Wave Platform native | Exact `shared/dust-wave-platform` gitlink | MIT, retaining Record attribution | Local speech adapter |
 | FluidAudio | 0.15.6 | Apache 2.0 | Core ML Parakeet inference |
 | Sparkle | 2.9.6 | MIT plus bundled external notices | Signed app updates |
 | OpenSSL | 3.6.3 | Apache 2.0 | Python HTTPS support |
@@ -36,3 +36,14 @@ The model weights are not included in the app or DMG. After explicit user accept
 - License text: <https://creativecommons.org/licenses/by/4.0/legalcode>
 
 An attribution file is installed beside the downloaded model.
+
+## Gemma formatting
+
+Gemma 4 12B instruction model: Google, Apache 2.0. The separate 6-bit MLX conversion is `mlx-community/gemma-4-12B-it-6bit`, pinned at revision `2fe53aeb9b8686eefa543a60d6aa364c5b219aac`. Model weights are downloaded only after license acceptance and verified against `cutnotes_core/data/gemma-model.json`.
+
+- Original model and license: https://huggingface.co/google/gemma-4-12B-it
+- Conversion: https://huggingface.co/mlx-community/gemma-4-12B-it-6bit
+- MLX 0.32.4 and MLX LM 0.32.2: MIT, Apple Inc.
+- Transformers 5.22.1: Apache 2.0, Hugging Face.
+
+All inference dependencies are pinned by wheel SHA-256 in `config/gemma-runtime-requirements.txt`. Their distribution metadata and license files are preserved in the bundled Python `site-packages` directory. Gemma model weights and development evaluators are not bundled.

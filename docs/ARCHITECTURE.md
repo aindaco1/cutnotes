@@ -2,7 +2,7 @@
 
 CutNotes is one product with two clients: the human terminal and the SwiftUI app. Both call the same Python pipeline.
 
-`CutNotesLocal` now imports Platform's native speech and Apple generation adapters
+`CutNotesLocal` now imports Platform's native speech adapter
 through the pinned `shared/dust-wave-platform` submodule. The Python pipeline
 still owns editorial policy, prompts, provider selection and source preservation;
 FluidAudio stays at 0.15.6. See [the migration guide](SHARED_NATIVE_MIGRATION.md).
@@ -12,7 +12,8 @@ SwiftUI app ── typed argv + FD 3/4 ─┐
                                     ├─> Python CLI/pipeline
 Terminal user ── argparse + stdin ──┘        │
                                              ├─ FFmpeg / FFprobe
-                                             ├─ CutNotesLocal (Parakeet / Apple)
+                                             ├─ CutNotesLocal (Parakeet)
+                                             ├─ Bundled MLX (Gemma, offline)
                                              ├─ MacWhisper CLI (optional)
                                              └─ Codex CLI (optional)
 ```
@@ -39,45 +40,21 @@ The Python `doctor` contract exposes the model's supported language codes and na
 
 ## Formatting
 
-Python normalizes clear spoken and compact CUT timecodes before provider use, then groups coherent passages at timestamp and natural topic boundaries. Natural general-feedback transitions clear the active timestamp. Adjacent markers can form a range when the surrounding note is continuous. All passages remain eligible for formatting, including feedback after untimed opening conversation. Retrospective time corrections remain attached to the preceding passage; relative end-of-video suggestions stay separate from general feedback.
+Gemma 4 12B 6-bit is the default local formatter. `gemma_model.py` owns the pinned revision and SHA-256 manifest, hardware/runtime availability, resumable download, import, and atomic installation. The model is 9,760,954,674 bytes and is never included in Git or the app bundle. A verified receipt makes setup checks fast; formatting performs full hash verification. Downloads and imports never modify the user's source media or supplied model folder.
 
-The same parser recognizes bounded fillers and number restarts before prose cleanup.
-Repeated number words remain evidence. The Apple passage formatter separates a
-note's primary location from inline `from`/`until` references; an earlier-shot
-reference does not move the note. Source-owned locations stay outside the edit
-request. Each proposed edit must preserve its passage's inline CUT references
-before the final document-wide validation runs.
+`gemma_formatting.py` uses the accepted four synthetic demonstrations, source-projected timestamp markers, a 4,096-token reasoning budget, fixed sampling settings, and the strict timed/general body contract. No adapter weights are used. The complete dictation remains available to incorporate later qualifications into earlier notes. No private benchmark or Astra output is embedded in the prompt.
 
-Apple handles small classification and editing requests through
-`cutnotes.local.editorial.v1`. Shared Python prompts summarize each passage,
-including single sentences, into concise prose while preserving qualifications
-and concrete details. Already concise statements can remain unchanged. Proposed
-edits are checked for selected changes in meaning; a failed check gets one repair
-attempt grounded in the original source and the specific issues. Spelling context is edit metadata and is never added to classification input. Both proposals
-remain in the audit. A second rejected edit retains the source wording. These
-bounded checks are not a proof of semantic correctness. CutNotes owns timestamps,
-source IDs, rendering, and local audit records. Codex retains its explicit
-optional draft schema and grounding checks; the older native draft/plan helper
-contracts remain supported.
+The core owns timestamp normalization, IDs and headings. The model produces paragraph bodies keyed by those IDs. Unknown, duplicate or missing locations, literal generated timecodes, malformed JSON and model control tokens reject the result. Ambiguous spoken restarts retain a visible timing-review note. These structural checks do not certify semantic completeness.
 
-When record/import supplies exact Parakeet alignment, Python measures relative
-speech levels on an unnormalized temporary PCM copy. Sustained utterances at
-least 18 dB below the recording reference may be excluded from the formatting
-input. The full audio and transcript remain untouched; a local review sidecar
-retains every exclusion. Quiet speech is evidence, not speaker identification.
-Missing or stale alignment preserves all speech, and text-only formatting does
-not guess an audio source. Jev and optional independent verifiers run only in
-development, never in this runtime path.
+One bounded retry handles invalid output. An unsuccessful retry returns `gemma_formatting_failed` and preserves the transcript. Valid notes are published atomically without replacing prior artifacts. Reformatting chooses a new filename. The current input bound is 60,000 prompt tokens; longer transcripts require splitting and are never silently truncated. Audio capture retains its independent four-hour limit.
 
-Apple receives the core-owned task instructions in a separate `--instructions` file, passed to `LanguageModelSession.instructions`; its prompt contains only source observations and spelling context. The native helper generates the body before supporting IDs and title while retaining the existing response schema. Apple requests use alphabetic source-ID aliases so observation numbers cannot be confused with video times. Python maps them back before grounding validation. Temporary request files are removed on success and failure. See Apple's [prompting guidance](https://developer.apple.com/documentation/foundationmodels/prompting-an-on-device-foundation-model).
+MLX loads only the local verified model directory with remote code disabled and Hugging Face offline/telemetry-disabled settings. There are no inference uploads, runtime package installs, audio-based source exclusions, automatic audio repairs or silent provider fallbacks. MacWhisper and Codex remain explicit optional providers. The native helper supports only status and Parakeet transcription; it no longer imports Apple generation frameworks. Legacy Apple status fields remain unavailable in the additive v1 doctor contract for compatibility.
 
-The renderer emits two sections: paragraphs under one Overall feedback heading and a chronological video-time table. Validation still accepts older General feedback documents. Distinct issues can share a timestamp. Both general and timestamped requests use bounded source batches. Long single observations can be split again after context or guardrail rejection. The optional Codex draft path returns `formatter_incomplete` for a timed passage with no accepted draft, even if another note covers its timestamp. Apple instead retains rejected passages with a warning and local review evidence, as described above. Structural completeness does not mean every passage was successfully summarized. Neither provider invents replacement advice for missing drafts. If no usable notes remain, formatting returns `formatter_contract_failed` and preserves the transcript. Invented or omitted detected CUT times still reject the document before atomic replacement. These structural checks do not establish semantic completeness; native content acceptance remains a separate gate.
-
-There is no automatic provider fallback. MacWhisper is passively discovered during setup and invoked through `mw transcribe` only when explicitly selected; setup does not query its version or models.
+Jev is a development-only evaluator on verified public synthetic fixtures. It is not bundled or invoked by the app or CLI. Its calibration questions and policy remain fixed when comparing formatters.
 
 ## Packaging
 
-The DMG contains one arm64 app. Its Resources contain the CLI, Python framework, minimal FFmpeg/FFprobe runtime, native helper, licenses, and icon. Model weights remain in Application Support. Sparkle checks a signed GitHub Releases appcast once per launch and never installs silently.
+The DMG contains one arm64 app. Its Resources contain the CLI, Python framework with hash-pinned macOS 15 MLX dependencies, minimal FFmpeg/FFprobe runtime, native helper, licenses, and icon. Model weights remain in Application Support. Sparkle checks a signed GitHub Releases appcast once per launch and never installs silently.
 
 ## Pause and resume
 

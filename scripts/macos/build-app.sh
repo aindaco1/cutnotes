@@ -35,8 +35,8 @@ fi
 # Xcode 27's Swift Build reconciles this output directory to the selected
 # product graph. Building only CutNotesLocal last removes the app's Sparkle
 # framework. Build both products together so the bundle has one complete graph.
-swift build --package-path "$package_dir" -c "$configuration" --arch arm64
-bin_dir="$(swift build --package-path "$package_dir" -c "$configuration" --arch arm64 --show-bin-path)"
+swift build --scratch-path "${CUTNOTES_SWIFT_SCRATCH:-$package_dir/.build}" --package-path "$package_dir" -c "$configuration" --arch arm64
+bin_dir="$(swift build --scratch-path "${CUTNOTES_SWIFT_SCRATCH:-$package_dir/.build}" --package-path "$package_dir" -c "$configuration" --arch arm64 --show-bin-path)"
 
 rm -rf "$app_bundle"
 mkdir -p "$macos_dir" "$resources_dir" "$frameworks_dir" "$helpers_dir" "$cli_dir/bin"

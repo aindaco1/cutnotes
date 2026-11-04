@@ -250,6 +250,7 @@ public struct DoctorPayload: Codable, Equatable, Sendable {
     public let localEngine: LocalEngine
     public let parakeet: Model
     public let appleFormatter: AppleStatus
+    public let gemmaFormatter: Model?
     public let macwhisper: OptionalTool
     public let codex: OptionalTool
     public let microphones: [Microphone]
@@ -262,6 +263,7 @@ public struct DoctorPayload: Codable, Equatable, Sendable {
         case localEngine = "local_engine"
         case parakeet
         case appleFormatter = "apple_formatter"
+        case gemmaFormatter = "gemma_formatter"
         case macwhisper, codex, microphones
     }
 }

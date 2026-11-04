@@ -10,7 +10,7 @@ CutNotes is free, open-source software under the MIT License.
 - **Import** any audio or video file that the bundled FFmpeg can read.
 - **Format** an existing UTF-8 plain-text transcript.
 - Transcribe locally with the pinned Parakeet TDT 0.6B v3 Core ML model.
-- Format locally with Apple Intelligence when the system model is available.
+- Format and summarize locally with Gemma 4 12B (6-bit), using source-grounded prompts and timestamp checks.
 - Optionally use an installed MacWhisper CLI for transcription or Codex CLI for formatting.
 - Preserve audio and transcripts when a later stage fails.
 - Save every session without overwriting an earlier one.
@@ -41,7 +41,7 @@ The app exposes the same distinction as the **Import** and **Format** buttons.
 
 ## Mac app
 
-CutNotes 1.0 requires Apple Silicon and macOS 15 or later. Apple on-device formatting additionally requires macOS 26, Apple Intelligence enabled, and an available system language model. On other supported systems, transcript-only and Codex formatting remain available.
+CutNotes 1.1 requires Apple Silicon and macOS 15 or later. Gemma formatting requires at least 16 GB of unified memory (24 GB or more recommended) and a one-time 9.76 GB model download. Allow at least 11 GB of free disk space for setup. Apple Intelligence is no longer required. Transcription remains available without the Gemma download.
 
 The app bundles its pinned Python, FFmpeg, FFprobe, native helper, and CLI. It does not bundle the roughly 483 MB Parakeet weights. The first-run setup downloads those exact weights only after license acceptance, verifies every file with SHA-256, then stores them in:
 
@@ -101,11 +101,11 @@ CutNotes exposes all 25 languages listed by the official Parakeet v3 model, usin
 
 ## Privacy
 
-Parakeet transcription and Apple formatting run on the Mac. CutNotes has no telemetry, analytics, accounts, or automatic crash upload. A user may explicitly review and send a bounded support report to the open-source GitHub repository; source media, transcripts, project context, paths, device names, raw logs, and crash stacks cannot enter that report. Selecting Codex CLI or MacWhisper delegates only that stage to the separately installed tool and its own configuration. No provider fallback happens silently. See [docs/PRIVACY.md](docs/PRIVACY.md).
+Parakeet transcription and Gemma formatting run on the Mac. CutNotes has no telemetry, analytics, accounts, or automatic crash upload. A user may explicitly review and send a bounded support report to the open-source GitHub repository; source media, transcripts, project context, paths, device names, raw logs, and crash stacks cannot enter that report. Selecting Codex CLI or MacWhisper delegates only that stage to the separately installed tool and its own configuration. No provider fallback happens silently. See [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Build and test
 
-Requirements: Apple Silicon, Xcode 26, Swift 6, Homebrew Python 3.14.7, and standard macOS build tools.
+Requirements: Apple Silicon, Xcode 26, Swift 6, Homebrew Python 3.14.8, and standard macOS build tools.
 
 ```bash
 git submodule update --init --recursive
@@ -113,7 +113,7 @@ python3 scripts/test.py
 ./script/build_and_run.sh --verify
 ```
 
-The default development suite runs Python/Swift tests, live Jev calibration on public synthetic examples, and native Apple formatting followed by Jev review. Configure the development Cloudflare account as described in [Testing](docs/TESTING.md#default-jev-development-evaluation). Use `python3 scripts/test.py --offline` for the contract-test subset without live inference. Jev is never called by the user app or CLI pipeline.
+The default development suite runs Python/Swift tests, live Jev calibration on public synthetic examples, and native Gemma formatting followed by Jev review. Configure the development Cloudflare account as described in [Testing](docs/TESTING.md#default-jev-development-evaluation). Use `python3 scripts/test.py --offline` for the contract-test subset without live inference. Jev is never called by the user app or CLI pipeline.
 
 The canonical desktop Run action is `./script/build_and_run.sh`. Release details are in [docs/RELEASE.md](docs/RELEASE.md); the architecture and machine contracts are in [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md) and [docs/CLI_PROTOCOL.md](docs/CLI_PROTOCOL.md).
 
@@ -122,3 +122,11 @@ The canonical desktop Run action is `./script/build_and_run.sh`. Release details
 Keep workflow behavior in `cutnotes_core`. Swift may build typed argument arrays and render versioned JSON contracts, but it must not duplicate pipeline policy or parse terminal prose. Add or update both Python and Swift contract tests when a machine field changes.
 
 Third-party licensing and model attribution are listed in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
+
+## Gemma setup
+
+In the app, choose **Set Up Gemma 4 12B**, review the Apache 2.0 license, and choose **Accept & Download**. Interrupted downloads can be resumed. Every model file is checked against the pinned SHA-256 manifest before installation and before formatting. After setup, formatting needs no internet connection.
+
+Terminal setup uses `cutnotes model download --kind formatting --accept-license`. `cutnotes model status --kind formatting --json` reports readiness. To use an existing copy of the exact pinned model, run `cutnotes model import /path/to/model --kind formatting`. The transcription model commands continue to default to Parakeet.
+
+Existing Apple-formatting preferences migrate to Gemma. Codex remains an explicitly selected optional provider. Gemma preserves uncertain timestamp interpretations in a review note; review the generated prose for meaning before sharing it. A failed structural check preserves the transcript and returns an error rather than saving partial notes.

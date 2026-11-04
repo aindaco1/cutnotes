@@ -27,6 +27,8 @@ from .contracts import (
 )
 from .filesystem import allocate_session_paths, project_directory, slugify, write_json
 from .models import default_model_directory, validate_model
+from .gemma_model import require_ready
+from .gemma_formatting import format_with_gemma
 from .providers import (
     CODEX_CANDIDATES,
     MACWHISPER_CANDIDATES,
@@ -464,15 +466,9 @@ def _required_pipeline_tools(args) -> tuple[str, str | None, str | None]:
     else:
         transcriber_tool = require_tool("CUTNOTES_MACWHISPER", "mw", MACWHISPER_CANDIDATES)
     if not args.transcript_only and args.formatter != "none":
-        if args.formatter == "apple":
-            formatter_tool = find_local_engine()
-            if not formatter_tool:
-                raise CutNotesError(
-                    "The bundled CutNotes local engine was not found.",
-                    EXIT_DEPENDENCY,
-                    code="local_engine_missing",
-                    recovery="Reinstall CutNotes or explicitly choose Codex.",
-                )
+        if args.formatter == "gemma":
+            require_ready()
+            formatter_tool = sys.executable
         else:
             formatter_tool = require_tool("CUTNOTES_CODEX", "codex", CODEX_CANDIDATES)
     return ffmpeg, transcriber_tool, formatter_tool
@@ -526,17 +522,9 @@ def _format(
     ffmpeg: str | None = None,
 ) -> None:
     reporter.stage("formatting", f"Formatting notes with {args.formatter}")
-    if args.formatter == "apple":
-        format_with_apple(
-            engine=provider_tool,
-            audio_path=audio_path,
-            ffmpeg=ffmpeg,
-            transcript_path=transcript_path,
-            output_path=markdown_path,
-            title=args.title,
-            context=args.context,
-            reporter=reporter,
-        )
+    if args.formatter == "gemma":
+        format_with_gemma(transcript_path=transcript_path, output_path=markdown_path,
+                          title=args.title, context=args.context, reporter=reporter)
     else:
         format_with_codex(
             executable=provider_tool,
@@ -565,8 +553,8 @@ def _metadata(args, *, status: str, **extra) -> dict:
             "formatting": (
                 None
                 if args.transcript_only or args.formatter == "none"
-                else "Apple system language model"
-                if args.formatter == "apple"
+                else "Gemma 4 12B 6-bit"
+                if args.formatter == "gemma"
                 else (args.codex_model or "Codex CLI default")
             ),
         },
@@ -763,18 +751,22 @@ def run_format(args) -> dict:
             code="transcript_encoding",
             recovery="Save the transcript as UTF-8 and try again.",
         ) from error
-    if args.formatter == "apple":
-        provider_tool = find_local_engine()
-        if not provider_tool:
-            raise CutNotesError(
-                "The bundled CutNotes local engine was not found.",
-                EXIT_DEPENDENCY,
-                code="local_engine_missing",
-                recovery="Reinstall CutNotes or explicitly choose Codex.",
-            )
+    if args.formatter == "gemma":
+        try:
+            require_ready()
+        except CutNotesError as error:
+            error.preserved = PreservedArtifacts(transcript=True)
+            raise
+        provider_tool = sys.executable
     else:
         provider_tool = require_tool("CUTNOTES_CODEX", "codex", CODEX_CANDIDATES)
     output = Path(args.output).expanduser().resolve() if args.output else transcript.with_name(f"{slugify(args.title)}.md")
+    if output.exists() or output.is_symlink():
+        stem, suffix = output.stem, output.suffix
+        index = 2
+        while output.exists() or output.is_symlink():
+            output = output.with_name(f"{stem}-{index}{suffix}")
+            index += 1
     reporter = ProgressReporter(args.progress_fd)
     _format(
         args,

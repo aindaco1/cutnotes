@@ -21,9 +21,9 @@ class DevelopmentWorkflowTests(unittest.TestCase):
             def run(args, **kwargs):
                 calls.append(args)
                 code = (calibration_code if 'scripts/calibrate-jev.py' in args else
-                        native_code if 'scripts/check-apple-formatting.py' in args else 0)
+                        native_code if 'scripts/check-gemma-formatting.py' in args else 0)
                 return subprocess.CompletedProcess(args, code)
-            with patch('sys.argv', ['test', '--output-dir', str(output), '--engine', '/test/helper', *flags]), \
+            with patch('sys.argv', ['test', '--output-dir', str(output), *flags]), \
                     patch('subprocess.run', side_effect=run):
                 code = workflow['main']()
             return code, calls, json.loads((output / 'report.json').read_text())
@@ -33,7 +33,7 @@ class DevelopmentWorkflowTests(unittest.TestCase):
         self.assertEqual(code, 0)
         self.assertEqual(len(calls), 4)
         self.assertIn('scripts/calibrate-jev.py', calls[2])
-        self.assertIn('scripts/check-apple-formatting.py', calls[3])
+        self.assertIn('scripts/check-gemma-formatting.py', calls[3])
         self.assertNotIn('--skip-jev', calls[3])
         self.assertTrue(report['full_suite'])
         self.assertFalse(report['release_accepted'])

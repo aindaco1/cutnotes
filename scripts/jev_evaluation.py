@@ -145,10 +145,11 @@ def prepare(evidence_dir):
     evidence_dir = evidence_dir.resolve()
     evidence_bytes = (evidence_dir / "report.json").read_bytes()
     evidence = json.loads(evidence_bytes)
-    if evidence.get("schema_version") != "cutnotes.apple.acceptance.v1" or evidence.get("error"):
-        raise ValueError("Expected a completed native Apple acceptance report")
+    if evidence.get("schema_version") not in {"cutnotes.apple.acceptance.v1", "cutnotes.gemma.acceptance.v1"} or evidence.get("error"):
+        raise ValueError("Expected a completed native formatter acceptance report")
     cases, rubrics = public_cases(), json.loads(RUBRIC.read_text())
-    evaluate = runpy.run_path(str(ROOT / "scripts/check-apple-formatting.py"))["evaluate"]
+    checker = "check-gemma-formatting.py" if evidence["schema_version"] == "cutnotes.gemma.acceptance.v1" else "check-apple-formatting.py"
+    evaluate = runpy.run_path(str(ROOT / "scripts" / checker))["evaluate"]
     prepared, seen = [], set()
     for index, saved in enumerate(evidence.get("cases", [])):
         name = saved.get("name")
@@ -174,7 +175,9 @@ def prepare(evidence_dir):
                 raise ValueError("Saved output changed since native evaluation; nothing was sent")
             markdown = output.decode("utf-8")
             row.update(output_sha256=digest(output), deterministic_failures=evaluate(markdown, case),
-                       requests=requests_for(case["transcript"], markdown, rubrics[name]))
+                       requests=requests_for(case["transcript"],
+                       runpy.run_path(str(ROOT / "scripts" / checker))["evaluation_markdown"](markdown)
+                       if checker == "check-gemma-formatting.py" else markdown, rubrics[name]))
         else:
             row.update(deterministic_failures=["Native formatting produced no notes"], requests=[])
         prepared.append(row)

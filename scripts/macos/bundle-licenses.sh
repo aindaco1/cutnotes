@@ -9,7 +9,7 @@ fi
 app_bundle="$1"
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 licenses_dir="$app_bundle/Contents/Resources/Licenses"
-package_checkouts="$root_dir/macos/.build/checkouts"
+package_checkouts="${CUTNOTES_SWIFT_SCRATCH:-$root_dir/macos/.build}/checkouts"
 
 rm -rf "$licenses_dir"
 mkdir -p "$licenses_dir"

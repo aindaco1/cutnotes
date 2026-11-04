@@ -15,11 +15,15 @@ public enum CutNotesTranscriber: String, CaseIterable, Identifiable, Sendable {
 }
 
 public enum CutNotesFormatter: String, CaseIterable, Identifiable, Sendable {
-    case apple
+    case gemma
     case codex
     case none
 
     public var id: String { rawValue }
+}
+
+public enum CutNotesModelKind: String, Sendable {
+    case transcription, formatting
 }
 
 public struct PipelineOptions: Equatable, Sendable {
@@ -38,7 +42,7 @@ public struct PipelineOptions: Equatable, Sendable {
         root: URL,
         language: String = "en",
         transcriber: CutNotesTranscriber = .parakeet,
-        formatter: CutNotesFormatter = .apple,
+        formatter: CutNotesFormatter = .gemma,
         whisperModel: String? = nil,
         codexModel: String? = nil,
         context: String? = nil,
@@ -97,32 +101,32 @@ public struct CLICommandBuilder: Sendable {
     }
 
     public func doctor() throws -> CLICommand {
-        try CLICommand(executable: executable, arguments: ["doctor", "--json"], label: "doctor")
+        try CLICommand(executable: executable, arguments: ["doctor", "--json", "--progress-fd", String(progressDescriptor)], label: "doctor")
     }
 
-    public func modelStatus() throws -> CLICommand {
+    public func modelStatus(kind: CutNotesModelKind = .transcription) throws -> CLICommand {
         try CLICommand(
             executable: executable,
-            arguments: ["model", "status", "--json"],
+            arguments: ["model", "status", "--kind", kind.rawValue, "--json", "--progress-fd", String(progressDescriptor)],
             label: "model status"
         )
     }
 
-    public func downloadModel() throws -> CLICommand {
+    public func downloadModel(kind: CutNotesModelKind = .transcription) throws -> CLICommand {
         try CLICommand(
             executable: executable,
             arguments: [
-                "model", "download", "--accept-license", "--json",
+                "model", "download", "--kind", kind.rawValue, "--accept-license", "--json",
                 "--progress-fd", String(progressDescriptor),
             ],
             label: "model download"
         )
     }
 
-    public func importModel(from source: URL) throws -> CLICommand {
+    public func importModel(from source: URL, kind: CutNotesModelKind = .transcription) throws -> CLICommand {
         try CLICommand(
             executable: executable,
-            arguments: ["model", "import", try absolute(source), "--json"],
+            arguments: ["model", "import", try absolute(source), "--kind", kind.rawValue, "--json", "--progress-fd", String(progressDescriptor)],
             label: "model import"
         )
     }

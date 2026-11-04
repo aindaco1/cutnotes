@@ -10,6 +10,7 @@ import sys
 import textwrap
 
 from . import VERSION
+from . import gemma_model
 from .contracts import *
 from .filesystem import *
 from .formatting import *
@@ -39,8 +40,9 @@ def doctor_payload() -> tuple[dict, bool]:
         else []
     )
     core_healthy = bool(ffmpeg and ffprobe and local_engine and microphones)
-    apple_ready = engine_status["apple"].get("state") == "ready"
-    default_ready = core_healthy and parakeet["state"] == "ready" and apple_ready
+    gemma = gemma_model.model_status()
+    gemma_ready = gemma["state"] == "ready"
+    default_ready = core_healthy and parakeet["state"] == "ready" and gemma_ready
     payload = {
         "schema_version": "cutnotes.doctor.v1",
         "healthy": core_healthy,
@@ -61,7 +63,8 @@ def doctor_payload() -> tuple[dict, bool]:
         },
         "local_engine": engine_status,
         "parakeet": parakeet,
-        "apple_formatter": engine_status["apple"],
+        "apple_formatter": {"state": "unavailable", "reason": "replaced_by_gemma"},
+        "gemma_formatter": gemma,
         "macwhisper": {
             "path": macwhisper,
             # Even informational mw commands can launch MacWhisper. Setup only
@@ -88,8 +91,8 @@ def print_doctor_report(payload: dict, *, compact: bool = False) -> None:
     print(f"{mark(engine['path'])} CutNotes local engine: {engine['version'] or 'not found'}")
     parakeet = payload["parakeet"]
     print(f"{mark(parakeet['state'] == 'ready')} Parakeet v3 model: {parakeet['state']}")
-    apple = payload["apple_formatter"]
-    print(f"{mark(apple.get('state') == 'ready')} Apple on-device formatter: {apple.get('state', 'unavailable')}")
+    gemma = payload["gemma_formatter"]
+    print(f"{mark(gemma['state'] == 'ready')} Gemma on-device formatter: {gemma['state']}")
     macwhisper = payload["macwhisper"]
     macwhisper_detail = macwhisper["version"] or (
         "installed (not queried)" if macwhisper["path"] else "not found"
@@ -131,20 +134,20 @@ def run_doctor(args: argparse.Namespace) -> int:
         print_doctor_report(payload)
         if payload["parakeet"]["state"] != "ready":
             print("\nInstall the default model with: cutnotes model download", file=sys.stderr)
-        if payload["apple_formatter"].get("state") != "ready":
+        if payload["gemma_formatter"].get("state") != "ready":
             print(
-                "Apple formatting is unavailable here; use --formatter codex or --transcript-only.",
+                "Install Gemma with: cutnotes model download --kind formatting --accept-license",
                 file=sys.stderr,
             )
     return 0 if healthy else EXIT_DEPENDENCY
 
 
 def run_model_status(args: argparse.Namespace) -> int:
-    payload = {"schema_version": "cutnotes.model.v1", **model_status()}
+    payload = {"schema_version": "cutnotes.model.v1", **(gemma_model.model_status() if args.kind == "formatting" else model_status())}
     if args.json:
         print(json.dumps(payload, indent=2))
     else:
-        print(f"Parakeet v3 model: {payload['state']}")
+        print(f"{payload['id']} model: {payload['state']}")
         print(f"Location: {payload['path']}")
         print(f"License: {payload['license']} — {payload['license_url']}")
         if payload["detail"]:
@@ -154,13 +157,13 @@ def run_model_status(args: argparse.Namespace) -> int:
 
 def run_model_download(args: argparse.Namespace) -> int:
     if not args.accept_license and sys.stdin.isatty() and not args.json:
-        print("Parakeet v3 is licensed CC BY 4.0:")
-        print(MODEL_LICENSE_URL)
+        print("Gemma: Apache 2.0" if args.kind == "formatting" else "Parakeet v3: CC BY 4.0")
+        print(gemma_model.MANIFEST["license_url"] if args.kind == "formatting" else MODEL_LICENSE_URL)
         answer = input("Download and install this pinned model? [y/N] ").strip().casefold()
         args.accept_license = answer in ("y", "yes")
     payload = {
         "schema_version": "cutnotes.model.v1",
-        **download_model(
+        **(gemma_model.download_model if args.kind == "formatting" else download_model)(
             accept_license=args.accept_license,
             reporter=ProgressReporter(args.progress_fd),
         ),
@@ -168,16 +171,16 @@ def run_model_download(args: argparse.Namespace) -> int:
     if args.json:
         print(json.dumps(payload, indent=2))
     else:
-        print(f"Parakeet v3 model ready at {payload['path']}")
+        print(f"{payload['id']} model ready at {payload['path']}")
     return 0
 
 
 def run_model_import(args: argparse.Namespace) -> int:
-    payload = {"schema_version": "cutnotes.model.v1", **import_model(Path(args.folder))}
+    payload = {"schema_version": "cutnotes.model.v1", **(gemma_model.import_model if args.kind == "formatting" else import_model)(Path(args.folder))}
     if args.json:
         print(json.dumps(payload, indent=2))
     else:
-        print(f"Parakeet v3 model ready at {payload['path']}")
+        print(f"{payload['id']} model ready at {payload['path']}")
     return 0
 
 
@@ -255,12 +258,12 @@ def run_interactive(_: argparse.Namespace) -> int:
             code="model_missing",
             recovery="Run `cutnotes model download`, then start again.",
         )
-    if payload["apple_formatter"].get("state") != "ready":
+    if payload["gemma_formatter"].get("state") != "ready":
         raise CutNotesError(
-            "Apple on-device formatting is unavailable on this Mac.",
+            "Gemma formatting needs setup on this Mac.",
             EXIT_DEPENDENCY,
-            code="apple_model_unavailable",
-            recovery="Use an advanced command with --formatter codex or --transcript-only.",
+            code="gemma_model_unavailable",
+            recovery="Run `cutnotes model download --kind formatting --accept-license`, or use --transcript-only.",
         )
     title = prompt_for_project_name()
     print("\nHow to give notes:")
@@ -285,7 +288,7 @@ def run_interactive(_: argparse.Namespace) -> int:
         root=os.environ.get("CUTNOTES_ROOT", str(DEFAULT_ROOT)),
         language="en",
         transcriber="parakeet",
-        formatter="apple",
+        formatter="gemma",
         whisper_model=None,
         codex_model=None,
         context=None,
@@ -333,9 +336,9 @@ def add_pipeline_options(parser: argparse.ArgumentParser, *, recording: bool = F
     )
     parser.add_argument(
         "--formatter",
-        choices=("apple", "codex", "none"),
-        default="apple",
-        help="Formatting provider (default: apple; no automatic fallback).",
+        choices=("gemma", "codex", "none"),
+        default="gemma",
+        help="Formatting provider (default: gemma; no automatic fallback).",
     )
     parser.add_argument("--whisper-model", help="Optional MacWhisper engine:model-id override.")
     parser.add_argument("--codex-model", help="Optional Codex CLI model override.")
@@ -373,21 +376,27 @@ def build_parser() -> argparse.ArgumentParser:
 
     doctor = subparsers.add_parser("doctor", help="Check local engines, models, and microphones.")
     doctor.add_argument("--json", action="store_true", help="Print diagnostics as JSON.")
+    doctor.add_argument("--progress-fd", type=_file_descriptor, help=argparse.SUPPRESS)
     doctor.set_defaults(handler=run_doctor)
 
-    model = subparsers.add_parser("model", help="Manage the pinned local Parakeet v3 model.")
+    model = subparsers.add_parser("model", help="Manage the pinned transcription and formatting models.")
     model_commands = model.add_subparsers(dest="model_command", required=True)
     model_status_parser = model_commands.add_parser("status", help="Verify the installed model.")
     model_status_parser.add_argument("--json", action="store_true")
+    model_status_parser.add_argument("--kind", choices=("transcription", "formatting"), default="transcription")
+    model_status_parser.add_argument("--progress-fd", type=_file_descriptor, help=argparse.SUPPRESS)
     model_status_parser.set_defaults(handler=run_model_status)
     model_download_parser = model_commands.add_parser("download", help="Download and verify the model.")
     model_download_parser.add_argument("--accept-license", action="store_true")
     model_download_parser.add_argument("--json", action="store_true")
     model_download_parser.add_argument("--progress-fd", type=_file_descriptor, help=argparse.SUPPRESS)
+    model_download_parser.add_argument("--kind", choices=("transcription", "formatting"), default="transcription")
     model_download_parser.set_defaults(handler=run_model_download)
     model_import_parser = model_commands.add_parser("import", help="Import and verify a downloaded model.")
     model_import_parser.add_argument("folder")
     model_import_parser.add_argument("--json", action="store_true")
+    model_import_parser.add_argument("--kind", choices=("transcription", "formatting"), default="transcription")
+    model_import_parser.add_argument("--progress-fd", type=_file_descriptor, help=argparse.SUPPRESS)
     model_import_parser.set_defaults(handler=run_model_import)
 
     record = subparsers.add_parser("record", help="Record, transcribe, and optionally format notes.")
@@ -409,9 +418,9 @@ def build_parser() -> argparse.ArgumentParser:
     format_transcript.add_argument("-o", "--output", help="Markdown output path.")
     format_transcript.add_argument(
         "--formatter",
-        choices=("apple", "codex"),
-        default="apple",
-        help="Formatting provider (default: apple; no automatic fallback).",
+        choices=("gemma", "codex"),
+        default="gemma",
+        help="Formatting provider (default: gemma; no automatic fallback).",
     )
     format_transcript.add_argument("--codex-model", help="Optional Codex CLI model override.")
     format_transcript.add_argument("--context", help="Optional names or editorial context.")
