@@ -8,7 +8,7 @@ from pathlib import Path
 import sys
 import tempfile
 
-from .contracts import CutNotesError, EXIT_FORMATTING, PreservedArtifacts
+from .contracts import CutNotesError, EXIT_FORMATTING, EXIT_CANCELLED, PreservedArtifacts
 from .experimental_budget import budget_processor, checked_budget_answer, text_only_bias
 from .gemma_model import MANIFEST, require_ready
 from .grounded_notes import build_evidence, projected_time_markers, render_marked_markdown
@@ -100,6 +100,9 @@ def format_with_gemma(*, transcript_path, output_path, title, context, reporter)
                         raise
             write_new(output_path, markdown)
             reporter.progress("formatting", 1, "Notes saved")
+    except KeyboardInterrupt as error:
+        raise CutNotesError("Formatting cancelled.", EXIT_CANCELLED, code="cancelled",
+                            recovery="Run formatting again using the preserved transcript.", preserved=preserved) from error
     except CutNotesError as error:
         error.preserved = preserved
         raise

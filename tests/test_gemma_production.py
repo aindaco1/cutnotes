@@ -10,7 +10,8 @@ from unittest import mock
 
 from cutnotes_core import cli, gemma_model as gm, pipeline
 from cutnotes_core.contracts import CutNotesError
-from cutnotes_core.gemma_formatting import messages_for, write_new
+from cutnotes_core.gemma_formatting import messages_for, write_new, format_with_gemma
+from cutnotes_core.contracts import ProgressReporter
 from cutnotes_core.source_decisions import parse_body_contract
 
 
@@ -120,3 +121,14 @@ class GemmaProductionTests(unittest.TestCase):
         with mock.patch.object(pipeline,'require_tool',return_value='/ffmpeg') as tool, mock.patch.object(pipeline,'find_local_engine',return_value='/local'), mock.patch.object(pipeline,'validate_model'), mock.patch.object(pipeline,'require_ready',side_effect=gm.failure('missing')):
             with self.assertRaises(CutNotesError):pipeline._required_pipeline_tools(args)
         tool.assert_called_once_with('CUTNOTES_FFMPEG','ffmpeg')
+
+    def test_cancel_during_formatting_reports_preserved_transcript(self):
+        source=Path(self.temporary.name)/'transcript.txt'; source.write_text('At 00:09 the shot works.')
+        output=source.with_suffix('.md')
+        with mock.patch('cutnotes_core.gemma_formatting.require_ready',side_effect=KeyboardInterrupt):
+            with self.assertRaises(CutNotesError) as caught:
+                format_with_gemma(transcript_path=source,output_path=output,title='Review',context=None,reporter=ProgressReporter(None))
+        self.assertEqual(caught.exception.code,'cancelled')
+        self.assertTrue(caught.exception.preserved.transcript)
+        self.assertFalse(output.exists())
+        self.assertEqual(source.read_text(),'At 00:09 the shot works.')

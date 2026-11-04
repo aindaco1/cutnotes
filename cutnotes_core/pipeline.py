@@ -631,13 +631,16 @@ def run_record(args) -> dict:
         metadata["status"] = "complete"
         metadata["completed_at"] = dt.datetime.now().astimezone().isoformat()
         write_json(metadata_path, metadata)
-    except CutNotesError as error:
+    except (CutNotesError, KeyboardInterrupt) as failure:
+        error = failure if isinstance(failure, CutNotesError) else CutNotesError(
+            "Processing cancelled.", EXIT_CANCELLED, code="cancelled",
+            recovery="Continue from the preserved audio or transcript.")
         _preserve_session_artifact_flags(error, audio, transcript)
         metadata["status"] = "cancelled" if error.exit_code == EXIT_CANCELLED else "failed"
         metadata["error_code"] = error.code
         metadata["updated_at"] = dt.datetime.now().astimezone().isoformat()
         write_json(metadata_path, metadata)
-        raise
+        raise error
     return result_payload(
         command="record",
         session_dir=session_dir,
@@ -714,13 +717,16 @@ def run_import(args) -> dict:
         metadata["status"] = "complete"
         metadata["completed_at"] = dt.datetime.now().astimezone().isoformat()
         write_json(metadata_path, metadata)
-    except CutNotesError as error:
+    except (CutNotesError, KeyboardInterrupt) as failure:
+        error = failure if isinstance(failure, CutNotesError) else CutNotesError(
+            "Processing cancelled.", EXIT_CANCELLED, code="cancelled",
+            recovery="Continue from the preserved audio or transcript.")
         _preserve_session_artifact_flags(error, audio, transcript)
-        metadata["status"] = "failed"
+        metadata["status"] = "cancelled" if error.exit_code == EXIT_CANCELLED else "failed"
         metadata["error_code"] = error.code
         metadata["updated_at"] = dt.datetime.now().astimezone().isoformat()
         write_json(metadata_path, metadata)
-        raise
+        raise error
     return result_payload(
         command="import",
         session_dir=session_dir,
