@@ -1,0 +1,31 @@
+name: Inspect Notarization
+
+on:
+  workflow_dispatch:
+    inputs:
+      submission_id:
+        description: Apple notarization submission UUID
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  inspect:
+    runs-on: macos-26
+    timeout-minutes: 5
+    steps:
+      - name: Retrieve Apple notarization report
+        env:
+          SUBMISSION_ID: ${{ inputs.submission_id }}
+          NOTARY_KEY_BASE64: ${{ secrets.CUTNOTES_NOTARY_KEY_BASE64 }}
+          NOTARY_KEY_ID: ${{ secrets.CUTNOTES_NOTARY_KEY_ID }}
+          NOTARY_ISSUER: ${{ secrets.CUTNOTES_NOTARY_ISSUER }}
+        run: |
+          [[ "$SUBMISSION_ID" =~ ^[a-fA-F0-9]{8}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{4}-[a-fA-F0-9]{12}$ ]]
+          key_path="$RUNNER_TEMP/notary-inspection-key.p8"
+          trap 'rm -f "$key_path"' EXIT
+          printf '%s' "$NOTARY_KEY_BASE64" | base64 --decode > "$key_path"
+          chmod 600 "$key_path"
+          xcrun notarytool log "$SUBMISSION_ID" --key "$key_path" --key-id "$NOTARY_KEY_ID" --issuer "$NOTARY_ISSUER"
