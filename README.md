@@ -4,7 +4,9 @@ CutNotes turns spoken rough-cut feedback into a local transcript and, when reque
 
 CutNotes is free, open-source software under the MIT License.
 
-## What 1.0 does
+Download the [latest Mac release](https://github.com/aindaco1/cutnotes/releases/latest), or use the update button in an installed copy.
+
+## What CutNotes does
 
 - **Record** a voice-note session from a selected microphone, with pause and resume.
 - **Import** any audio or video file that the bundled FFmpeg can read.
@@ -62,6 +64,7 @@ The top-right arrow icon checks GitHub Releases for a signed update. The adjacen
 ```bash
 cutnotes doctor
 cutnotes model download
+cutnotes model download --kind formatting --accept-license
 cutnotes record "Project — Rough Cut"
 ```
 
