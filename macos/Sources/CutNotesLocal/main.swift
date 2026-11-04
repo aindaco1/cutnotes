@@ -2,7 +2,7 @@ import Foundation
 import CutNotesCore
 import DustWaveSpeech
 
-private let version = "1.1.0"
+private let version = "1.1.1"
 
 private enum LocalEngineError: Error, CustomStringConvertible {
     case invalidArguments(String)

@@ -80,6 +80,7 @@ notarize_and_wait() {
       *)
         printf '%s\n' "$status_output" >&2
         echo "$label notarization failed with status: ${notary_status:-unknown}" >&2
+        /usr/bin/xcrun notarytool log "$submission_id" "${credential_arguments[@]}" >&2 || true
         exit 6
         ;;
     esac
