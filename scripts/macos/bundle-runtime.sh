@@ -65,6 +65,9 @@ rm -rf "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/site-packages
 # Python frameworks and their separate installation layout.
 rm -rf "$runtime_dir/Python.framework/Versions/3.14/Frameworks"
 rm -f "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/lib-dynload/"_tkinter*.so
+# PSF includes this link-time development object. It is never used to run
+# Python, cannot carry a distributable executable signature, and fails notary.
+rm -f "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/config-3.14-darwin/python.o"
 mkdir -p "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/site-packages"
 
 # Install only the reviewed, hash-pinned macOS 15 wheels. Never resolve dependencies

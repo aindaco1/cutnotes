@@ -1,4 +1,6 @@
-# 1.1.0
+# 1.1.1
+
+- Exclude Python build-only objects from the signed runtime. The earlier 1.1.0 candidate was not published.
 
 - Replace Apple Intelligence formatting with on-device Gemma 4 12B (6-bit), using the tuned source-grounded recipe.
 - Add a one-time 9.76 GB model download with resume support, checksum verification, license review, and offline import.
