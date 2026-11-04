@@ -30,6 +30,10 @@ struct SetupStatusView: View {
                 if let model, !ready {
                     Text("One-time download: \(ByteCountFormatter.string(fromByteCount: model.bytes, countStyle: .decimal))")
                         .font(.caption).foregroundStyle(.secondary)
+                    if let setupDetail = model.setupDetail {
+                        Text(setupDetail)
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
                 }
             }
             Spacer(minLength: 12)

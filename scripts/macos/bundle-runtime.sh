@@ -21,7 +21,7 @@ if [[ ! -d "$python_framework_source" || ! -x "$ffmpeg_source" || ! -x "$ffprobe
   exit 3
 fi
 
-python_version="$($python_framework_source/Versions/3.14/bin/python3.14 -c 'import platform; print(platform.python_version())')"
+python_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$python_framework_source/Versions/3.14/Resources/Info.plist")"
 ffmpeg_version="$($ffmpeg_source -version | /usr/bin/awk 'NR == 1 {print $3}')"
 if [[ "$python_version" != "3.14.8" || "$ffmpeg_version" != "8.1.1" ]]; then
   echo "Runtime lock mismatch: expected Python 3.14.8 and FFmpeg 8.1.1" >&2
@@ -60,13 +60,17 @@ fi
 
 find "$runtime_dir/Python.framework" -type d -name __pycache__ -prune -exec rm -rf {} +
 find "$runtime_dir/Python.framework" -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
-rm -f "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/site-packages"
+rm -rf "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/site-packages"
+# CutNotes does not use Tk/IDLE. Keep the bundled runtime independent of GUI
+# Python frameworks and their separate installation layout.
+rm -rf "$runtime_dir/Python.framework/Versions/3.14/Frameworks"
+rm -f "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/lib-dynload/"_tkinter*.so
 mkdir -p "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/site-packages"
 
 # Install only the reviewed, hash-pinned macOS 15 wheels. Never resolve dependencies
 # while the application runs; all inference libraries and TLS roots ship here.
 root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
-"$python_framework_source/Versions/3.14/bin/python3.14" -m pip install \
+python3 -m pip install \
   --only-binary=:all: --require-hashes --no-deps --no-compile \
   --platform macosx_15_0_arm64 --python-version 3.14 --implementation cp --abi cp314 \
   --target "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/site-packages" \
@@ -92,7 +96,11 @@ while [[ "$new_dependencies" -gt 0 ]]; do
     fi
     destination="$runtime_dir/lib/$(basename "$dependency")"
     if [[ ! -f "$destination" ]]; then
-      /bin/cp -L "$dependency" "$destination"
+      dependency_source="$dependency"
+      if [[ "$dependency" == /Library/Frameworks/Python.framework/* ]]; then
+        dependency_source="$python_framework_source/${dependency#/Library/Frameworks/Python.framework/}"
+      fi
+      /bin/cp -L "$dependency_source" "$destination"
       /bin/chmod u+w "$destination"
       new_dependencies=$((new_dependencies + 1))
     fi
@@ -108,10 +116,11 @@ while IFS= read -r candidate; do
   while IFS= read -r dependency; do
     [[ -n "$dependency" ]] || continue
     if [[ "$dependency" == *"/Python.framework/Versions/3.14/Python" ]]; then
-      replacement="@rpath/Python"
+      dependency_target="$runtime_dir/Python.framework/Versions/3.14/Python"
     else
-      replacement="@rpath/$(basename "$dependency")"
+      dependency_target="$runtime_dir/lib/$(basename "$dependency")"
     fi
+    replacement="@loader_path/$(python3 -c 'import os,sys; print(os.path.relpath(sys.argv[1], os.path.dirname(sys.argv[2])))' "$dependency_target" "$candidate")"
     /usr/bin/install_name_tool -change "$dependency" "$replacement" "$candidate"
   done < <(
     /usr/bin/otool -L "$candidate" \
@@ -126,12 +135,6 @@ python_binary="$runtime_dir/Python.framework/Versions/3.14/bin/python3.14"
 python_library="$runtime_dir/Python.framework/Versions/3.14/Python"
 python_app_binary="$runtime_dir/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python"
 /usr/bin/install_name_tool -id '@rpath/Python' "$python_library"
-/usr/bin/install_name_tool -add_rpath '@executable_path/..' "$python_binary" 2>/dev/null || true
-/usr/bin/install_name_tool -add_rpath '@executable_path/../../../../lib' "$python_binary" 2>/dev/null || true
-/usr/bin/install_name_tool -add_rpath '@executable_path/../../../..' "$python_app_binary" 2>/dev/null || true
-/usr/bin/install_name_tool -add_rpath '@executable_path/../../../../../../../lib' "$python_app_binary" 2>/dev/null || true
-/usr/bin/install_name_tool -add_rpath '@executable_path/../lib' "$runtime_dir/bin/ffmpeg" 2>/dev/null || true
-/usr/bin/install_name_tool -add_rpath '@executable_path/../lib' "$runtime_dir/bin/ffprobe" 2>/dev/null || true
 
 # Apple Silicon requires every modified Mach-O to carry at least an ad-hoc
 # signature before the runtime can execute its own verification probes.

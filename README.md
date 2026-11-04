@@ -105,13 +105,15 @@ Parakeet transcription and Gemma formatting run on the Mac. CutNotes has no tele
 
 ## Build and test
 
-Requirements: Apple Silicon, Xcode 26, Swift 6, Homebrew Python 3.14.8, and standard macOS build tools.
+Requirements: Apple Silicon, Xcode 26, Swift 6, a Python 3 build interpreter with pip, and standard macOS build tools.
 
 ```bash
 git submodule update --init --recursive
 python3 scripts/test.py
 ./script/build_and_run.sh --verify
 ```
+
+The app bundles the checksum-pinned official Python 3.14.8 runtime; packaging checks every executable against the macOS 15 minimum.
 
 The default development suite runs Python/Swift tests, live Jev calibration on public synthetic examples, and native Gemma formatting followed by Jev review. Configure the development Cloudflare account as described in [Testing](docs/TESTING.md#default-jev-development-evaluation). Use `python3 scripts/test.py --offline` for the contract-test subset without live inference. Jev is never called by the user app or CLI pipeline.
 

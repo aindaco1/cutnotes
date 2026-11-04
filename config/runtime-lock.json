@@ -15,5 +15,11 @@
     "transformers": "5.22.1",
     "platform": "macosx_15_0_arm64",
     "requirements": "config/gemma-runtime-requirements.txt"
-  }
+  },
+  "python_distribution": {
+    "url": "https://www.python.org/ftp/python/3.14.8/python-3.14.8-macos11.pkg",
+    "sha256": "507fc086c5c006ff875d344a75b4e67b8fb3c401f1bc4908c6250adb673d4907",
+    "signer": "Python Software Foundation (BMM5U3QVKW)"
+  },
+  "minimum_macos": "15.0"
 }

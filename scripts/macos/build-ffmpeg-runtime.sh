@@ -2,9 +2,10 @@
 set -euo pipefail
 
 version="8.1.1"
+export MACOSX_DEPLOYMENT_TARGET=15.0
 archive_sha256="b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3"
 cache_root="${CUTNOTES_RUNTIME_BUILD_ROOT:-$(getconf DARWIN_USER_CACHE_DIR)com.dustwave.cutnotes/runtime-build}"
-prefix="${1:-$cache_root/ffmpeg-$version-arm64}"
+prefix="${1:-$cache_root/ffmpeg-$version-macos15-arm64}"
 source_cache="$cache_root/sources"
 archive="$source_cache/ffmpeg-$version.tar.xz"
 source_dir="$source_cache/ffmpeg-$version"
@@ -76,7 +77,9 @@ cd "$build_dir"
   --enable-audiotoolbox \
   --enable-videotoolbox \
   --enable-neon \
-  --enable-pic >&2
+  --enable-pic \
+  --extra-cflags="-mmacosx-version-min=15.0" \
+  --extra-ldflags="-mmacosx-version-min=15.0" >&2
 /usr/bin/make -j"$(sysctl -n hw.logicalcpu)" >&2
 rm -rf "$prefix"
 /usr/bin/make install >&2

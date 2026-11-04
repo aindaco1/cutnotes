@@ -132,3 +132,10 @@ class GemmaProductionTests(unittest.TestCase):
         self.assertTrue(caught.exception.preserved.transcript)
         self.assertFalse(output.exists())
         self.assertEqual(source.read_text(),'At 00:09 the shot works.')
+
+    def test_install_never_replaces_a_folder_containing_unrelated_files(self):
+        self.root.mkdir(); source=self.root/'precious.txt';source.write_text('keep')
+        with mock.patch.object(gm.urllib.request,'urlopen') as network:
+            with self.assertRaises(CutNotesError):gm.download_model(accept_license=True)
+        network.assert_not_called()
+        self.assertEqual(source.read_text(),'keep')

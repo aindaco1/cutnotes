@@ -6,6 +6,7 @@ import fcntl
 import hashlib
 import importlib.util
 import json
+import math
 import os
 from pathlib import Path
 import platform
@@ -108,12 +109,24 @@ def model_status():
     return {"id": MANIFEST["id"], "state": state, "detail": detail, "path": str(root),
             "bytes": MANIFEST["bytes"], "source": MANIFEST["repo"], "revision": MANIFEST["revision"],
             "license": MANIFEST["license"], "license_url": MANIFEST["license_url"],
-            "downloaded_bytes": downloaded, "minimum_memory_bytes": MANIFEST["minimum_memory_bytes"]}
+            "downloaded_bytes": downloaded, "minimum_memory_bytes": MANIFEST["minimum_memory_bytes"],
+            "setup_detail": f"Allow {math.ceil((MANIFEST['bytes'] - downloaded + 1_000_000_000)/1e9)} GB of free space. 24 GB of memory recommended."}
+
+
+def check_install_destination(root):
+    if root.is_symlink():
+        raise failure("The Gemma model directory cannot be a symbolic link.")
+    if root.exists():
+        allowed = {item["name"] for item in MANIFEST["files"]} | {RECEIPT}
+        if not root.is_dir() or any(path.name not in allowed or path.is_symlink() or not path.is_file()
+                                    for path in root.iterdir()):
+            raise failure("The model destination contains unrelated files. Choose a separate model folder.")
 
 
 @contextmanager
 def installation():
     root = model_directory()
+    check_install_destination(root)
     root.parent.mkdir(parents=True, exist_ok=True)
     lock_path = root.with_name("." + root.name + ".lock")
     fd = os.open(lock_path, os.O_CREAT | os.O_RDWR | os.O_NOFOLLOW, 0o600)
@@ -131,6 +144,7 @@ def installation():
 
 def install_staging(root, staging):
     validate_model(staging)
+    check_install_destination(root)
     backup = root.with_name("." + root.name + ".previous")
     if backup.exists():
         raise failure("A previous model installation needs recovery before installing again.")

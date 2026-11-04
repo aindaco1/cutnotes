@@ -220,10 +220,12 @@ public struct DoctorPayload: Codable, Equatable, Sendable {
         public let license: String
         public let licenseURL: String
         public let languages: [Language]?
+        public let setupDetail: String?
 
         enum CodingKeys: String, CodingKey {
             case id, state, detail, path, bytes, source, revision, license, languages
             case licenseURL = "license_url"
+            case setupDetail = "setup_detail"
         }
     }
 
