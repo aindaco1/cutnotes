@@ -8,7 +8,8 @@ fi
 
 app_bundle="$1"
 identity="${CUTNOTES_SIGNING_IDENTITY:--}"
-entitlements="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)/macos/Sources/CutNotesApp/CutNotes.entitlements"
+root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+entitlements="$root_dir/macos/Sources/CutNotesApp/CutNotes.entitlements"
 sign_options=(--force --sign "$identity")
 if [[ "$identity" == "-" ]]; then
   sign_options+=(--timestamp=none)
@@ -23,7 +24,7 @@ while IFS= read -r candidate; do
     /usr/bin/xattr -c "$candidate" 2>/dev/null || true
     /usr/bin/codesign "${sign_options[@]}" "$candidate"
   fi
-done < <(find "$app_bundle/Contents" -type f -print)
+done < <(python3 "$root_dir/scripts/macos/macho-files.py" "$app_bundle/Contents")
 
 while IFS= read -r nested_bundle; do
   /usr/bin/xattr -c "$nested_bundle" 2>/dev/null || true

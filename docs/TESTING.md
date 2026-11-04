@@ -1,3 +1,17 @@
+# Testing the Gemma release
+
+`python3 scripts/test.py` runs Python/Swift contracts, the unchanged public Jev calibration, and native Gemma formatting with Jev review. Run it with the pinned Gemma runtime and installed model. `--offline` explicitly runs the Python/Swift subset only. `CUTNOTES_SWIFT_SCRATCH` can place Swift outputs outside an iCloud workspace.
+
+Native local acceptance: `python3 scripts/check-gemma-formatting.py --skip-jev --output-dir /new/evidence/directory`. This uses the existing public synthetic suite and writes source/output hashes, failures and timing. Omit `--skip-jev` for the development evaluator. Custom/private fixtures must always use `--skip-jev`; the remote evaluator rejects anything except exact built-in public sources. The Gemma presentation adapter maps headings and bullets into the existing scoped evaluator without changing calibration questions or policy.
+
+Release gates are distinct: Python tests, Swift tests, app bundle/runtime validation, real Parakeet transcription, real Gemma formatting, resumable model download, signing, app notarization/stapling, DMG notarization/stapling, mount/install/launch and Sparkle verification. Hosted CI establishes only the offline code checks. Content acceptance and real hardware acceptance must be recorded separately. The app must not depend on Homebrew, pip, an external Python install, Apple Intelligence or a cloud inference account.
+
+The model is verified before installation and formatting. Check missing/corrupt/partial/ready states, interrupted download resumption, wrong ranges/checksums, low disk space, source and prior-output preservation, preference migration, cancellation, and explicit optional-provider selection. Timestamp checks cannot establish the correctness of a paraphrase; inspect meaning and caveats separately.
+
+## Historical Apple formatter research
+
+The following pre-1.1 material is retained for comparison. Its native Apple commands and helper contracts describe the retired provider, not the current release pipeline.
+
 # Testing
 
 Run the standard development suite:

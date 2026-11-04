@@ -220,10 +220,12 @@ public struct DoctorPayload: Codable, Equatable, Sendable {
         public let license: String
         public let licenseURL: String
         public let languages: [Language]?
+        public let setupDetail: String?
 
         enum CodingKeys: String, CodingKey {
             case id, state, detail, path, bytes, source, revision, license, languages
             case licenseURL = "license_url"
+            case setupDetail = "setup_detail"
         }
     }
 
@@ -250,6 +252,7 @@ public struct DoctorPayload: Codable, Equatable, Sendable {
     public let localEngine: LocalEngine
     public let parakeet: Model
     public let appleFormatter: AppleStatus
+    public let gemmaFormatter: Model?
     public let macwhisper: OptionalTool
     public let codex: OptionalTool
     public let microphones: [Microphone]
@@ -262,6 +265,7 @@ public struct DoctorPayload: Codable, Equatable, Sendable {
         case localEngine = "local_engine"
         case parakeet
         case appleFormatter = "apple_formatter"
+        case gemmaFormatter = "gemma_formatter"
         case macwhisper, codex, microphones
     }
 }

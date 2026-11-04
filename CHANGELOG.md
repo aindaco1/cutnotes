@@ -1,3 +1,11 @@
+# 1.1.0
+
+- Replace Apple Intelligence formatting with on-device Gemma 4 12B (6-bit), using the tuned source-grounded recipe.
+- Add a one-time 9.76 GB model download with resume support, checksum verification, license review, and offline import.
+- Preserve source-owned timestamps and flag ambiguous spoken timecodes; reject incomplete or malformed notes without losing the transcript.
+- Keep previous notes when formatting again. Retain local Parakeet transcription and explicit optional Codex/MacWhisper providers.
+- Bundle the Gemma runtime for Apple silicon on macOS 15 and later. Formatting requires 16 GB of memory; 24 GB or more is recommended.
+
 # Changelog
 
 ## [1.0.9] - 2026-10-14

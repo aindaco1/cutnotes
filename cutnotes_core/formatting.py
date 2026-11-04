@@ -300,7 +300,12 @@ def _located_timecodes(transcript: str) -> list[_LocatedTimecode]:
         suffix_start = match.end("value") if "." in match.group("value") else match.end()
         if NON_CUT_SUFFIX.match(transcript[suffix_start:]):
             continue
-        if value := _shorthand_timecode(match.group("value")):
+        # 'This is one problem' is a count, not one second into the cut.
+        # A weak 'this is' cue needs a minute/second form or an explicit unit.
+        weak_this = bool(re.match(r"this\s+is(?:\s+a)?\s+", match.group(), re.I)) and not bool(
+            re.match(r"this\s+is\s+at\b", match.group(), re.I))
+        seconds_unit = bool(re.search(r"\b(?:seconds?|secs?)$", match.group(), re.I))
+        if value := _shorthand_timecode(match.group("value"), require_minutes=weak_this and not seconds_unit):
             qualifier = "around " if re.match(r"(?i)(around|near|roughly)\b", match.group()) else ""
             add(match, (value,), f"{qualifier}[{value}]", 70)
     for match in CONTEXTUAL_TIMECODE.finditer(transcript):

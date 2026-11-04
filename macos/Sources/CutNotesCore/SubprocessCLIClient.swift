@@ -33,6 +33,7 @@ public actor SubprocessCLIClient {
     public static let maximumProgressEvents = 20_000
 
     private var currentPID: pid_t?
+    private var currentIsRecording = false
     private var currentControlDescriptor: Int32?
 
     public init() {}
@@ -100,6 +101,7 @@ public actor SubprocessCLIClient {
         }
         let childPID = pid
         currentPID = childPID
+        currentIsRecording = command.arguments.first == "record"
         currentControlDescriptor = controlPipe.takeWrite()
         let stdoutRead = stdoutPipe.takeRead()
         let stderrRead = stderrPipe.takeRead()
@@ -166,7 +168,8 @@ public actor SubprocessCLIClient {
 
     public func cancelCurrentCommand() throws {
         guard let pid = currentPID else { return }
-        try writeControl("cancel\n")
+        if currentIsRecording { try writeControl("cancel\n") }
+        else { kill(-pid, SIGINT) }
         Task { [weak self] in
             try? await Task.sleep(for: .seconds(5))
             await self?.forceStopIfCurrent(pid)
@@ -191,6 +194,7 @@ public actor SubprocessCLIClient {
         if let descriptor = currentControlDescriptor { Darwin.close(descriptor) }
         currentControlDescriptor = nil
         currentPID = nil
+        currentIsRecording = false
     }
 
     private nonisolated static func readAll(

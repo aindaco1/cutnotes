@@ -22,7 +22,6 @@ let package = Package(
             dependencies: [
                 "CutNotesCore",
                 .product(name: "DustWaveSpeech", package: "native"),
-                .product(name: "DustWaveAppleIntelligence", package: "native"),
             ]
         ),
         .executableTarget(

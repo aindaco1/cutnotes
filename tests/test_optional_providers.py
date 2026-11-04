@@ -1,6 +1,7 @@
 from pathlib import Path
 import io
 import subprocess
+import sys
 import tempfile
 import unittest
 from unittest import mock
@@ -19,6 +20,7 @@ class OptionalProviderTests(unittest.TestCase):
                 "path": None, "version": None, "apple": {"state": "unavailable"},
             }),
             mock.patch.object(cli, "model_status", return_value={"state": "missing"}),
+            mock.patch.object(cli.gemma_model, "model_status", return_value={"state": "missing"}),
             mock.patch("subprocess.run", side_effect=AssertionError("Unselected provider executed")) as run,
         ):
             payload, _ = cli.doctor_payload()
@@ -40,6 +42,7 @@ class OptionalProviderTests(unittest.TestCase):
             mock.patch.object(pipeline, "require_tool", return_value="/ffmpeg") as require,
             mock.patch.object(pipeline, "find_local_engine", return_value="/local-engine"),
             mock.patch.object(pipeline, "validate_model"),
+            mock.patch.object(pipeline, "require_ready"),
             mock.patch.object(pipeline, "transcribe_with_parakeet") as parakeet,
             mock.patch.object(pipeline, "transcribe_with_macwhisper") as macwhisper,
         ):
@@ -53,7 +56,7 @@ class OptionalProviderTests(unittest.TestCase):
         require.assert_called_once_with("CUTNOTES_FFMPEG", "ffmpeg")
         parakeet.assert_called_once()
         macwhisper.assert_not_called()
-        self.assertEqual(formatter, "/local-engine")
+        self.assertEqual(formatter, sys.executable)
 
     def test_selected_macwhisper_uses_only_cli_transcription(self):
         with tempfile.TemporaryDirectory() as temporary:

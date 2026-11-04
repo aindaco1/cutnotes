@@ -15,7 +15,7 @@ import Testing
     #expect(command.arguments.contains("--progress-fd"))
     #expect(command.arguments.contains("--control-fd"))
     #expect(command.arguments.contains("parakeet"))
-    #expect(command.arguments.contains("apple"))
+    #expect(command.arguments.contains("gemma"))
 }
 
 @Test func commandBuilderKeepsTranscriptOnlyExplicit() throws {
@@ -98,7 +98,7 @@ import Testing
     let command = try builder.formatTranscript(
         URL(fileURLWithPath: "/tmp/transcript.txt"),
         title: "Demo",
-        formatter: .apple,
+        formatter: .gemma,
         codexModel: "",
         context: ""
     )
@@ -115,4 +115,17 @@ import Testing
     #expect(throws: CLICommandError.self) {
         try builder.record(options: options, microphoneIndex: 0)
     }
+}
+
+@Test func formattingModelSetupUsesCoreContract() throws {
+    let builder = try CLICommandBuilder(executable: URL(fileURLWithPath: "/tmp/cutnotes"))
+    for command in [try builder.modelStatus(kind: .formatting), try builder.downloadModel(kind: .formatting), try builder.importModel(from: URL(fileURLWithPath: "/tmp/model"), kind: .formatting)] {
+        #expect(command.arguments.contains("formatting"))
+        #expect(command.arguments.contains("--json"))
+        #expect(command.arguments.contains("--progress-fd"))
+        #expect(!command.arguments.contains("--control-fd"))
+    }
+    let model = try JSONDecoder().decode(DoctorPayload.Model.self, from: Data(#"{"id":"gemma-4-12b-6bit","state":"partial","detail":"Resume download","path":"/tmp/model","bytes":9760954674,"source":"mlx-community/gemma-4-12B-it-6bit","revision":"pinned","license":"Apache-2.0","license_url":"https://huggingface.co/google/gemma-4-12B-it","downloaded_bytes":1234}"#.utf8))
+    #expect(model.bytes == 9_760_954_674)
+    #expect(model.state == "partial")
 }

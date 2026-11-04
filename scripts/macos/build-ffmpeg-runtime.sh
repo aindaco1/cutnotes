@@ -2,9 +2,10 @@
 set -euo pipefail
 
 version="8.1.1"
+export MACOSX_DEPLOYMENT_TARGET=15.0
 archive_sha256="b6863adde98898f42602017462871b5f6333e65aec803fdd7a6308639c52edf3"
 cache_root="${CUTNOTES_RUNTIME_BUILD_ROOT:-$(getconf DARWIN_USER_CACHE_DIR)com.dustwave.cutnotes/runtime-build}"
-prefix="${1:-$cache_root/ffmpeg-$version-arm64}"
+prefix="${1:-$cache_root/ffmpeg-$version-macos15-arm64}"
 source_cache="$cache_root/sources"
 archive="$source_cache/ffmpeg-$version.tar.xz"
 source_dir="$source_cache/ffmpeg-$version"
@@ -26,19 +27,36 @@ if [[ -x "$prefix/bin/ffmpeg" && -x "$prefix/bin/ffprobe" ]]; then
 fi
 
 mkdir -p "$source_cache" "$(dirname "$prefix")"
+github_revision="150ba6ddfabb5c433bb2fb3ee546d2a96e59066d"
+github_sha256="10fd159e9fa6c89b2e9d3e0cf93df4bcfebe475061b563cd6f2af88e74c2ff52"
+github_archive="$source_cache/ffmpeg-$version-github.tar.gz"
 if [[ ! -f "$archive" ]] || ! echo "$archive_sha256  $archive" | /usr/bin/shasum -a 256 -c - >/dev/null 2>&1; then
   temporary_archive="$(mktemp "$source_cache/.ffmpeg-$version.XXXXXX.tar.xz")"
   trap 'rm -f "$temporary_archive"' EXIT
-  /usr/bin/curl --fail --location --silent --show-error \
-    "https://ffmpeg.org/releases/ffmpeg-$version.tar.xz" \
-    --output "$temporary_archive"
-  echo "$archive_sha256  $temporary_archive" | /usr/bin/shasum -a 256 -c - >&2
-  /bin/mv "$temporary_archive" "$archive"
+  if /usr/bin/curl --fail --location --silent --show-error --retry 1 --connect-timeout 20 --max-time 120 \
+      "https://ffmpeg.org/releases/ffmpeg-$version.tar.xz" --output "$temporary_archive" \
+      && echo "$archive_sha256  $temporary_archive" | /usr/bin/shasum -a 256 -c - >&2; then
+    /bin/mv "$temporary_archive" "$archive"
+  else
+    /bin/rm -f "$temporary_archive"
+    # The official FFmpeg mirror at the same release tag; independently pinned.
+    if [[ ! -f "$github_archive" ]] || ! echo "$github_sha256  $github_archive" | /usr/bin/shasum -a 256 -c - >/dev/null 2>&1; then
+      /usr/bin/curl --fail --location --silent --show-error --retry 2 --connect-timeout 20 --max-time 120 \
+        "https://github.com/FFmpeg/FFmpeg/archive/$github_revision.tar.gz" --output "$temporary_archive"
+      echo "$github_sha256  $temporary_archive" | /usr/bin/shasum -a 256 -c - >&2
+      /bin/mv "$temporary_archive" "$github_archive"
+    fi
+  fi
   trap - EXIT
 fi
 
 rm -rf "$source_dir"
-/usr/bin/tar -xJf "$archive" -C "$source_cache"
+if [[ -f "$archive" ]] && echo "$archive_sha256  $archive" | /usr/bin/shasum -a 256 -c - >/dev/null 2>&1; then
+  /usr/bin/tar -xJf "$archive" -C "$source_cache"
+else
+  mkdir -p "$source_dir"
+  /usr/bin/tar -xzf "$github_archive" --strip-components 1 -C "$source_dir"
+fi
 build_dir="$(mktemp -d "$cache_root/.ffmpeg-build.XXXXXX")"
 trap 'rm -rf "$build_dir"' EXIT
 
@@ -59,7 +77,9 @@ cd "$build_dir"
   --enable-audiotoolbox \
   --enable-videotoolbox \
   --enable-neon \
-  --enable-pic >&2
+  --enable-pic \
+  --extra-cflags="-mmacosx-version-min=15.0" \
+  --extra-ldflags="-mmacosx-version-min=15.0" >&2
 /usr/bin/make -j"$(sysctl -n hw.logicalcpu)" >&2
 rm -rf "$prefix"
 /usr/bin/make install >&2

@@ -23,7 +23,7 @@ struct ContentView: View {
                 SetupStatusView(
                     doctor: store.doctor,
                     isRunning: store.isRunning,
-                    download: { Task { await store.downloadModel() } },
+                    download: { kind in Task { await store.downloadModel(kind: kind) } },
                     importModel: chooseModelFolder
                 )
                 workflowPicker
@@ -45,7 +45,7 @@ struct ContentView: View {
         .task { await store.refreshDoctor() }
         .onChange(of: store.workflow) { _, workflow in
             if workflow == .format && store.formatter == .none {
-                store.formatter = .apple
+                store.formatter = .gemma
             }
         }
         .alert(item: $store.failure) { failure in
@@ -159,7 +159,7 @@ struct ContentView: View {
                     }
                 }
                 Picker("Formatting", selection: $store.formatter) {
-                    Text("Apple on-device (recommended)").tag(CutNotesFormatter.apple)
+                    Text("Gemma on-device (recommended)").tag(CutNotesFormatter.gemma)
                     Text("Codex CLI — optional").tag(CutNotesFormatter.codex)
                 }
                 .disabled(store.workflow != .format && store.transcriptOnly)
@@ -265,12 +265,12 @@ struct ContentView: View {
         if panel.runModal() == .OK, let url = panel.url { store.outputRootPath = url.path }
     }
 
-    private func chooseModelFolder() {
+    private func chooseModelFolder(kind: CutNotesModelKind) {
         let panel = NSOpenPanel()
         panel.canChooseDirectories = true
         panel.canChooseFiles = false
         if panel.runModal() == .OK, let url = panel.url {
-            Task { await store.importModel(from: url) }
+            Task { await store.importModel(from: url, kind: kind) }
         }
     }
 

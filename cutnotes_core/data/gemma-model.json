@@ -1,0 +1,68 @@
+{
+  "repo": "mlx-community/gemma-4-12B-it-6bit",
+  "revision": "2fe53aeb9b8686eefa543a60d6aa364c5b219aac",
+  "bytes": 9760954674,
+  "files": [
+    {
+      "name": ".gitattributes",
+      "bytes": 1570,
+      "sha256": "34448b82c17d60fec9b65b1f093c115ddbaadc04beb1b0140b6bfed2e012a930"
+    },
+    {
+      "name": "README.md",
+      "bytes": 84,
+      "sha256": "9a272b5949a803ab6eadf0703706dab183229952e2b374501d1069d0f6d16557"
+    },
+    {
+      "name": "chat_template.jinja",
+      "bytes": 17466,
+      "sha256": "36e3a42e5cf14cd0020e72d92e1fdd9970f59b82170e421f0cbe1bb42bead3f0"
+    },
+    {
+      "name": "config.json",
+      "bytes": 5415,
+      "sha256": "59c57ae8fb59a9ddc0af0183bb8c0b9cd5a1dd9360ad71d02d8a236223ce063c"
+    },
+    {
+      "name": "generation_config.json",
+      "bytes": 260,
+      "sha256": "a8349d9bd64cc5841297fcb5002f0fdc4749c473c8f1b10ea337f9ce4ee7014e"
+    },
+    {
+      "name": "model-00001-of-00002.safetensors",
+      "bytes": 5333109347,
+      "sha256": "893575cd81aa351f5d8ed50d6be5b510f2f6c65b5ca7a89fd255352663508508"
+    },
+    {
+      "name": "model-00002-of-00002.safetensors",
+      "bytes": 4395511990,
+      "sha256": "50c94b54d11478cd186f2d60b25e8a4ef0399682474263b916876a6bf1a7a678"
+    },
+    {
+      "name": "model.safetensors.index.json",
+      "bytes": 135329,
+      "sha256": "984e1d4efe68dab246b13bea7897e75948e0ef187f26d3d9106b8a8460f88efa"
+    },
+    {
+      "name": "processor_config.json",
+      "bytes": 868,
+      "sha256": "016a1db9c4f41ea0c61919c46855ea5e7c45c6e4ae4bfbedfb5b6bed79a2fe92"
+    },
+    {
+      "name": "tokenizer.json",
+      "bytes": 32169626,
+      "sha256": "cc8d3a0ce36466ccc1278bf987df5f71db1719b9ca6b4118264f45cb627bfe0f"
+    },
+    {
+      "name": "tokenizer_config.json",
+      "bytes": 2719,
+      "sha256": "fc1384a911d2c9860ac07bc3ceafff20bff26695991744b7dbe5e1e4522bfa57"
+    }
+  ],
+  "id": "gemma-4-12b-6bit",
+  "name": "Gemma 4 12B",
+  "quantization": "6-bit",
+  "license": "Apache-2.0",
+  "license_url": "https://huggingface.co/google/gemma-4-12B-it",
+  "minimum_memory_bytes": 17179869184
+}

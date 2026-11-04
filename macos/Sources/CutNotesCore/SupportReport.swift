@@ -34,11 +34,12 @@ public struct CutNotesSupportState: Codable, Equatable, Sendable {
         "it", "lt", "lv", "mt", "nl", "pl", "pt", "ro", "ru", "sk", "sl", "sv", "uk",
     ]
     public static let transcribers: Set<String> = ["parakeet", "macwhisper"]
-    public static let formatters: Set<String> = ["apple", "codex"]
+    public static let formatters: Set<String> = ["apple", "gemma", "codex"]
     public static let progressStages: Set<String> = [
-        "recording", "recording-paused", "validating", "transcribing", "formatting", "model-download",
+        "model_download", "model_verification", "recording", "recording-paused", "validating", "transcribing", "formatting", "model-download",
     ]
     public static let failureCodes: Set<String> = [
+        "gemma_formatting_failed", "gemma_model_invalid", "gemma_model_missing", "gemma_runtime_unavailable", "gemma_model_busy", "gemma_model_unavailable", "model_license_required", "output_exists",
         "apple_context_window", "apple_formatting_failed", "apple_formatting_invalid_result", "apple_guardrail",
         "apple_model_unavailable", "audio_not_captured", "audio_preparation_failed", "audio_track_missing",
         "cancelled", "codex_formatting_failed", "codex_formatting_invalid_result", "cutnotes_failed",

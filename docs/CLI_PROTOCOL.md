@@ -1,3 +1,15 @@
+# Gemma additions in 1.1
+
+The default `--formatter` is now `gemma`; supported values are `gemma`, `codex`, and (for record/import) `none`. The retired `apple` provider is no longer accepted. There is no silent provider fallback.
+
+`model status`, `model download`, and `model import` accept `--kind transcription|formatting`; the default remains transcription for compatibility. Formatting model status uses the existing `cutnotes.model.v1` shape with additive `downloaded_bytes` and `minimum_memory_bytes` fields. `doctor` adds `gemma_formatter`; legacy Apple status fields report unavailable/replaced_by_gemma. The model's source, revision, byte size, license and path come from the core. Swift passes `--json --progress-fd 3` on every command.
+
+The native helper now supports only `status` and `transcribe`. Gemma inference is in the Python core through the bundled offline MLX runtime. Output is saved only after the body contract passes; prior notes are never replaced. Expected Gemma failures use stable `gemma_model_missing`, `gemma_model_invalid`, `gemma_runtime_unavailable`, `gemma_model_busy`, or `gemma_formatting_failed` codes and preserved-artifact flags.
+
+## Existing v1 contracts and historical Apple extensions
+
+The core result, error, progress and transcription contracts below remain valid. Apple editorial-generation and audit sections document the retired pre-1.1 provider only.
+
 # CLI Machine Protocol
 
 The app launches the bundled CLI with an argument array; no shell command is constructed. It passes `--json --progress-fd 3` for all app workflows and `--control-fd 4` for recording.

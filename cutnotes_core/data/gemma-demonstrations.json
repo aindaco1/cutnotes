@@ -1,0 +1,71 @@
+[
+  {
+    "id": "demo-interviews",
+    "source": "At 00:45 that reaction cut feels rushed. Maybe all the interview cuts need more breathing room. The mix is still temporary though, so the music might change how that first cut feels. At 02:18 this conversation actually flows really well. So maybe, maybe just that first reaction cut. I don't know, the other cuts are working. A small pickup of hands folding a letter could give us inserts for several places, if the performer is free. I'm not sure she is. Overall the set dressing is lovely. The picture seems cool on my screen; that could be the display, just flagging it.",
+    "target": {
+      "timed": {
+        "T001": "The reaction cut feels rushed, though the temporary mix and music might change that impression. My concern seems to be this particular cut: the other interview cuts are working, so I'd consider giving this one more breathing room.",
+        "T002": "This conversation flows really well; the cuts work."
+      },
+      "general": [
+        "A small pickup of hands folding a letter could provide inserts for several places, if the performer is available. I'm not sure she is.",
+        "The set dressing is lovely.",
+        "The picture seems cool on my screen, but that could be the display. I'm just flagging it."
+      ]
+    },
+    "origin": "Synthetic dictation and source-grounded target authored by Codex; not a human-approved real recording."
+  },
+  {
+    "id": "demo-titles",
+    "source": "Keep the titles left aligned across the film. At 01:05 this camera push is subtle and beautiful. At 03:27 the title has nice spacing. That doesn't change the alignment request though; I still want this one and all the others left aligned. At 05:52 the van blocks the windshield. We could crop from the side or use the alternate angle, if that take is sharp. I haven't checked it. Overall I like the handheld movement, so leave it alone. Separately, a quick insert of the porch lamp would be useful elsewhere, if we can get back to that location.",
+    "target": {
+      "timed": {
+        "T001": "The camera push is subtle and beautiful.",
+        "T002": "The title has nice spacing. It should still follow the left-alignment request.",
+        "T003": "The van blocks the windshield. We could crop from the side, or use the alternate angle if that take is sharp enough. I haven't checked it."
+      },
+      "general": [
+        "Keep all titles left aligned across the film.",
+        "I like the handheld movement; leave it alone.",
+        "A quick porch-lamp insert could be useful elsewhere, if we can return to the location. This is a separate pickup idea."
+      ]
+    },
+    "origin": "Synthetic dictation and source-grounded target authored by Codex; not a human-approved real recording."
+  },
+  {
+    "id": "demo-performance",
+    "source": "At 00:22 I was worried the look in her eyes wouldn't read, but I can see it and it works. At 02:05 leave the chipped door as it is. I like that texture. At 04:15 maybe let the final reaction go a few frames longer, if we have room in the take. I don't know how much is left. The red jacket feels very warm on my phone. I'm not sure if that is the grade or the phone. The practical light looks great throughout. Making the character put down the cup solves that continuity issue nicely. I'm curious to hear the score.",
+    "target": {
+      "timed": {
+        "T001": "The look in her eyes reads and works. I was worried it wouldn't be visible, but it is.",
+        "T002": "Leave the chipped door as it is; I like the texture.",
+        "T003": "Maybe let the final reaction run a few frames longer, if there is room in the take. I'm not sure how much footage is left."
+      },
+      "general": [
+        "The red jacket looks very warm on my phone. I don't know whether that comes from the grade or the phone.",
+        "The practical light looks great throughout.",
+        "Having the character put down the cup solves the continuity issue nicely.",
+        "I'm curious to hear the score."
+      ]
+    },
+    "origin": "Synthetic dictation and source-grounded target authored by Codex; not a human-approved real recording."
+  },
+  {
+    "id": "demo-focus",
+    "source": "At 00:38 the background lettering distracts me. Could we blur the background a little or crop the lettering out? At 01:56 the long lens shot is gorgeous. At 03:44 I think the room tone should be lower, and maybe every interior needs that change. At 05:21 the kitchen ambience is actually balanced. Yeah, and the hallway sounded fine too. Maybe only the room tone in that earlier room is too loud. The other interiors work. Overall a separate shot of the key turning could be handy in different parts, if the prop is still around. The rain on the glass looks excellent. Add a little texture throughout, but keep the existing shot lengths.",
+    "target": {
+      "timed": {
+        "T001": "The background lettering distracts me. Could we blur the background a little or crop the lettering out?",
+        "T002": "The long-lens shot is gorgeous.",
+        "T003": "The room tone feels too loud here. My concern seems limited to this room, since the other interiors sound balanced; I'd consider lowering this room tone.",
+        "T004": "The kitchen ambience is balanced. The hallway sounded fine too, so those interiors work."
+      },
+      "general": [
+        "A separate shot of the key turning could provide inserts for different parts of the film, if the prop is still available.",
+        "The rain on the glass looks excellent.",
+        "Add a little texture throughout while keeping the existing shot lengths."
+      ]
+    },
+    "origin": "Synthetic dictation and source-grounded target authored by Codex; not a human-approved real recording."
+  }
+]

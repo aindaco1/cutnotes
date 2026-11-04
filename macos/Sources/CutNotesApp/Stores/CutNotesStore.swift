@@ -51,9 +51,9 @@ final class CutNotesStore {
             rawValue: defaults.string(forKey: Keys.transcriber) ?? "parakeet"
         ) ?? .parakeet
         let savedFormatter = CutNotesFormatter(
-            rawValue: defaults.string(forKey: Keys.formatter) ?? "apple"
-        ) ?? .apple
-        formatter = savedFormatter == .none ? .apple : savedFormatter
+            rawValue: defaults.string(forKey: Keys.formatter) ?? "gemma"
+        ) ?? .gemma
+        formatter = savedFormatter == .none ? .gemma : savedFormatter
         if defaults.integer(forKey: Keys.microphonePreferenceVersion) < 1 {
             microphoneIndex = nil
             defaults.removeObject(forKey: Keys.microphone)
@@ -85,7 +85,7 @@ final class CutNotesStore {
         let failureCode = failure.map(\.code).map {
             CutNotesSupportState.failureCodes.contains($0) ? $0 : "unknown"
         }
-        let selectedFormatter = formatter == .codex ? "codex" : "apple"
+        let selectedFormatter = formatter == .codex ? "codex" : "gemma"
         let selectedLanguage = CutNotesSupportState.languages.contains(language) ? language : "en"
         return CutNotesSupportReport(
             state: CutNotesSupportState(
@@ -103,7 +103,7 @@ final class CutNotesStore {
                 coreHealthy: doctor?.healthy,
                 defaultWorkflowReady: doctor?.defaultWorkflowReady,
                 parakeetReady: doctor.map { $0.parakeet.state == "ready" },
-                appleFormatterReady: doctor.map { $0.appleFormatter.state == "ready" },
+                appleFormatterReady: nil,
                 ffmpegAvailable: doctor.map { $0.ffmpeg.path != nil },
                 macwhisperAvailable: doctor.map { $0.macwhisper.path != nil },
                 codexAvailable: doctor.map { $0.codex.path != nil },
@@ -156,7 +156,7 @@ final class CutNotesStore {
                 command = try builder().formatTranscript(
                     sourceURL,
                     title: title,
-                    formatter: formatter == .none ? .apple : formatter,
+                    formatter: formatter == .none ? .gemma : formatter,
                     codexModel: codexModel,
                     context: context
                 )
@@ -220,18 +220,18 @@ final class CutNotesStore {
         }
     }
 
-    func downloadModel() async {
+    func downloadModel(kind: CutNotesModelKind = .transcription) async {
         failure = nil
         isRunning = true
         do {
-            let execution = try await client.run(try builder().downloadModel()) { [weak self] event in
+            let execution = try await client.run(try builder().downloadModel(kind: kind)) { [weak self] event in
                 await MainActor.run { self?.progress = event }
             }
             if execution.exitCode != 0 {
                 throw decodeCLIError(execution.standardError, exitCode: execution.exitCode)
             }
             _ = try ContractDecoder.decode(ModelPayload.self, from: execution.standardOutput)
-            notice = "Parakeet v3 is installed and verified."
+            notice = kind == .formatting ? "Gemma is installed and verified. Formatting stays on this Mac." : "Parakeet v3 is installed and verified."
         } catch {
             failure = presented(error)
         }
@@ -239,16 +239,16 @@ final class CutNotesStore {
         await refreshDoctor()
     }
 
-    func importModel(from url: URL) async {
+    func importModel(from url: URL, kind: CutNotesModelKind = .transcription) async {
         failure = nil
         isRunning = true
         do {
-            let execution = try await client.run(try builder().importModel(from: url))
+            let execution = try await client.run(try builder().importModel(from: url, kind: kind))
             if execution.exitCode != 0 {
                 throw decodeCLIError(execution.standardError, exitCode: execution.exitCode)
             }
             _ = try ContractDecoder.decode(ModelPayload.self, from: execution.standardOutput)
-            notice = "Parakeet v3 is installed and verified."
+            notice = kind == .formatting ? "Gemma is installed and verified. Formatting stays on this Mac." : "Parakeet v3 is installed and verified."
         } catch {
             failure = presented(error)
         }

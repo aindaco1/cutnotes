@@ -18,7 +18,7 @@ enum DiagnosticsService {
         let defaultWorkflowReady: Bool?
         let microphoneCount: Int?
         let modelState: String?
-        let appleFormatterState: String?
+        let gemmaFormatterState: String?
         let ffmpeg: Provider?
         let macwhisper: Provider?
         let codex: Provider?
@@ -33,7 +33,7 @@ enum DiagnosticsService {
             case defaultWorkflowReady = "default_workflow_ready"
             case microphoneCount = "microphone_count"
             case modelState = "model_state"
-            case appleFormatterState = "apple_formatter_state"
+            case gemmaFormatterState = "gemma_formatter_state"
             case ffmpeg, macwhisper, codex
         }
     }
@@ -54,7 +54,7 @@ enum DiagnosticsService {
             defaultWorkflowReady: doctor?.defaultWorkflowReady,
             microphoneCount: doctor?.microphones.count,
             modelState: doctor?.parakeet.state,
-            appleFormatterState: doctor?.appleFormatter.state,
+            gemmaFormatterState: doctor?.gemmaFormatter?.state,
             ffmpeg: doctor.map {
                 .init(available: $0.ffmpeg.path != nil, version: $0.ffmpeg.version)
             },

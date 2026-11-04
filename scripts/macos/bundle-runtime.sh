@@ -21,10 +21,10 @@ if [[ ! -d "$python_framework_source" || ! -x "$ffmpeg_source" || ! -x "$ffprobe
   exit 3
 fi
 
-python_version="$($python_framework_source/Versions/3.14/bin/python3 -c 'import platform; print(platform.python_version())')"
+python_version="$(/usr/libexec/PlistBuddy -c 'Print :CFBundleShortVersionString' "$python_framework_source/Versions/3.14/Resources/Info.plist")"
 ffmpeg_version="$($ffmpeg_source -version | /usr/bin/awk 'NR == 1 {print $3}')"
-if [[ "$python_version" != "3.14.7" || "$ffmpeg_version" != "8.1.1" ]]; then
-  echo "Runtime lock mismatch: expected Python 3.14.7 and FFmpeg 8.1.1" >&2
+if [[ "$python_version" != "3.14.8" || "$ffmpeg_version" != "8.1.1" ]]; then
+  echo "Runtime lock mismatch: expected Python 3.14.8 and FFmpeg 8.1.1" >&2
   exit 3
 fi
 ffmpeg_license_text="$("$ffmpeg_source" -L 2>&1)"
@@ -37,14 +37,44 @@ fi
 rm -rf "$runtime_dir"
 mkdir -p "$runtime_dir/bin" "$runtime_dir/lib"
 /usr/bin/ditto --norsrc --noextattr "$python_framework_source" "$runtime_dir/Python.framework"
+# Recent Homebrew bottles omit the framework's public symlinks. Restore the
+# canonical versioned layout before signing the independently bundled copy.
+/bin/ln -sfn 3.14 "$runtime_dir/Python.framework/Versions/Current"
+/bin/ln -sfn Versions/Current/Python "$runtime_dir/Python.framework/Python"
+/bin/ln -sfn Versions/Current/Resources "$runtime_dir/Python.framework/Resources"
+
 /bin/cp -L "$ffmpeg_source" "$runtime_dir/bin/ffmpeg"
 /bin/cp -L "$ffprobe_source" "$runtime_dir/bin/ffprobe"
 /bin/chmod 0755 "$runtime_dir/bin/ffmpeg" "$runtime_dir/bin/ffprobe"
+# A previously verified relocatable LGPL build may be supplied for local testing.
+# Its sibling codec libraries are already @rpath-relative, so otool's absolute
+# dependency traversal below cannot discover them.
+ffmpeg_sibling_lib="$(dirname "$ffmpeg_source")/../lib"
+if [[ -d "$ffmpeg_sibling_lib" ]]; then
+  for library in "$ffmpeg_sibling_lib"/libav*.dylib "$ffmpeg_sibling_lib"/libsw*.dylib; do
+    [[ -f "$library" ]] || continue
+    /bin/cp -L "$library" "$runtime_dir/lib/$(basename "$library")"
+  done
+fi
+
 
 find "$runtime_dir/Python.framework" -type d -name __pycache__ -prune -exec rm -rf {} +
 find "$runtime_dir/Python.framework" -type f \( -name '*.pyc' -o -name '*.pyo' \) -delete
-rm -f "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/site-packages"
+rm -rf "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/site-packages"
+# CutNotes does not use Tk/IDLE. Keep the bundled runtime independent of GUI
+# Python frameworks and their separate installation layout.
+rm -rf "$runtime_dir/Python.framework/Versions/3.14/Frameworks"
+rm -f "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/lib-dynload/"_tkinter*.so
 mkdir -p "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/site-packages"
+
+# Install only the reviewed, hash-pinned macOS 15 wheels. Never resolve dependencies
+# while the application runs; all inference libraries and TLS roots ship here.
+root_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+python3 -m pip install \
+  --only-binary=:all: --require-hashes --no-deps --no-compile \
+  --platform macosx_15_0_arm64 --python-version 3.14 --implementation cp --abi cp314 \
+  --target "$runtime_dir/Python.framework/Versions/3.14/lib/python3.14/site-packages" \
+  -r "$root_dir/config/gemma-runtime-requirements.txt"
 
 dependency_list="$(mktemp)"
 new_dependencies=1
@@ -53,10 +83,10 @@ while [[ "$new_dependencies" -gt 0 ]]; do
   while IFS= read -r candidate; do
     if /usr/bin/file -b "$candidate" | /usr/bin/grep -q 'Mach-O'; then
       /usr/bin/otool -L "$candidate" \
-        | /usr/bin/awk '/^[[:space:]]*\// && $1 !~ /:$/ && $1 !~ /^\/System\/Library\// && $1 !~ /^\/usr\/lib\// {print $1}' \
+        | /usr/bin/awk '/^[[:space:]]+\// && $1 !~ /:$/ && $1 !~ /^\/System\/Library\// && $1 !~ /^\/usr\/lib\// {print $1}' \
         >> "$dependency_list"
     fi
-  done < <(find "$runtime_dir" -type f -print)
+  done < <(python3 "$root_dir/scripts/macos/macho-files.py" "$runtime_dir")
   /usr/bin/sort -u "$dependency_list" -o "$dependency_list"
   new_dependencies=0
   while IFS= read -r dependency; do
@@ -66,7 +96,11 @@ while [[ "$new_dependencies" -gt 0 ]]; do
     fi
     destination="$runtime_dir/lib/$(basename "$dependency")"
     if [[ ! -f "$destination" ]]; then
-      /bin/cp -L "$dependency" "$destination"
+      dependency_source="$dependency"
+      if [[ "$dependency" == /Library/Frameworks/Python.framework/* ]]; then
+        dependency_source="$python_framework_source/${dependency#/Library/Frameworks/Python.framework/}"
+      fi
+      /bin/cp -L "$dependency_source" "$destination"
       /bin/chmod u+w "$destination"
       new_dependencies=$((new_dependencies + 1))
     fi
@@ -82,30 +116,25 @@ while IFS= read -r candidate; do
   while IFS= read -r dependency; do
     [[ -n "$dependency" ]] || continue
     if [[ "$dependency" == *"/Python.framework/Versions/3.14/Python" ]]; then
-      replacement="@rpath/Python"
+      dependency_target="$runtime_dir/Python.framework/Versions/3.14/Python"
     else
-      replacement="@rpath/$(basename "$dependency")"
+      dependency_target="$runtime_dir/lib/$(basename "$dependency")"
     fi
+    replacement="@loader_path/$(python3 -c 'import os,sys; print(os.path.relpath(sys.argv[1], os.path.dirname(sys.argv[2])))' "$dependency_target" "$candidate")"
     /usr/bin/install_name_tool -change "$dependency" "$replacement" "$candidate"
   done < <(
     /usr/bin/otool -L "$candidate" \
-      | /usr/bin/awk '/^[[:space:]]*\// && $1 !~ /:$/ && $1 !~ /^\/System\/Library\// && $1 !~ /^\/usr\/lib\// {print $1}'
+      | /usr/bin/awk '/^[[:space:]]+\// && $1 !~ /:$/ && $1 !~ /^\/System\/Library\// && $1 !~ /^\/usr\/lib\// {print $1}'
   )
-  if [[ "$candidate" == "$runtime_dir/lib/"* ]]; then
+  if [[ "$candidate" == *.dylib || "$candidate" == *.so ]]; then
     /usr/bin/install_name_tool -id "@rpath/$(basename "$candidate")" "$candidate" 2>/dev/null || true
   fi
-done < <(find "$runtime_dir" -type f -print)
+done < <(python3 "$root_dir/scripts/macos/macho-files.py" "$runtime_dir")
 
 python_binary="$runtime_dir/Python.framework/Versions/3.14/bin/python3.14"
 python_library="$runtime_dir/Python.framework/Versions/3.14/Python"
 python_app_binary="$runtime_dir/Python.framework/Versions/3.14/Resources/Python.app/Contents/MacOS/Python"
 /usr/bin/install_name_tool -id '@rpath/Python' "$python_library"
-/usr/bin/install_name_tool -add_rpath '@executable_path/..' "$python_binary" 2>/dev/null || true
-/usr/bin/install_name_tool -add_rpath '@executable_path/../../../../lib' "$python_binary" 2>/dev/null || true
-/usr/bin/install_name_tool -add_rpath '@executable_path/../../../..' "$python_app_binary" 2>/dev/null || true
-/usr/bin/install_name_tool -add_rpath '@executable_path/../../../../../../../lib' "$python_app_binary" 2>/dev/null || true
-/usr/bin/install_name_tool -add_rpath '@executable_path/../lib' "$runtime_dir/bin/ffmpeg" 2>/dev/null || true
-/usr/bin/install_name_tool -add_rpath '@executable_path/../lib' "$runtime_dir/bin/ffprobe" 2>/dev/null || true
 
 # Apple Silicon requires every modified Mach-O to carry at least an ad-hoc
 # signature before the runtime can execute its own verification probes.
@@ -113,11 +142,14 @@ while IFS= read -r candidate; do
   if /usr/bin/file -b "$candidate" | /usr/bin/grep -q 'Mach-O'; then
     /usr/bin/codesign --force --sign - --timestamp=none "$candidate"
   fi
-done < <(find "$runtime_dir" -type f -print)
+done < <(python3 "$root_dir/scripts/macos/macho-files.py" "$runtime_dir")
 
-if find "$runtime_dir" -type f -print0 | xargs -0 /usr/bin/otool -L 2>/dev/null \
-  | /usr/bin/awk '/^[[:space:]]*\// && $1 !~ /:$/ && $1 !~ /^\/System\/Library\// && $1 !~ /^\/usr\/lib\// {found=1} END {exit !found}'; then
+if python3 "$root_dir/scripts/macos/macho-files.py" "$runtime_dir" | while IFS= read -r candidate; do /usr/bin/otool -L "$candidate"; done 2>/dev/null \
+  | /usr/bin/awk '/^[[:space:]]+\// && $1 !~ /:$/ && $1 !~ /^\/System\/Library\// && $1 !~ /^\/usr\/lib\// {found=1} END {exit !found}'; then
   echo "Bundled runtime still contains non-system absolute load paths" >&2
+  while IFS= read -r candidate; do
+    /usr/bin/otool -L "$candidate" | /usr/bin/awk '/^[[:space:]]+\// && $1 !~ /:$/ && $1 !~ /^\/System\/Library\// && $1 !~ /^\/usr\/lib\// {print FILENAME, $0}' >&2
+  done < <(python3 "$root_dir/scripts/macos/macho-files.py" "$runtime_dir")
   exit 4
 fi
 
@@ -130,7 +162,7 @@ manifest="$runtime_dir/runtime-manifest.json"
 /usr/bin/plutil -insert ffmpeg_license -string LGPL-2.1-or-later "$manifest"
 /usr/bin/plutil -convert json "$manifest"
 
-PYTHONDONTWRITEBYTECODE=1 "$python_binary" -c 'import json, ssl, urllib.request; print(json.dumps({"python": "ready", "ssl": ssl.OPENSSL_VERSION.split()[0]}))' >/dev/null
+PYTHONDONTWRITEBYTECODE=1 "$python_binary" -c 'import json, ssl, urllib.request, mlx.core, mlx_lm, transformers; print(json.dumps({"python": "ready", "ssl": ssl.OPENSSL_VERSION.split()[0]}))' >/dev/null
 "$runtime_dir/bin/ffmpeg" -version >/dev/null
 "$runtime_dir/bin/ffprobe" -version >/dev/null
 find "$runtime_dir/Python.framework" -type d -name __pycache__ -prune -exec rm -rf {} +

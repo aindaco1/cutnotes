@@ -19,16 +19,16 @@ Production support-report submission is additionally gated by the exact bundle i
 ```bash
 export CUTNOTES_SIGNING_IDENTITY='Developer ID Application: Example (TEAMID)'
 export CUTNOTES_NOTARY_PROFILE='cutnotes-notary'
-./scripts/release/release.sh 1.0.9
+./scripts/release/release.sh 1.1.0
 ```
 
 The script verifies version agreement, runs both test suites, builds the pinned LGPL FFmpeg runtime and app, and signs every nested executable. It then notarizes, staples, and Gatekeeper-validates the app before packaging it; signs, notarizes, staples, and Gatekeeper-validates the DMG separately; signs the Sparkle update archive; and writes checksums. App and DMG submissions are distinct release gates.
 
 ## GitHub release
 
-Push an annotated `v1.0.9` tag only after local acceptance. `.github/workflows/release.yml` repeats the release pipeline using repository secrets and uploads:
+Push an annotated `v1.1.0` tag only after local acceptance. `.github/workflows/release.yml` repeats the release pipeline using repository secrets and uploads:
 
-- `CutNotes-1.0.9-arm64.dmg`
+- `CutNotes-1.1.0-arm64.dmg`
 - `appcast.xml`
 - `SHA256SUMS`
 
@@ -37,3 +37,6 @@ The app feed is `https://github.com/aindaco1/cutnotes/releases/latest/download/a
 ## Manual acceptance
 
 After publishing, download the GitHub asset rather than reusing the local file. Verify its checksum, the DMG ticket, the enclosed app ticket, mount, copy, first launch, model setup, one real import, terminal command installation, top-right manual update check, reviewed support-report preview, deployed relay receipt, and absence of profiling. Record these as separate evidence. For 1.0.1 and later, also perform a real update from the immediately previous public app.
+
+
+Gemma release checks additionally cover download interruption/resumption, model checksums, bundled MLX imports with no Homebrew dependencies, public synthetic content checks, and a real local formatting run. CI runs the explicit offline test subset; native content acceptance is recorded separately. A missing local notarization profile can be handled by the existing GitHub release workflow, but signed public artifacts must still be downloaded and validated.
